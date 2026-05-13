@@ -100,7 +100,7 @@ Agent 调用 write_todos 更新列表：
   6. [pending] 补充 Durable Objects 的资料 ← 新增
 ```
 
-![Agent 如何使用 write_todos：制定计划（全部 pending）→ 逐步执行（状态流转 + 调用工具）→ 动态调整（发现新需求，新增步骤）](imgs/10-flowchart-todo-workflow.png)
+![Agent 如何使用 write_todos：制定计划（全部 pending）→ 逐步执行（状态流转 + 调用工具）→ 动态调整（发现新需求，新增步骤）](../public/imgs/10-flowchart-todo-workflow.png)
 
 ### 任务清单的持久化
 
@@ -140,7 +140,7 @@ Agent 调用 write_todos 更新列表：
 - 自己按需添加新能力（PII 脱敏、模型降级、调用次数限制……）
 - 在更底层的 LangChain `create_agent()` 上搭建定制化的 Agent
 
-![揭开引擎盖：create_deep_agent() 内部分为常驻层（TodoList、Filesystem、Summarization、PatchToolCalls、AnthropicCaching）、条件层（SubAgent、Skills、Memory、HumanInTheLoop 等按参数激活）和用户自定义层](imgs/11-framework-middleware-assembly.png)
+![揭开引擎盖：create_deep_agent() 内部分为常驻层（TodoList、Filesystem、Summarization、PatchToolCalls、AnthropicCaching）、条件层（SubAgent、Skills、Memory、HumanInTheLoop 等按参数激活）和用户自定义层](../public/imgs/11-framework-middleware-assembly.png)
 
 ### TodoListMiddleware：write_todos 的真身
 
@@ -334,7 +334,7 @@ print(result["messages"][-1].content)
 | | ModelCallLimitMiddleware | 限制模型调用次数 |
 | **上下文** | ContextEditingMiddleware | 清理旧的工具调用结果 |
 
-![Deep Agents 中间件全景：常驻层（5个始终启用）、条件层（5个按参数激活）、可选层（LangChain 预构建，按需添加），以及不可排除的必要中间件 FilesystemMiddleware + SubAgentMiddleware](imgs/12-infographic-middleware.png)
+![Deep Agents 中间件全景：常驻层（5个始终启用）、条件层（5个按参数激活）、可选层（LangChain 预构建，按需添加），以及不可排除的必要中间件 FilesystemMiddleware + SubAgentMiddleware](../public/imgs/12-infographic-middleware.png)
 
 > `FilesystemMiddleware` 和 `SubAgentMiddleware` 是**不可排除的必要中间件**——它们支撑了 Deep Agents 的核心功能（文件工具、权限控制、子 Agent 委派），框架会主动阻止将它们从堆栈中移除。其余中间件可以通过 `middleware` 参数按需叠加——**你可以像拼积木一样，给 Agent 添加任何你需要的能力**。
 
