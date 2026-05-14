@@ -27,8 +27,8 @@ for (const [id, meta] of Object.entries(manifest)) {
 
   // Rewrite relative image paths to include base path
   const BASE = '/deepagents-course';
-  body = body.replace(/!\[([\s\S]*?)\]\(imgs\//g, `![$1](${BASE}/imgs/`);
-  body = body.replace(/!\[([\s\S]*?)\]\(infographic\//g, `![$1](${BASE}/infographic/`);
+  body = body.replace(/!\[([\s\S]*?)\]\(\.\.\/public\/imgs\//g, `![$1](${BASE}/imgs/`);
+  body = body.replace(/!\[([\s\S]*?)\]\(\.\.\/public\/infographic\//g, `![$1](${BASE}/infographic/`);
 
   const frontmatter = [
     '---',
