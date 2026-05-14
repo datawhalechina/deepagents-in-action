@@ -46,10 +46,6 @@
     "slides": [
       { "id": "ch04", "title": "Lec 06: 任务规划与中间件", "bilibili": "https://www.bilibili.com/video/BV1mkdwBoEDf/", "xhs": "http://xhslink.com/o/M00gPc2EBF" }
     ],
-    "infographics": [
-      { "id": "ch04-1", "title": "任务规划与 write_todos" },
-      { "id": "ch04-2", "title": "create_deep_agent 中间件解剖" }
-    ],
     "bilibili": "https://www.bilibili.com/video/BV1mkdwBoEDf/",
     "xhs": "http://xhslink.com/o/M00gPc2EBF",
     "published": true,
@@ -64,10 +60,6 @@
     "slides": [
       { "id": "ch05", "title": "Lec 07: 子 Agent 与上下文隔离" }
     ],
-    "infographics": [
-      { "id": "ch05-1", "title": "Context Quarantine 与字段定义" },
-      { "id": "ch05-2", "title": "CompiledSubAgent · 多子 Agent · 最佳实践" }
-    ],
     "published": true,
     "pubDate": "2026-05-13"
   },
@@ -78,7 +70,6 @@
     "order": 6,
     "description": "理解 LangGraph 的两种持久化机制，以及如何用 CompositeBackend 实现跨会话记忆。",
     "slides": [],
-    "infographics": [],
     "published": false
   },
   "ch07-human-in-the-loop": {
@@ -88,7 +79,6 @@
     "order": 7,
     "description": "利用 LangGraph 的中断机制，为敏感操作添加人工审批。按风险等级分层的最佳实践。",
     "slides": [],
-    "infographics": [],
     "published": false
   },
   "ch08-skills": {
@@ -98,7 +88,6 @@
     "order": 8,
     "description": "通过 Agent Skills 规范为 Agent 添加可复用的专业能力。Lazy Loading 机制与 Skills vs Tools 的选择。",
     "slides": [],
-    "infographics": [],
     "published": false
   },
   "ch09-sandboxes": {
@@ -108,7 +97,6 @@
     "order": 9,
     "description": "使用远程沙箱环境安全地执行 Agent 生成的代码。Modal、Daytona、Runloop 三大提供商。",
     "slides": [],
-    "infographics": [],
     "published": false
   },
   "ch10-streaming-frontend": {
@@ -118,7 +106,6 @@
     "order": 10,
     "description": "实现 Agent 的实时流式输出，并用 React 构建可视化前端。多种 Streaming 模式与自定义事件。",
     "slides": [],
-    "infographics": [],
     "published": false
   },
   "ch11-data-analysis-agent": {
@@ -128,7 +115,6 @@
     "order": 11,
     "description": "综合运用前面所学，构建一个完整的数据分析 Agent。沙箱后端、子 Agent 协作、LangSmith 追踪。",
     "slides": [],
-    "infographics": [],
     "published": false
   },
   "ch12-cli-deployment": {
@@ -138,7 +124,6 @@
     "order": 12,
     "description": "CLI 工具使用指南 + 从开发到生产的部署路径。LangGraph Platform、ACP、模型选择策略。",
     "slides": [],
-    "infographics": [],
     "published": false
   }
 }
