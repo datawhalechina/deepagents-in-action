@@ -56,18 +56,20 @@
     "pubDate": "2026-05-07"
   },
   "ch05-subagents": {
-    "title": "子 Agent 与上下文隔离 — 让 Agent 学会\"委派\"",
+    "title": "子 Agent 与上下文隔离 — 让 Agent 学会委派",
     "chapter": 5,
     "section": "核心篇",
     "order": 5,
-    "description": "理解子 Agent 的设计动机——上下文隔离，以及字典式定义、CompiledSubAgent、General-purpose 子 Agent 三种方式。",
+    "description": "子 Agent（Subagent）机制与 Context Quarantine（上下文隔离）：字典方式定义、general-purpose 子 Agent、CompiledSubAgent、多子 Agent 协作模式与最佳实践。",
     "slides": [
-      { "id": "ch05", "title": "子 Agent 与上下文隔离" }
+      { "id": "ch05", "title": "Lec 07: 子 Agent 与上下文隔离" }
     ],
     "infographics": [
-      { "id": "ch05", "title": "子 Agent 与上下文隔离" }
+      { "id": "ch05-1", "title": "Context Quarantine 与字段定义" },
+      { "id": "ch05-2", "title": "CompiledSubAgent · 多子 Agent · 最佳实践" }
     ],
-    "published": false
+    "published": true,
+    "pubDate": "2026-05-13"
   },
   "ch06-long-term-memory": {
     "title": "长期记忆 — 让 Agent 拥有跨对话的记忆",
