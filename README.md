@@ -114,4 +114,29 @@ deepagents-site/
 
 ---
 
+## 贡献者墙
+
+<!-- contributors:start -->
+<table>
+<tr>
+<td align="center" valign="top" width="120">
+  <a href="https://github.com/webup">
+    <img src="https://avatars.githubusercontent.com/u/2936504?v=4&s=144" width="72" height="72" alt="webup" style="border-radius:50%;" /><br />
+    <sub><strong>webup</strong></sub>
+  </a><br />
+  <sub>9 commits</sub>
+</td>
+<td align="center" valign="top" width="120">
+  <a href="https://github.com/codeMonkeyWang">
+    <img src="https://avatars.githubusercontent.com/u/3906539?v=4&s=144" width="72" height="72" alt="codeMonkeyWang" style="border-radius:50%;" /><br />
+    <sub><strong>codeMonkeyWang</strong></sub>
+  </a><br />
+  <sub>1 commit</sub>
+</td>
+</tr>
+</table>
+<!-- contributors:end -->
+
+---
+
 欢迎提交 PR 修正错别字、改善排版，或参与内容讨论。所有贡献者将登上**贡献者墙**，并获赠 LangChain 官方社区（中国）礼品。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。

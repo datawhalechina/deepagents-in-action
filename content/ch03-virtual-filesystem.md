@@ -30,7 +30,7 @@ Deep Agents 的虚拟文件系统提供了 6 个核心工具：
 | `glob` | 按模式匹配查找文件（如 `**/*.py`） | 在文件柜中按标签找 |
 | `grep` | 搜索文件内容，支持正则、上下文、计数 | 全文检索 |
 
-![虚拟文件系统六大工具：ls、read_file、write_file、edit_file、glob、grep](imgs/07-infographic-six-tools.png)
+![虚拟文件系统六大工具：ls、read_file、write_file、edit_file、glob、grep](../public/imgs/07-infographic-six-tools.png)
 
 ### `read_file`：不只是"读文件"
 
@@ -115,7 +115,7 @@ grep("def create_agent", output_mode="content", context=3)
 
 这种"双保险"设计意味着：Agent 既有精炼的工作记忆（摘要），又能在需要时回溯细节（文件系统中的完整记录）。
 
-![上下文自动管理两道防线：大结果自动卸载（>20K tokens）和对话历史自动总结（>85% 窗口），Agent 始终拥有精炼的工作记忆和可回溯的完整记录](imgs/08-flowchart-context-management.png)
+![上下文自动管理两道防线：大结果自动卸载（>20K tokens）和对话历史自动总结（>85% 窗口），Agent 始终拥有精炼的工作记忆和可回溯的完整记录](../public/imgs/08-flowchart-context-management.png)
 
 ## 可插拔的存储后端
 
@@ -253,7 +253,7 @@ agent = create_deep_agent(
 
 我们会在第 9 章详细讲解沙箱。
 
-![五种存储后端对比：StateBackend（临时）→ FilesystemBackend（本地磁盘）→ StoreBackend（跨会话持久化）→ CompositeBackend（混合路由）→ 沙箱后端（安全执行），从临时到持久化的渐进选择](imgs/09-comparison-backends.png)
+![五种存储后端对比：StateBackend（临时）→ FilesystemBackend（本地磁盘）→ StoreBackend（跨会话持久化）→ CompositeBackend（混合路由）→ 沙箱后端（安全执行），从临时到持久化的渐进选择](../public/imgs/09-comparison-backends.png)
 
 ### 后端选择指南
 

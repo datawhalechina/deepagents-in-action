@@ -236,7 +236,7 @@ print(result["messages"][-1].content)
 
 这个过程中，Agent 可能调用了 10+ 次工具，但你只需要一次 `invoke()` 调用。
 
-![agent.invoke() 背后发生了什么？规划任务 → 搜索信息 → 管理上下文 → 委派子任务（如需要）→ 综合报告，你只写了 1 行调用，Agent 自动完成 10+ 次工具调用](imgs/05-flowchart-agent-workflow.png)
+![agent.invoke() 背后发生了什么？规划任务 → 搜索信息 → 管理上下文 → 委派子任务（如需要）→ 综合报告，你只写了 1 行调用，Agent 自动完成 10+ 次工具调用](../public/imgs/05-flowchart-agent-workflow.png)
 
 ## 模型选择
 
@@ -251,7 +251,7 @@ Deep Agents 支持任何实现了工具调用（Tool Calling）的 LangChain Cha
 
 硅基流动同时支持这两种接口，这意味着你可以用 `ChatOpenAI` 或 `ChatAnthropic` 来接入同一个平台上的模型。
 
-![两种大模型标准接口对比：OpenAI 兼容接口（/chat/completions，行业最广泛）和 Anthropic 兼容接口（/messages），硅基流动同时兼容两种，支持 GLM-5、Kimi-K2.5、Qwen3.5、DeepSeek-V3.2 等模型](imgs/06-comparison-api-interfaces.png)
+![两种大模型标准接口对比：OpenAI 兼容接口（/chat/completions，行业最广泛）和 Anthropic 兼容接口（/messages），硅基流动同时兼容两种，支持 GLM-5、Kimi-K2.5、Qwen3.5、DeepSeek-V3.2 等模型](../public/imgs/06-comparison-api-interfaces.png)
 
 ### 方式一：OpenAI 兼容接口（推荐）
 

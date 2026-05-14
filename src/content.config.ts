@@ -16,10 +16,6 @@ const chapters = defineCollection({
       bilibili: z.string().optional(),
       xhs: z.string().optional(),
     })).default([]),
-    infographics: z.array(z.object({
-      id: z.string(),
-      title: z.string(),
-    })).default([]),
     bilibili: z.string().optional(),
     xhs: z.string().optional(),
     published: z.boolean().default(false),

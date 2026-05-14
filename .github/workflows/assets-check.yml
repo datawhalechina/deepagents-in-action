@@ -1,0 +1,36 @@
+name: Asset Check
+
+on:
+  pull_request:
+    paths:
+      - "public/**/*.png"
+      - "public/**/*.jpg"
+      - "public/**/*.jpeg"
+      - "public/**/*.pdf"
+      - "content/**"
+      - "src/**"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "scripts/optimize-assets.sh"
+      - "package.json"
+      - ".github/workflows/assets-check.yml"
+      - ".github/workflows/optimize-assets.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install asset tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg ghostscript file perl
+
+      - name: Verify asset normalization
+        run: npm run assets:check

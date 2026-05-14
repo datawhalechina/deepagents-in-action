@@ -5,7 +5,7 @@ export default function rehypeAbsoluteImages() {
     visit(tree, 'element', (node) => {
       if (node.tagName === 'img' && node.properties?.src) {
         const src = node.properties.src;
-        if (src.startsWith('imgs/') || src.startsWith('infographic/')) {
+        if (src.startsWith('imgs/')) {
           node.properties.src = '/' + src;
         }
       }

@@ -1,0 +1,48 @@
+name: Optimize Assets
+
+on:
+  push:
+    paths:
+      - "public/**/*.png"
+      - "public/**/*.jpg"
+      - "public/**/*.jpeg"
+      - "public/**/*.pdf"
+      - "content/**"
+      - "src/**"
+      - "README.md"
+      - "CONTRIBUTING.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install asset tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg ghostscript file
+
+      - name: Optimize assets
+        run: bash scripts/optimize-assets.sh
+
+      - name: Commit optimized assets
+        run: |
+          if git diff --quiet; then
+            echo "No asset updates were needed."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public content src README.md CONTRIBUTING.md scripts package.json .github/workflows
+          git commit -m "chore: optimize assets"
+          git push
