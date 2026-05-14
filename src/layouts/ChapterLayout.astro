@@ -12,7 +12,7 @@ interface Props {
   chapter: number;
   section: string;
   description: string;
-  slides: Array<{ id: string; title: string }>;
+  slides: Array<{ id: string; title: string; bilibili?: string; xhs?: string }>;
   bilibili?: string;
   xhs?: string;
   chapterId?: string;
@@ -62,7 +62,7 @@ const tagClass = sectionColors[section] || 'bg-ink text-white';
       <PdfDownload slides={slides} />
     )}
 
-    <SocialLinks bilibili={bilibili} xhs={xhs} />
+    <SocialLinks bilibili={bilibili} xhs={xhs} slides={slides} />
 
     <ChapterNav prev={prev} next={next} />
   </article>
