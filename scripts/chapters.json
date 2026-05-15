@@ -58,7 +58,7 @@
     "order": 5,
     "description": "子 Agent（Subagent）机制与 Context Quarantine（上下文隔离）：字典方式定义、general-purpose 子 Agent、CompiledSubAgent、多子 Agent 协作模式与最佳实践。",
     "slides": [
-      { "id": "ch05", "title": "Lec 07: 子 Agent 与上下文隔离" }
+      { "id": "ch05", "title": "Lec 07: 子 Agent 与上下文隔离", "bilibili": "https://www.bilibili.com/video/BV19A5d6UEqW/", "xhs": "http://xhslink.com/o/83ojoN9ucba" }
     ],
     "published": true,
     "pubDate": "2026-05-13"
