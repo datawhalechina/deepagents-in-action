@@ -1,0 +1,24 @@
+name: Check Image Paths
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'content/**/*.md'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect bare image paths in content
+        run: |
+          if grep -rn '!\[.*\](imgs/' content/; then
+            echo ""
+            echo "❌ Found bare 'imgs/' image paths in content files."
+            echo "   Use '../public/imgs/filename.png' instead."
+            exit 1
+          fi
+          echo "✅ All image paths look correct."
