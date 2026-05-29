@@ -17,6 +17,25 @@ const grouped = sections.map(section => ({
 }));
 
 const publishedCount = sorted.filter(ch => ch.data.published).length;
+
+// Fetch GitHub star count at build time. Resilient to API failures
+// (network down, rate-limited, slow) — falls back to null so the button still renders.
+let stars: number | null = null;
+try {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 2500);
+  const res = await fetch('https://api.github.com/repos/webup/deepagents-course', {
+    headers: { Accept: 'application/vnd.github+json' },
+    signal: ctrl.signal,
+  });
+  clearTimeout(timer);
+  if (res.ok) {
+    const data = await res.json();
+    if (typeof data.stargazers_count === 'number') stars = data.stargazers_count;
+  }
+} catch {
+  // Swallow — render fallback below
+}
 ---
 
 <BaseLayout title="Deep Agents 实战 — 从零构建生产级 AI Agent 的完整指南">
@@ -60,6 +79,15 @@ const publishedCount = sorted.filter(ch => ch.data.published).length;
             class="inline-flex items-center gap-2 px-7 py-3 border border-gold/40 text-ink-muted text-sm font-medium rounded-lg hover:border-gold hover:text-gold transition-colors">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
             小红书合集
+          </a>
+          <a href="https://github.com/webup/deepagents-course" target="_blank" rel="noopener"
+            aria-label="给本课程在 GitHub 点 Star"
+            class="inline-flex items-center gap-2 px-7 py-3 border border-gold/40 text-ink-muted text-sm font-medium rounded-lg hover:border-gold hover:text-gold transition-colors group">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            GitHub Star
+            {stars !== null && (
+              <span class="ml-1 px-1.5 py-0.5 rounded text-xs font-mono bg-gold-pale/60 text-gold border border-gold/20">{stars}</span>
+            )}
           </a>
         </div>
 
