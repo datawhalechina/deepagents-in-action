@@ -52,3 +52,11 @@ body {
   pointer-events: none;
   font-family: var(--font-sans);
 }
+
+.chapter-num--extra {
+  font-size: 5rem;
+  -webkit-text-stroke: 1.5px #10b981;
+  opacity: 0.2;
+  top: -0.5rem;
+  right: 0.5rem;
+}

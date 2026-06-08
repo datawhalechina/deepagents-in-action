@@ -4,11 +4,132 @@ interface Props {
 }
 
 const { title } = Astro.props;
+
+const sectionMeta: Record<string, { num: string; subtitle: string; accent: string; accentMuted: string; icon: string }> = {
+  '认知篇': {
+    num: 'I',
+    subtitle: '理解 Deep Agents 的设计哲学与技术定位',
+    accent: '#1a1a2e',
+    accentMuted: 'rgba(26,26,46,0.06)',
+    icon: '◈',
+  },
+  '核心篇': {
+    num: 'II',
+    subtitle: '深入 Deep Agents 的核心机制与架构设计',
+    accent: '#b8860b',
+    accentMuted: 'rgba(184,134,11,0.06)',
+    icon: '◇',
+  },
+  '准备篇': {
+    num: '◆',
+    subtitle: '动手实操前的环境搭建与工具安装',
+    accent: '#059669',
+    accentMuted: 'rgba(5,150,105,0.05)',
+    icon: '▸',
+  },
+  '进阶篇': {
+    num: 'III',
+    subtitle: '生产级 Agent 的高级模式与最佳实践',
+    accent: '#2b6cb0',
+    accentMuted: 'rgba(43,108,176,0.06)',
+    icon: '◎',
+  },
+  '实战篇': {
+    num: 'IV',
+    subtitle: '综合运用所学，构建完整的 Agent 项目',
+    accent: '#2d2d44',
+    accentMuted: 'rgba(45,45,68,0.06)',
+    icon: '▣',
+  },
+};
+
+const meta = sectionMeta[title] || { num: '?', subtitle: '', accent: '#1a1a2e', accentMuted: 'rgba(0,0,0,0.04)', icon: '·' };
 ---
 
-<div class="flex items-center gap-3 mb-8">
-  <div class="w-1 h-6 bg-gold rounded-full"></div>
-  <h2 class="text-sm font-mono font-medium tracking-widest text-ink-muted uppercase">
-    {title}
-  </h2>
+<div class="section-banner" style={`--sb-accent: ${meta.accent}; --sb-bg: ${meta.accentMuted};`}>
+  <div class="section-banner__bar"></div>
+  <div class="section-banner__content">
+    <div class="section-banner__num">{meta.num}</div>
+    <div class="section-banner__text">
+      <h2 class="section-banner__title">{title}</h2>
+      <p class="section-banner__subtitle">{meta.subtitle}</p>
+    </div>
+  </div>
 </div>
+
+<style>
+  .section-banner {
+    position: relative;
+    margin-top: 4rem;
+    margin-bottom: 2rem;
+    padding: 1.75rem 2rem 1.75rem 2.5rem;
+    background: var(--sb-bg);
+    border-radius: 0 12px 12px 0;
+    overflow: hidden;
+  }
+
+  .section-banner__bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--sb-accent);
+    border-radius: 0 2px 2px 0;
+  }
+
+  .section-banner__content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .section-banner__num {
+    font-family: "Georgia", serif;
+    font-size: 2.25rem;
+    font-weight: 400;
+    line-height: 1;
+    color: var(--sb-accent);
+    opacity: 0.25;
+    flex-shrink: 0;
+    min-width: 2.5rem;
+    text-align: center;
+  }
+
+  .section-banner__text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .section-banner__title {
+    font-size: 1.375rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+    line-height: 1.2;
+    margin: 0;
+  }
+
+  .section-banner__subtitle {
+    margin: 0.375rem 0 0;
+    font-size: 0.875rem;
+    color: var(--color-ink-muted);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 640px) {
+    .section-banner {
+      padding: 1.25rem 1.25rem 1.25rem 1.75rem;
+      margin-top: 3rem;
+    }
+
+    .section-banner__num {
+      font-size: 1.75rem;
+      min-width: 2rem;
+    }
+
+    .section-banner__title {
+      font-size: 1.125rem;
+    }
+  }
+</style>

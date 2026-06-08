@@ -18,24 +18,14 @@ interface Props {
 
 const { id, title, chapter, section, description, published, slides } = Astro.props;
 const base = import.meta.env.BASE_URL;
-const sectionColors: Record<string, string> = {
-  '认知篇': 'bg-ink text-white',
-  '核心篇': 'bg-gold text-white',
-  '进阶篇': 'bg-accent text-white',
-  '实战篇': 'bg-ink-light text-white',
-};
-const tagClass = sectionColors[section] || 'bg-ink text-white';
+const isExtra = section === '准备篇';
+const chapterLabel = isExtra ? 'EX' : String(chapter).padStart(2, '0');
 ---
 
 {published ? (
   <div class="relative p-6 rounded-lg border border-gold-pale/80 bg-white hover:border-gold-light hover:shadow-md transition-all group overflow-hidden">
-    <div class="chapter-num">{String(chapter).padStart(2, '0')}</div>
+    <div class={`chapter-num ${isExtra ? 'chapter-num--extra' : ''}`}>{chapterLabel}</div>
     <a href={`${base}/chapters/${id}/`} class="relative block">
-      <div class="flex items-center gap-2 mb-3">
-        <span class={`inline-block text-[10px] font-mono font-medium tracking-wider px-2 py-0.5 rounded whitespace-nowrap ${tagClass}`}>
-          {section}
-        </span>
-      </div>
       <h3 class="text-lg font-bold font-sans leading-snug mb-2 group-hover:text-gold transition-colors">
         {title}
       </h3>
@@ -46,10 +36,12 @@ const tagClass = sectionColors[section] || 'bg-ink text-white';
         <div class="flex items-center gap-2">
           <span class="text-xs text-ink-muted/60 font-mono truncate flex-1 min-w-0">{slide.title}</span>
           <div class="flex items-center gap-1.5 shrink-0">
-            <a href={`${base}/pdfs/${slide.id}.pdf`} class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-paper-warm text-ink-muted hover:bg-gold-pale hover:text-gold transition-colors">
-              <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-              PDF
-            </a>
+            {!isExtra && (
+              <a href={`${base}/pdfs/${slide.id}.pdf`} class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-paper-warm text-ink-muted hover:bg-gold-pale hover:text-gold transition-colors">
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                PDF
+              </a>
+            )}
             {slide.bilibili ? (
               <a href={slide.bilibili} target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-sky-50 text-sky-600 hover:bg-sky-100 transition-colors">
                 <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 01-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 01.16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906L17.813 4.653zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773H5.333zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z"/></svg>
@@ -61,16 +53,18 @@ const tagClass = sectionColors[section] || 'bg-ink text-white';
                 B站
               </span>
             )}
-            {slide.xhs ? (
-              <a href={slide.xhs} target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
-                <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.5 7h-1v1h1v1.5h-1V13h-1.5v-1.5h-1V13H11.5v-1.5h-1V13H9v-1.5H8V10h1V9H8V7.5h1v-1h1.5v1h1v-1H13v1h1v-1h1.5v1h1V9z"/></svg>
-                小红书
-              </a>
-            ) : (
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-paper-warm text-ink-muted/40">
-                <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.5 7h-1v1h1v1.5h-1V13h-1.5v-1.5h-1V13H11.5v-1.5h-1V13H9v-1.5H8V10h1V9H8V7.5h1v-1h1.5v1h1v-1H13v1h1v-1h1.5v1h1V9z"/></svg>
-                小红书
-              </span>
+            {!isExtra && (
+              slide.xhs ? (
+                <a href={slide.xhs} target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                  <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.5 7h-1v1h1v1.5h-1V13h-1.5v-1.5h-1V13H11.5v-1.5h-1V13H9v-1.5H8V10h1V9H8V7.5h1v-1h1.5v1h1v-1H13v1h1v-1h1.5v1h1V9z"/></svg>
+                  小红书
+                </a>
+              ) : (
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-paper-warm text-ink-muted/40">
+                  <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.5 7h-1v1h1v1.5h-1V13h-1.5v-1.5h-1V13H11.5v-1.5h-1V13H9v-1.5H8V10h1V9H8V7.5h1v-1h1.5v1h1v-1H13v1h1v-1h1.5v1h1V9z"/></svg>
+                  小红书
+                </span>
+              )
             )}
           </div>
         </div>
@@ -79,10 +73,7 @@ const tagClass = sectionColors[section] || 'bg-ink text-white';
   </div>
 ) : (
   <div class="relative p-6 rounded-lg border border-gold-pale/30 bg-paper-warm/50 overflow-hidden">
-    <div class="chapter-num opacity-10">{String(chapter).padStart(2, '0')}</div>
-    <span class={`inline-block text-[10px] font-mono font-medium tracking-wider px-2 py-0.5 rounded bg-gray-200 text-gray-400 mb-3 whitespace-nowrap`}>
-      {section}
-    </span>
+    <div class={`chapter-num opacity-10 ${isExtra ? 'chapter-num--extra' : ''}`}>{chapterLabel}</div>
     <h3 class="text-lg font-bold font-sans leading-snug mb-2 text-ink-muted/50">
       {title}
     </h3>
