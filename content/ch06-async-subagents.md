@@ -1,6 +1,6 @@
 # 第 6 章：异步子 Agent — 让主 Agent 同时驱动多个子任务
 
-> 上一章我们学习了同步子 Agent，主 Agent 通过 `task` 工具委派、然后**等待**子 Agent 跑完。但是，当子任务要花上几分钟、甚至几十分钟时，主 Agent 在用户面前就成了"死机状态"——既无法继续聊，也无法插话调整方向。本章学习 Deep Agents 0.5.0 的预览特性：**Async Subagent（异步子 Agent）**——主 Agent 立即拿到任务 ID 就返回，子 Agent 在后台继续跑；用户可以随时问进度、追加要求，甚至中途取消。
+> 上一章我们学习了同步子 Agent，主 Agent 通过 `task` 工具委派、然后**等待**子 Agent 跑完。但是，当子任务要花上几分钟、甚至几十分钟时，主 Agent 在用户面前就成了“死机状态”——既无法继续聊，也无法插话调整方向。本章学习 Deep Agents 0.5.0 的预览特性：**Async Subagent（异步子 Agent）**——主 Agent 立即拿到任务 ID 就返回，子 Agent 在后台继续跑；用户可以随时问进度、追加要求，甚至中途取消。
 
 > ⚠️ Async Subagent 是 `deepagents>=0.5.0` 的**预览特性**（preview），仍在迭代中，API 可能变化。本章对应的代码示例需要部署到 LangSmith Deployments 或自托管的 Agent Protocol 服务。
 
