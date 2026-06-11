@@ -114,7 +114,53 @@ try {
       const hasPublished = chapters.some(ch => ch.data.published);
       return hasPublished ? (
         <section class="mb-12">
-          <SectionHeading title={section} />
+          {section === '准备篇' ? (
+            <div class="skills-promo-combined">
+              <div class="skills-promo-combined__header">
+                <div class="skills-promo-combined__title-row">
+                  <span class="skills-promo-combined__icon">◆</span>
+                  <h2 class="skills-promo-combined__title">准备篇</h2>
+                  <span class="skills-promo-combined__sep">·</span>
+                  <span class="skills-promo-combined__subtitle">开发辅助技能推荐</span>
+                </div>
+                <p class="skills-promo-combined__desc">安装核心技能，让 AI 编码助手提供 LangChain 生态的专业指导</p>
+              </div>
+              <div class="skills-promo__grid">
+                <div class="skills-promo__card">
+                  <div class="skills-promo__card-top">
+                    <div class="skills-promo__card-name">langchain-dev-guide</div>
+                    <div class="skills-promo__card-actions">
+                      <a href="https://github.com/ob-labs/agentseek/tree/main/skills/langchain-dev-guide" target="_blank" rel="noopener" class="skills-promo__action" title="查看源码">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                      </a>
+                      <button class="skills-promo__action" title="复制安装命令" data-copy="npx skills add ob-labs/agentseek --skill langchain-dev-guide">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="skills-promo__card-desc">LangChain / LangGraph 开发指南：工程陷阱与验证修复方案，涵盖模型集成、中间件、流式输出、多 Agent 编排</div>
+                  <code class="skills-promo__card-cmd">npx skills add ob-labs/agentseek --skill langchain-dev-guide</code>
+                </div>
+                <div class="skills-promo__card">
+                  <div class="skills-promo__card-top">
+                    <div class="skills-promo__card-name">langsmith-trace</div>
+                    <div class="skills-promo__card-actions">
+                      <a href="https://github.com/ob-labs/agentseek/tree/main/skills/langsmith-trace" target="_blank" rel="noopener" class="skills-promo__action" title="查看源码">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                      </a>
+                      <button class="skills-promo__action" title="复制安装命令" data-copy="npx skills add ob-labs/agentseek --skill langsmith-trace">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="skills-promo__card-desc">LangSmith 追踪与调试：为应用添加 Tracing、查询和导出 Trace 数据，定位性能瓶颈与异常行为</div>
+                  <code class="skills-promo__card-cmd">npx skills add ob-labs/agentseek --skill langsmith-trace</code>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <SectionHeading title={section} />
+          )}
           <div class="grid md:grid-cols-2 gap-5">
           {chapters.map(ch => (
             <ChapterCard
@@ -173,4 +219,16 @@ try {
       }
     } catch {}
   })();
+
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const text = (btn as HTMLElement).dataset.copy!;
+      navigator.clipboard.writeText(text).then(() => {
+        const svg = btn.querySelector('svg')!;
+        const orig = svg.innerHTML;
+        svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
+        setTimeout(() => { svg.innerHTML = orig; }, 1500);
+      });
+    });
+  });
 </script>

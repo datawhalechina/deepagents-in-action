@@ -101,11 +101,24 @@
     "published": true,
     "pubDate": "2026-06-10"
   },
+  "ch07-skills": {
+    "title": "Skills — 可复用的 Agent 能力包",
+    "chapter": 7,
+    "section": "进阶篇",
+    "order": 9,
+    "description": "Skills 机制：Agent Skills 规范、SKILL.md 结构、Progressive Disclosure 按需加载、多源优先级、子 Agent 继承规则、Skills vs Memory 对比与实战。",
+    "slides": [
+      { "id": "ch07-1", "title": "Lec 11: Skills（上）— 从概念到上手" },
+      { "id": "ch07-2", "title": "Lec 12: Skills（下）— 高级用法" }
+    ],
+    "published": true,
+    "pubDate": "2026-06-11"
+  },
   "ch09-long-term-memory": {
     "title": "长期记忆 — 让 Agent 拥有跨对话的记忆",
     "chapter": 9,
     "section": "进阶篇",
-    "order": 9,
+    "order": 10,
     "description": "理解 LangGraph 的两种持久化机制，以及如何用 CompositeBackend 实现跨会话记忆。",
     "slides": [],
     "published": false
@@ -114,17 +127,8 @@
     "title": "Human-in-the-Loop — 构建安全的人机协作流程",
     "chapter": 10,
     "section": "进阶篇",
-    "order": 10,
-    "description": "利用 LangGraph 的中断机制，为敏感操作添加人工审批。按风险等级分层的最佳实践。",
-    "slides": [],
-    "published": false
-  },
-  "ch11-skills": {
-    "title": "Skills — 可复用的 Agent 能力包",
-    "chapter": 11,
-    "section": "进阶篇",
     "order": 11,
-    "description": "通过 Agent Skills 规范为 Agent 添加可复用的专业能力。Lazy Loading 机制与 Skills vs Tools 的选择。",
+    "description": "利用 LangGraph 的中断机制，为敏感操作添加人工审批。按风险等级分层的最佳实践。",
     "slides": [],
     "published": false
   },
