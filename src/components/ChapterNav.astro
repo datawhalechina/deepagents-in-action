@@ -14,7 +14,7 @@ const base = import.meta.env.BASE_URL;
       <a href={`${base}/chapters/${prev.id}/`} class="flex-1 group py-3 px-4 -mx-4 rounded-lg hover:bg-paper-warm transition-colors">
         <span class="text-[11px] font-mono tracking-wider text-ink-muted/40 group-hover:text-gold transition-colors">上一章</span>
         <p class="text-sm font-medium font-sans mt-1 text-ink-muted group-hover:text-ink transition-colors leading-snug">
-          第 {prev.chapter} 章：{prev.title}
+          {prev.chapter === 0 ? prev.title : `第 ${prev.chapter} 章：${prev.title}`}
         </p>
       </a>
     ) : <div />}
@@ -22,7 +22,7 @@ const base = import.meta.env.BASE_URL;
       <a href={`${base}/chapters/${next.id}/`} class="flex-1 text-right group py-3 px-4 -mx-4 rounded-lg hover:bg-paper-warm transition-colors">
         <span class="text-[11px] font-mono tracking-wider text-ink-muted/40 group-hover:text-gold transition-colors">下一章</span>
         <p class="text-sm font-medium font-sans mt-1 text-ink-muted group-hover:text-ink transition-colors leading-snug">
-          第 {next.chapter} 章：{next.title}
+          {next.chapter === 0 ? next.title : `第 ${next.chapter} 章：${next.title}`}
         </p>
       </a>
     ) : <div />}
