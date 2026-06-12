@@ -147,13 +147,13 @@ from deepagents.backends import FilesystemBackend
 
 agent = create_deep_agent(
     model=model,
-    backend=FilesystemBackend(root_dir="/home/user/my-project", virtual_mode=True)
+    backend=FilesystemBackend(root_dir=".", virtual_mode=True)
 )
 ```
 
 文件直接读写**本地文件系统**。特点：
 
-- `root_dir` 指定 Agent 可访问的根目录（必须是绝对路径）
+- `root_dir` 指定 Agent 可访问的根目录；相对路径会被解析为绝对路径（`Path(root_dir).resolve()`），`"."` 即当前工作目录
 - `virtual_mode=True` 启用路径沙箱（阻止 `..`、`~` 等路径逃逸），**强烈建议开启**
 - 文件修改是**永久的、不可逆的**
 
