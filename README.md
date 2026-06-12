@@ -111,7 +111,7 @@ npm run preview
 ### 项目结构
 
 ```
-deepagents-site/
+deepagents-in-action/
 ├── content/          # 章节正文（Markdown，每章一个文件）
 │   ├── ch01-agent-harness.md
 │   ├── ch02-quickstart.md
