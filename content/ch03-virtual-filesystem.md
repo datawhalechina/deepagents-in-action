@@ -147,7 +147,7 @@ from deepagents.backends import FilesystemBackend
 
 agent = create_deep_agent(
     model=model,
-    backend=FilesystemBackend(root_dir=".", virtual_mode=True)
+    backend=FilesystemBackend(root_dir="/home/user/my-project", virtual_mode=True)
 )
 ```
 
