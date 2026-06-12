@@ -449,4 +449,4 @@ subagents = [
 5. **结构化输出**：通过 `response_format` 让子 Agent 返回 JSON，方便主 Agent 程序化处理（需 deepagents>=0.5.3）
 6. **最佳实践**：描述要具体、提示词要详细、工具集要精简、模型按需选择、返回结果要精练
 
-下一章（第 8 讲），我们将学习 Async Subagent——异步委派与并行协同，让主 Agent 同时驱动多个子 Agent 并行工作。
+下一章（第 6 章），我们将学习 Async Subagent——异步委派与并行协同，让主 Agent 同时驱动多个子 Agent 并行工作。
