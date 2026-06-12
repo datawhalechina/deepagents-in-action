@@ -14,13 +14,9 @@
 
 由 **[沧海九粟](https://space.bilibili.com/28357052)** 出品 &nbsp;·&nbsp; LangChain 官方认证大使 &nbsp;·&nbsp; 《LangChain 实战》《LangGraph 实战》作者 &nbsp;·&nbsp; B 站万粉 UP 主
 
-<br/>
-
 <a href="https://datawhalechina.github.io/deepagents-in-action/">
   <img src="public/imgs/hero.png" alt="《Deep Agents 实战》课程网站" width="800" />
 </a>
-
-<sub>👆 点击图片访问 <a href="https://datawhalechina.github.io/deepagents-in-action/">课程网站</a></sub>
 
 </div>
 
