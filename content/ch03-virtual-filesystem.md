@@ -159,6 +159,8 @@ agent = create_deep_agent(
 
 适合场景：本地开发 CLI（编程助手）、CI/CD 流水线。
 
+> 💡 `virtual_mode` 从 0.5.0 起不显式声明会有弃用警告，0.6.0 起变为必填。建议直接写 `virtual_mode=True` 开启路径沙箱。
+
 > ⚠️ 安全提示：Agent 可以读取 `root_dir` 下所有文件，包括 `.env`、密钥等敏感文件。Web 服务或 API 场景中切勿使用此后端，应改用沙箱后端。建议配合 Human-in-the-Loop 使用。
 
 ### LocalShellBackend：本地 Shell 执行
@@ -168,7 +170,7 @@ from deepagents.backends import LocalShellBackend
 
 agent = create_deep_agent(
     model=model,
-    backend=LocalShellBackend(root_dir=".", env={"PATH": "/usr/bin:/bin"})
+    backend=LocalShellBackend(root_dir=".", virtual_mode=True, env={"PATH": "/usr/bin:/bin"})
 )
 ```
 
@@ -179,6 +181,8 @@ agent = create_deep_agent(
 - `root_dir` 作为命令的工作目录，但命令可访问系统上任意路径
 
 适合场景：本地开发环境的编程助手、你完全信任 Agent 行为的个人开发机。
+
+> 💡 `virtual_mode` 从 0.5.0 起不显式声明会有弃用警告，0.6.0 起变为必填。建议直接写 `virtual_mode=True` 开启路径沙箱。
 
 > ⚠️ 极高风险警告：Agent 可执行任意 Shell 命令，包括删除文件、外传数据、消耗资源。**绝对不要在生产环境或多用户系统中使用。** 沙箱后端是生产环境的安全替代方案。
 
@@ -205,7 +209,15 @@ agent = create_deep_agent(
 
 适合场景：长期记忆、跨会话的用户偏好、累积的知识库。
 
-> 注意：`namespace` 参数将在 v0.5.0 起成为必填。新代码务必显式指定。
+> 💡 `namespace` 从 v0.5.0 起是必填参数。`rt.server_info.user.identity` 部署到 LangSmith 时能自动拿到用户身份，但本地 `invoke()` 时 `rt.server_info` 是 `None`，直接访问会报错。本地调试可以先兜一下：
+>
+> ```python
+> namespace=lambda rt: (
+>     (rt.server_info.user.identity,)
+>     if rt.server_info else
+>     ("local-user",)
+> ),
+> ```
 
 ### CompositeBackend：混合路由
 
@@ -229,6 +241,8 @@ agent = create_deep_agent(
     store=InMemoryStore()
 )
 ```
+
+> 💡 `namespace` 本地需要加 `if rt.server_info else ("local-user",)` 兜底。
 
 效果：
 
@@ -293,6 +307,8 @@ agent = create_deep_agent(
     ],
 )
 ```
+
+> 💡 `namespace` 本地需要加 `if rt.server_info else ("local-user",)` 兜底。
 
 权限规则在工具调用前按声明顺序求值，采用 first-match-wins：第一个同时匹配 `operations` 和 `paths` 的规则决定结果；如果没有规则匹配，则默认允许。因此配置权限时，应将更具体的规则放在更宽泛的规则之前。
 
