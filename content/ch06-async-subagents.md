@@ -77,7 +77,7 @@ agent = create_deep_agent(
 | `url` | 可选 | 不填走进程内 ASGI 传输；填了走远程 HTTP 传输 |
 | `headers` | 可选 | 远程模式下的自定义 HTTP 头，用于自托管服务的鉴权 |
 
-如果是 LangGraph 部署，所有 graph 写在同一份 `langgraph.json` 中，就构成"同部署"形态：
+如果是 LangGraph 部署，所有 graph 写在同一份 `langgraph.json` 中，就构成"同部署"形态。
 
 ## 主 Agent 的 5 把"遥控器"
 
