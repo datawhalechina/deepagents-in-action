@@ -11,8 +11,8 @@ const contributors = [
     contributions: 1,
   },
   ...Array.from({ length: 7 }, (_, index) => ({
-    login: `user${index}`,
-    profileUrl: `https://github.com/user${index}`,
+    login: index === 6 ? 'Walt-like' : `user${index}`,
+    profileUrl: `https://github.com/${index === 6 ? 'Walt-like' : `user${index}`}`,
     avatarUrl: `https://avatars.githubusercontent.com/u/${index}?v=4&s=144`,
     contributions: 1,
   })),
@@ -29,5 +29,6 @@ test('builds an eight-column table with clickable abbreviated names', () => {
     /<a href="https:\/\/github\.com\/codeMonkeyWang" title="codeMonkeyWang">\s+<img[^>]+><br \/>\s+<sub><samp>codeMonkey…<\/samp><\/sub>\s+<\/a>/,
   );
   assert.match(wall, /<sub><samp>&#160;&#160;&#160;user0&#160;&#160;&#160;<\/samp><\/sub>/);
+  assert.match(wall, /<sub><samp>&#160;Walt&#8209;like&#160;<\/samp><\/sub>/);
   assert.doesNotMatch(wall, /<kbd>|<wbr>|<strong>|&#8203;|width="14.2857%"/);
 });

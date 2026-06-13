@@ -15,8 +15,9 @@ export function buildWall(contributors) {
     const padding = 11 - displayedLogin.length;
     const leftPadding = '&#160;'.repeat(Math.floor(padding / 2));
     const rightPadding = '&#160;'.repeat(Math.ceil(padding / 2));
+    const nonWrappingLogin = displayedLogin.replaceAll('-', '&#8209;');
 
-    return `${leftPadding}${displayedLogin}${rightPadding}`;
+    return `${leftPadding}${nonWrappingLogin}${rightPadding}`;
   };
 
   const cells = contributors.map((contributor) => [
