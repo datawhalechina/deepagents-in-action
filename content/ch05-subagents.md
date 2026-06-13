@@ -447,6 +447,6 @@ subagents = [
 3. **General-purpose 子 Agent**：默认可用，继承主 Agent 的全部能力（包括 skills）；可通过 `GeneralPurposeSubagentProfile(enabled=False)` 禁用
 4. **CompiledSubAgent**：用预构建的 LangGraph 图作为子 Agent，适合复杂多步骤工作流
 5. **结构化输出**：通过 `response_format` 让子 Agent 返回 JSON，方便主 Agent 程序化处理（需 deepagents>=0.5.3）
-6. **最佳实践**：描述要具体、提示词要详细、工具集要精简、模型按需选择、返回结果要精练
+6. **最佳实践**：描述要具体、提示词要详细、工具集要精简、模型按需选择、返回结果要精炼
 
 下一章（第 6 章），我们将学习 Async Subagent——异步委派与并行协同，让主 Agent 同时驱动多个子 Agent 并行工作。
