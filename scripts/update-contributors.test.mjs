@@ -18,14 +18,15 @@ const contributors = [
   })),
 ];
 
-test('builds a seven-column wall with readable breakable names', () => {
+test('builds centered seven-column rows with clickable name labels', () => {
   const wall = buildWall(contributors);
 
   assert.equal((wall.match(/<tr>/g) ?? []).length, 2);
+  assert.equal((wall.match(/<table align="center">/g) ?? []).length, 2);
   assert.equal((wall.match(/width="14.28%"/g) ?? []).length, contributors.length);
-  assert.match(wall, /code<wbr>Monkey<wbr>Wang/);
   assert.match(
     wall,
-    /<a href="https:\/\/github\.com\/codeMonkeyWang">\s+<img[^>]+>\s+<\/a><br \/>\s+<sub><strong>code<wbr>Monkey<wbr>Wang<\/strong><\/sub>/,
+    /<a href="https:\/\/github\.com\/codeMonkeyWang">\s+<img[^>]+><br \/>\s+<kbd><strong>codeMonkeyWang<\/strong><\/kbd>\s+<\/a>/,
   );
+  assert.doesNotMatch(wall, /<wbr>/);
 });
