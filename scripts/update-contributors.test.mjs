@@ -10,7 +10,7 @@ const contributors = [
     avatarUrl: 'https://avatars.githubusercontent.com/u/3906539?v=4&s=144',
     contributions: 1,
   },
-  ...Array.from({ length: 4 }, (_, index) => ({
+  ...Array.from({ length: 7 }, (_, index) => ({
     login: `user${index}`,
     profileUrl: `https://github.com/user${index}`,
     avatarUrl: `https://avatars.githubusercontent.com/u/${index}?v=4&s=144`,
@@ -18,10 +18,14 @@ const contributors = [
   })),
 ];
 
-test('builds a four-column contributor wall with breakable long names', () => {
+test('builds a seven-column wall with readable breakable names', () => {
   const wall = buildWall(contributors);
 
   assert.equal((wall.match(/<tr>/g) ?? []).length, 2);
-  assert.equal((wall.match(/width="25%"/g) ?? []).length, contributors.length);
+  assert.equal((wall.match(/width="14.28%"/g) ?? []).length, contributors.length);
   assert.match(wall, /code<wbr>Monkey<wbr>Wang/);
+  assert.match(
+    wall,
+    /<a href="https:\/\/github\.com\/codeMonkeyWang">\s+<img[^>]+>\s+<\/a><br \/>\s+<sub><strong>code<wbr>Monkey<wbr>Wang<\/strong><\/sub>/,
+  );
 });
