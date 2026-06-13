@@ -88,9 +88,9 @@ function buildWall(contributors) {
   ].join('\n'));
 
   const rows = [];
-  for (let index = 0; index < cells.length; index += 4) {
+  for (let index = 0; index < cells.length; index += 8) {
     rows.push('<tr>');
-    rows.push(cells.slice(index, index + 4).join('\n'));
+    rows.push(cells.slice(index, index + 8).join('\n'));
     rows.push('</tr>');
   }
 

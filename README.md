@@ -186,8 +186,6 @@ deepagents-in-action/
   </a><br />
   <sub>1 commit</sub>
 </td>
-</tr>
-<tr>
 <td align="center" valign="top" width="120">
   <a href="https://github.com/Walt-like">
     <img src="https://avatars.githubusercontent.com/u/56186222?v=4&s=144" width="72" height="72" alt="Walt-like" style="border-radius:50%;" /><br />
