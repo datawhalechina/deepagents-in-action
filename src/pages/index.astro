@@ -45,7 +45,6 @@ try {
 <BaseLayout title="Deep Agents 实战 — 从零构建生产级 AI Agent 的完整指南">
   <Header />
   <main class="max-w-6xl mx-auto px-6">
-      <ChapterRail sections={railSections} />
     <!-- Hero -->
     <section class="py-24 md:py-32 text-center relative">
       <div class="absolute inset-0 bg-dot-grid opacity-[0.03] pointer-events-none"></div>
@@ -122,6 +121,9 @@ try {
       </div>
     </section>
 
+    <div class="lg:grid lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-10 lg:items-start">
+      <ChapterRail sections={railSections} />
+      <div class="min-w-0">
     <!-- Chapter list by section -->
     {grouped.map(({ section, chapters }) => {
       const hasPublished = chapters.some(ch => ch.data.published);
@@ -194,6 +196,8 @@ try {
       </section>
       ) : null;
     })}
+      </div>
+    </div>
   </main>
   <Footer />
 </BaseLayout>
