@@ -22,11 +22,11 @@ test('builds one seven-column table with the original clickable names', () => {
   const wall = buildWall(contributors);
 
   assert.equal((wall.match(/<tr>/g) ?? []).length, 2);
-  assert.equal((wall.match(/<table>/g) ?? []).length, 1);
-  assert.equal((wall.match(/width="14.28%"/g) ?? []).length, contributors.length);
+  assert.equal((wall.match(/<table width="100%">/g) ?? []).length, 1);
+  assert.equal((wall.match(/width="14.2857%"/g) ?? []).length, contributors.length);
   assert.match(
     wall,
-    /<a href="https:\/\/github\.com\/codeMonkeyWang">\s+<img[^>]+><br \/>\s+<sub><strong>codeMonkeyWang<\/strong><\/sub>\s+<\/a>/,
+    /<a href="https:\/\/github\.com\/codeMonkeyWang">\s+<img[^>]+><br \/>\s+<sub><strong>code&#8203;Monkey&#8203;Wang<\/strong><\/sub>\s+<\/a>/,
   );
-  assert.doesNotMatch(wall, /<kbd>|<wbr>|<table align=/);
+  assert.doesNotMatch(wall, /<kbd>|<wbr>|<table align=|width="14.28%"/);
 });

@@ -11,10 +11,10 @@ export function buildWall(contributors) {
   }
 
   const cells = contributors.map((contributor) => [
-    '<td align="center" valign="top" width="14.28%">',
+    '<td align="center" valign="top" width="14.2857%">',
     `  <a href="${contributor.profileUrl}">`,
     `    <img src="${contributor.avatarUrl}" width="72" height="72" alt="${contributor.login}" style="border-radius:50%;" /><br />`,
-    `    <sub><strong>${contributor.login}</strong></sub>`,
+    `    <sub><strong>${contributor.login.replace(/([a-z0-9])([A-Z])/g, '$1&#8203;$2')}</strong></sub>`,
     '  </a><br />',
     `  <sub>${contributor.contributions} commit${contributor.contributions === 1 ? '' : 's'}</sub>`,
     '</td>',
@@ -29,7 +29,7 @@ export function buildWall(contributors) {
 
   return [
     markerStart,
-    '<table>',
+    '<table width="100%">',
     ...rows,
     '</table>',
     markerEnd,
