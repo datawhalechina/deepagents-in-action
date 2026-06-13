@@ -11,19 +11,19 @@ export function buildWall(contributors) {
   }
 
   const cells = contributors.map((contributor) => [
-    '<td align="center" valign="top" width="14.2857%">',
-    `  <a href="${contributor.profileUrl}">`,
+    '<td align="center" valign="top" width="12.5%">',
+    `  <a href="${contributor.profileUrl}" title="${contributor.login}">`,
     `    <img src="${contributor.avatarUrl}" width="72" height="72" alt="${contributor.login}" style="border-radius:50%;" /><br />`,
-    `    <sub><strong>${contributor.login.replace(/([a-z0-9])([A-Z])/g, '$1&#8203;$2')}</strong></sub>`,
+    `    <sub><strong>${contributor.login.length > 12 ? `${contributor.login.slice(0, 12)}…` : contributor.login}</strong></sub>`,
     '  </a><br />',
     `  <sub>${contributor.contributions} commit${contributor.contributions === 1 ? '' : 's'}</sub>`,
     '</td>',
   ].join('\n'));
 
   const rows = [];
-  for (let index = 0; index < cells.length; index += 7) {
+  for (let index = 0; index < cells.length; index += 8) {
     rows.push('<tr>');
-    rows.push(cells.slice(index, index + 7).join('\n'));
+    rows.push(cells.slice(index, index + 8).join('\n'));
     rows.push('</tr>');
   }
 
