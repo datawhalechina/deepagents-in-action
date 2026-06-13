@@ -24,8 +24,8 @@
 ### 1. Fork 并克隆仓库
 
 ```bash
-git clone https://github.com/<your-username>/deepagents-site.git
-cd deepagents-site
+git clone https://github.com/<your-username>/deepagents-in-action.git
+cd deepagents-in-action
 ```
 
 ### 2. 安装依赖并启动开发服务器
@@ -81,7 +81,7 @@ docs: 改善第 X 章 <简要说明>
 - 中文与英文、数字之间加空格：`LangChain 是一个框架` ✓，`LangChain是一个框架` ✗
 - 代码、命令、变量名使用反引号包裹：`` `create_deep_agent()` ``
 - 专有名词保持原文大小写：`LangGraph`、`LangSmith`、`GitHub`
-- 图片路径使用相对路径：`![说明](imgs/xx.png)`（脚本会自动处理 base path）
+- 图片路径使用相对路径：`![说明](../public/imgs/xx.png)`（构建脚本会自动转换为正确的站点路径）
 
 ---
 
