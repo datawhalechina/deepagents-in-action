@@ -9,3 +9,6 @@ node_modules/
 
 # astro
 .astro/
+
+# local planning docs (superpowers)
+docs/superpowers/
