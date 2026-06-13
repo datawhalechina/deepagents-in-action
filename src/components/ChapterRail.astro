@@ -1,0 +1,50 @@
+---
+interface RailItem {
+  id: string;
+  title: string;
+}
+interface RailSection {
+  section: string;
+  items: RailItem[];
+}
+interface Props {
+  sections: RailSection[];
+}
+
+const { sections } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+{/* Desktop rail: quiet, sticky, lg+ only. Mobile bar/dropdown added in Task 6. */}
+<nav class="chapter-rail hidden lg:block sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto" aria-label="课程目录">
+  <p class="text-[10px] font-mono uppercase tracking-[0.15em] text-ink-muted/35 mb-3">目录</p>
+  {sections.map(group => (
+    <div class="mb-4 last:mb-0">
+      <p class="text-[11px] tracking-wide text-ink-muted/55 mb-1.5">{group.section}</p>
+      <ul class="space-y-0.5">
+        {group.items.map(item => (
+          <li>
+            <a
+              href={`${base}/#ch-${item.id}`}
+              data-rail-target={`ch-${item.id}`}
+              class="rail-link block truncate py-1 pl-3 text-[13px] leading-snug text-ink-muted/55 hover:text-ink transition-colors"
+            >{item.title}</a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ))}
+</nav>
+
+<style>
+  /* Active item (set by scrollspy JS in Task 5): firm the text + a single 1px gold tick.
+     This is the only color in the rail. No background, no bold gold text. */
+  .rail-link {
+    border-left: 1px solid transparent;
+    margin-left: -1px; /* keep text aligned whether or not the tick shows */
+  }
+  .rail-link.is-active {
+    color: var(--color-ink);
+    border-left-color: var(--color-gold-light);
+  }
+</style>

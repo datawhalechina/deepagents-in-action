@@ -5,6 +5,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import ChapterCard from '../components/ChapterCard.astro';
 import SectionHeading from '../components/SectionHeading.astro';
+import ChapterRail from '../components/ChapterRail.astro';
 import '../styles/global.css';
 
 const allChapters = await getCollection('chapters');
@@ -44,6 +45,7 @@ try {
 <BaseLayout title="Deep Agents 实战 — 从零构建生产级 AI Agent 的完整指南">
   <Header />
   <main class="max-w-6xl mx-auto px-6">
+      <ChapterRail sections={railSections} />
     <!-- Hero -->
     <section class="py-24 md:py-32 text-center relative">
       <div class="absolute inset-0 bg-dot-grid opacity-[0.03] pointer-events-none"></div>
