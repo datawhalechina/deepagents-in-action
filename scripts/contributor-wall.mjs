@@ -14,7 +14,7 @@ export function buildWall(contributors) {
     '<td align="center" valign="top" width="14.28%">',
     `  <a href="${contributor.profileUrl}">`,
     `    <img src="${contributor.avatarUrl}" width="72" height="72" alt="${contributor.login}" style="border-radius:50%;" /><br />`,
-    `    <kbd><strong>${contributor.login}</strong></kbd>`,
+    `    <sub><strong>${contributor.login}</strong></sub>`,
     '  </a><br />',
     `  <sub>${contributor.contributions} commit${contributor.contributions === 1 ? '' : 's'}</sub>`,
     '</td>',
@@ -22,16 +22,16 @@ export function buildWall(contributors) {
 
   const rows = [];
   for (let index = 0; index < cells.length; index += 7) {
-    rows.push('<table align="center">');
     rows.push('<tr>');
     rows.push(cells.slice(index, index + 7).join('\n'));
     rows.push('</tr>');
-    rows.push('</table>');
   }
 
   return [
     markerStart,
+    '<table>',
     ...rows,
+    '</table>',
     markerEnd,
   ].join('\n');
 }

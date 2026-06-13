@@ -18,15 +18,15 @@ const contributors = [
   })),
 ];
 
-test('builds centered seven-column rows with clickable name labels', () => {
+test('builds one seven-column table with the original clickable names', () => {
   const wall = buildWall(contributors);
 
   assert.equal((wall.match(/<tr>/g) ?? []).length, 2);
-  assert.equal((wall.match(/<table align="center">/g) ?? []).length, 2);
+  assert.equal((wall.match(/<table>/g) ?? []).length, 1);
   assert.equal((wall.match(/width="14.28%"/g) ?? []).length, contributors.length);
   assert.match(
     wall,
-    /<a href="https:\/\/github\.com\/codeMonkeyWang">\s+<img[^>]+><br \/>\s+<kbd><strong>codeMonkeyWang<\/strong><\/kbd>\s+<\/a>/,
+    /<a href="https:\/\/github\.com\/codeMonkeyWang">\s+<img[^>]+><br \/>\s+<sub><strong>codeMonkeyWang<\/strong><\/sub>\s+<\/a>/,
   );
-  assert.doesNotMatch(wall, /<wbr>/);
+  assert.doesNotMatch(wall, /<kbd>|<wbr>|<table align=/);
 });
