@@ -29,7 +29,7 @@ export function buildWall(contributors) {
 
   return [
     markerStart,
-    '<table width="100%">',
+    '<table align="center" width="100%">',
     ...rows,
     '</table>',
     markerEnd,

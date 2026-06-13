@@ -156,7 +156,7 @@ deepagents-in-action/
 ## 贡献者墙
 
 <!-- contributors:start -->
-<table width="100%">
+<table align="center" width="100%">
 <tr>
 <td align="center" valign="top" width="14.2857%">
   <a href="https://github.com/webup">
