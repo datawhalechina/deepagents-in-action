@@ -216,7 +216,7 @@ async_subagents = [
 
 ### 1. 本地开发要把 worker pool 调大
 
-每个活跃 run 占用一个 worker 槽位。一个主 Agent 同时跑 3 个子 Agent，至少需要 4 个槽位（1 主 + 3 子）。槽位不够，新启动的任务会**排队**——表现就是 `start_async_task` 一直拿不到 ID。
+每个活跃 run 占用一个 worker 槽位。一个主 Agent 同时跑 3 个子 Agent，至少需要 4 个槽位（1 主 + 3 子）。槽位不够时，新启动的 run 会**排队**。常见表现包括：`start_async_task` 长时间不返回，或虽然拿到了 task ID，但后续 `check_async_task` 长时间看不到实质进展。
 
 ```bash
 langgraph dev --n-jobs-per-worker 10
@@ -279,7 +279,7 @@ agent = create_deep_agent(
 
 ### 问题 4：启动子 Agent 长时间不返回
 
-**症状**：`start_async_task` 卡住，迟迟拿不到任务 ID。
+**症状**：`start_async_task` 卡住、迟迟拿不到任务 ID，或拿到 task ID 后后续 `check_async_task` 长时间没有实质进展。
 
 **解法**：worker pool 被打满。`langgraph dev` 启动时加上 `--n-jobs-per-worker 10`（或更大），按你预期的并发量调整。
 

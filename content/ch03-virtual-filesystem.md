@@ -251,7 +251,7 @@ agent = create_deep_agent(
 # Agent 现在可以运行: execute("pip install pandas && python analyze.py")
 ```
 
-我们会在第 9 章详细讲解沙箱。
+我们会在后续的沙箱执行章节详细讲解。
 
 ![五种存储后端对比：StateBackend（临时）→ FilesystemBackend（本地磁盘）→ StoreBackend（跨会话持久化）→ CompositeBackend（混合路由）→ 沙箱后端（安全执行），从临时到持久化的渐进选择](../public/imgs/09-comparison-backends.png)
 
