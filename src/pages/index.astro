@@ -16,6 +16,17 @@ const grouped = sections.map(section => ({
   chapters: sorted.filter(ch => ch.data.section === section),
 }));
 
+// Rail navigation data: published chapters only, sections with >=1 published chapter.
+// Same source as the cards, so rail items always have a matching card anchor (ch-<id>).
+const railSections = grouped
+  .map(({ section, chapters }) => ({
+    section,
+    items: chapters
+      .filter(ch => ch.data.published)
+      .map(ch => ({ id: ch.id, title: ch.data.title })),
+  }))
+  .filter(group => group.items.length > 0);
+
 const publishedCount = sorted.filter(ch => ch.data.published && ch.data.section !== '准备篇').length;
 
 let starCount: number | null = null;
@@ -32,7 +43,7 @@ try {
 
 <BaseLayout title="Deep Agents 实战 — 从零构建生产级 AI Agent 的完整指南">
   <Header />
-  <main class="max-w-5xl mx-auto px-6">
+  <main class="max-w-6xl mx-auto px-6">
     <!-- Hero -->
     <section class="py-24 md:py-32 text-center relative">
       <div class="absolute inset-0 bg-dot-grid opacity-[0.03] pointer-events-none"></div>
