@@ -124,7 +124,7 @@ try {
     {grouped.map(({ section, chapters }) => {
       const hasPublished = chapters.some(ch => ch.data.published);
       return hasPublished ? (
-        <section class="mb-12">
+        <section id={`sec-${section}`} class="mb-12 scroll-mt-24">
           {section === '准备篇' ? (
             <div class="skills-promo-combined">
               <div class="skills-promo-combined__header">
@@ -174,17 +174,19 @@ try {
           )}
           <div class="grid md:grid-cols-2 gap-5">
           {chapters.map(ch => (
-            <ChapterCard
-              id={ch.id}
-              title={ch.data.title}
-              chapter={ch.data.chapter}
-              section={ch.data.section}
-              description={ch.data.description}
-              published={ch.data.published}
-              slides={ch.data.slides}
-              bilibili={ch.data.bilibili}
-              xhs={ch.data.xhs}
-            />
+            <div id={`ch-${ch.id}`} class="scroll-mt-24">
+              <ChapterCard
+                id={ch.id}
+                title={ch.data.title}
+                chapter={ch.data.chapter}
+                section={ch.data.section}
+                description={ch.data.description}
+                published={ch.data.published}
+                slides={ch.data.slides}
+                bilibili={ch.data.bilibili}
+                xhs={ch.data.xhs}
+              />
+            </div>
           ))}
         </div>
       </section>
