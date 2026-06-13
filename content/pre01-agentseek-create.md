@@ -245,7 +245,7 @@ npm install --prefix frontend
 uv run langgraph dev --port 2024 --no-browser
 ```
 
-后端默认监听 `http://127.0.0.1:2024`。去掉 `--no-browser` 参数会自动弹出 LangSmith Studio，可在线上查看 Graph 结构并调试。
+后端默认监听 `http://127.0.0.1:2024`。去掉 `--no-browser` 参数会自动弹出 LangSmith Studio，可在 Studio 中查看 Graph 结构并调试。
 
 ### 第七步：启动前端
 
