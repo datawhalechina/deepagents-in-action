@@ -159,7 +159,7 @@ agent = create_deep_agent(
 
 适合场景：本地开发 CLI（编程助手）、CI/CD 流水线。
 
-> 💡 deepagents 0.6.0 起 `virtual_mode` 需要显式声明，不写会有弃用警告。建议直接写 `virtual_mode=True` 开启路径沙箱。
+> 💡 `virtual_mode` 从 0.5.0 起不显式声明会有弃用警告，0.6.0 起变为必填。建议直接写 `virtual_mode=True` 开启路径沙箱。
 
 > ⚠️ 安全提示：Agent 可以读取 `root_dir` 下所有文件，包括 `.env`、密钥等敏感文件。Web 服务或 API 场景中切勿使用此后端，应改用沙箱后端。建议配合 Human-in-the-Loop 使用。
 
@@ -182,7 +182,7 @@ agent = create_deep_agent(
 
 适合场景：本地开发环境的编程助手、你完全信任 Agent 行为的个人开发机。
 
-> 💡 deepagents 0.6.0 起 `virtual_mode` 需要显式声明，不写会有弃用警告。建议直接写 `virtual_mode=True` 开启路径沙箱。
+> 💡 `virtual_mode` 从 0.5.0 起不显式声明会有弃用警告，0.6.0 起变为必填。建议直接写 `virtual_mode=True` 开启路径沙箱。
 
 > ⚠️ 极高风险警告：Agent 可执行任意 Shell 命令，包括删除文件、外传数据、消耗资源。**绝对不要在生产环境或多用户系统中使用。** 沙箱后端是生产环境的安全替代方案。
 
