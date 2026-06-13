@@ -48,3 +48,75 @@ const base = import.meta.env.BASE_URL;
     border-left-color: var(--color-gold-light);
   }
 </style>
+
+<script>
+  // Scrollspy: highlight the rail item whose card is nearest the top of the viewport.
+  // Rail links carry data-rail-target="ch-<id>"; cards have id="ch-<id>".
+  function initChapterRail() {
+    const links = Array.from(
+      document.querySelectorAll<HTMLAnchorElement>('.chapter-rail .rail-link[data-rail-target]')
+    );
+    if (links.length === 0) return;
+
+    const linkByTarget = new Map<string, HTMLAnchorElement>();
+    for (const link of links) {
+      const t = link.dataset.railTarget;
+      if (t) linkByTarget.set(t, link);
+    }
+
+    const cards = links
+      .map((l) => document.getElementById(l.dataset.railTarget!))
+      .filter((el): el is HTMLElement => el !== null);
+    if (cards.length === 0) return;
+
+    let activeId = '';
+    const setActive = (id: string) => {
+      if (id === activeId) return;
+      activeId = id;
+      for (const link of links) {
+        const on = link.dataset.railTarget === id;
+        link.classList.toggle('is-active', on);
+        if (on) {
+          link.setAttribute('aria-current', 'true');
+          // Keep the active item visible if the rail itself scrolled.
+          link.scrollIntoView({ block: 'nearest' });
+        } else {
+          link.removeAttribute('aria-current');
+        }
+      }
+    };
+
+    // Track which cards are currently intersecting; pick the topmost one.
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target.id);
+          else visible.delete(entry.target.id);
+        }
+        // Choose the visible card highest on the page (smallest top offset).
+        let topId = '';
+        let topY = Infinity;
+        for (const id of visible) {
+          const el = document.getElementById(id);
+          if (!el) continue;
+          const y = el.getBoundingClientRect().top;
+          if (y < topY) {
+            topY = y;
+            topId = id;
+          }
+        }
+        if (topId) setActive(topId);
+      },
+      // Bias the active band toward the upper part of the viewport so the
+      // highlight changes as a card reaches the top, reducing boundary jitter.
+      { rootMargin: '-20% 0px -70% 0px', threshold: 0 }
+    );
+
+    for (const card of cards) observer.observe(card);
+  }
+
+  initChapterRail();
+  // Re-init after Astro view transitions / client navigations, if ever enabled.
+  document.addEventListener('astro:page-load', initChapterRail);
+</script>
