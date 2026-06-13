@@ -26,7 +26,7 @@ test('builds an eight-column table with clickable abbreviated names', () => {
   assert.equal((wall.match(/width="12.5%"/g) ?? []).length, contributors.length);
   assert.match(
     wall,
-    /<a href="https:\/\/github\.com\/codeMonkeyWang" title="codeMonkeyWang">\s+<img[^>]+><br \/>\s+<sub><strong>codeMonkeyWa…<\/strong><\/sub>\s+<\/a>/,
+    /<a href="https:\/\/github\.com\/codeMonkeyWang" title="codeMonkeyWang">\s+<img[^>]+><br \/>\s+<sub>codeMonkey…<\/sub>\s+<\/a>/,
   );
-  assert.doesNotMatch(wall, /<kbd>|<wbr>|&#8203;|width="14.2857%"/);
+  assert.doesNotMatch(wall, /<kbd>|<wbr>|<strong>|&#8203;|width="14.2857%"/);
 });

@@ -14,7 +14,7 @@ export function buildWall(contributors) {
     '<td align="center" valign="top" width="12.5%">',
     `  <a href="${contributor.profileUrl}" title="${contributor.login}">`,
     `    <img src="${contributor.avatarUrl}" width="72" height="72" alt="${contributor.login}" style="border-radius:50%;" /><br />`,
-    `    <sub><strong>${contributor.login.length > 12 ? `${contributor.login.slice(0, 12)}…` : contributor.login}</strong></sub>`,
+    `    <sub>${contributor.login.length > 10 ? `${contributor.login.slice(0, 10)}…` : contributor.login}</sub>`,
     '  </a><br />',
     `  <sub>${contributor.contributions} commit${contributor.contributions === 1 ? '' : 's'}</sub>`,
     '</td>',
