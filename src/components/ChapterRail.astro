@@ -115,8 +115,12 @@ const base = import.meta.env.BASE_URL;
   let prevObserver: IntersectionObserver | undefined;
   let railCurrentLabel: HTMLElement | null = null;
   let railSectionOfTarget = new Map<string, string>();
+  let prevDocClickHandler: ((e: MouseEvent) => void) | undefined;
+  let prevDocKeydownHandler: ((e: KeyboardEvent) => void) | undefined;
   function initChapterRail() {
     prevObserver?.disconnect();
+    if (prevDocClickHandler) document.removeEventListener('click', prevDocClickHandler);
+    if (prevDocKeydownHandler) document.removeEventListener('keydown', prevDocKeydownHandler);
     const links = Array.from(
       document.querySelectorAll<HTMLAnchorElement>('.chapter-rail .rail-link[data-rail-target]')
     );
@@ -211,14 +215,17 @@ const base = import.meta.env.BASE_URL;
         a.addEventListener('click', () => closePanel())
       );
       // Tap outside closes.
-      document.addEventListener('click', (e) => {
+      const clickHandler = (e: MouseEvent) => {
         if (!mobile) return;
         if (!panel.hidden && !mobile.contains(e.target as Node)) closePanel();
-      });
-      // Esc closes.
-      document.addEventListener('keydown', (e) => {
+      };
+      const keydownHandler = (e: KeyboardEvent) => {
         if (e.key === 'Escape' && !panel.hidden) closePanel();
-      });
+      };
+      document.addEventListener('click', clickHandler);
+      document.addEventListener('keydown', keydownHandler);
+      prevDocClickHandler = clickHandler;
+      prevDocKeydownHandler = keydownHandler;
     }
 
     // Reflect the active card's SECTION name in the mobile bar.
