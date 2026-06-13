@@ -40,6 +40,7 @@ const base = import.meta.env.BASE_URL;
               <a
                 href={`${base}/#ch-${item.id}`}
                 data-rail-target={`ch-${item.id}`}
+                title={item.title}
                 class="rail-link block truncate py-1.5 pl-3 text-[13px] text-ink-muted/70 hover:text-ink transition-colors"
               >{item.title}</a>
             </li>
@@ -51,7 +52,7 @@ const base = import.meta.env.BASE_URL;
 </div>
 
 {/* Desktop rail: quiet, sticky, lg+ only. */}
-<nav class="chapter-rail hidden lg:block sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto" aria-label="课程目录">
+<nav class="chapter-rail hidden lg:block lg:mt-16 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto" aria-label="课程目录">
   <p class="text-[10px] font-mono uppercase tracking-[0.15em] text-ink-muted/35 mb-3">目录</p>
   {sections.map(group => (
     <div class="mb-5 last:mb-0">
@@ -62,6 +63,7 @@ const base = import.meta.env.BASE_URL;
             <a
               href={`${base}/#ch-${item.id}`}
               data-rail-target={`ch-${item.id}`}
+              title={item.title}
               class="rail-link block truncate py-1.5 pl-3 text-[13px] leading-snug text-ink-muted/65 hover:text-ink transition-colors"
             >{item.title}</a>
           </li>
@@ -114,6 +116,30 @@ const base = import.meta.env.BASE_URL;
     border-left-color: var(--color-gold);
     background: var(--color-gold-pale);
     border-radius: 2px;
+  }
+
+  @media (min-width: 1600px) {
+    /* Detach the rail into the viewport's left gutter without disturbing the
+       cards. It stays in normal document order as the first child of
+       .chapter-grid (now display:block), so its TOP naturally begins at the
+       grid/body start, below the hero — not pinned to the viewport top.
+       sticky keeps it scroll-following; the float + negative right margin
+       cancel its horizontal footprint so the cards keep main's full width and
+       are not pushed down. The negative left margin pulls it from main's
+       content-left edge out to ~1.5rem from the viewport edge:
+         main content-left = (100vw - 72rem)/2 + 1.5rem (max-w-6xl + px-6)
+         want rail-left     = 1.5rem  ->  margin-left = -((100vw - 72rem)/2) */
+    .chapter-rail {
+      position: sticky;
+      top: 6rem;
+      float: left;
+      width: 192px;
+      margin-top: 0; /* drop lg:mt-16 so the rail top lines up with the cards */
+      margin-left: calc(-1 * (100vw - 72rem) / 2);
+      margin-right: -192px;
+      max-height: calc(100vh - 7rem);
+      overflow-y: auto;
+    }
   }
 </style>
 

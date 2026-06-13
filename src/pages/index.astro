@@ -121,7 +121,7 @@ try {
       </div>
     </section>
 
-    <div class="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12 lg:items-start">
+    <div class="chapter-grid lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12 lg:items-start">
       <ChapterRail sections={railSections} />
       <div class="min-w-0">
     <!-- Chapter list by section -->
@@ -201,6 +201,17 @@ try {
   </main>
   <Footer />
 </BaseLayout>
+
+<style>
+  /* On wide screens the rail detaches into the left gutter so the chapter
+     cards recenter to main's full width (aligned with the centered hero).
+     Below this width there isn't enough gutter, so the grid keeps its
+     default 220px squeeze-in column (see lg: classes on .chapter-grid). */
+  @media (min-width: 1600px) {
+    .chapter-grid { display: block; }
+  }
+</style>
+
 
 <script>
   (async () => {
