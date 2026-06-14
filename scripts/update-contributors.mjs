@@ -2,6 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { buildWall } from './contributor-wall.mjs';
+
 const rootDir = resolve(import.meta.dirname, '..');
 const readmePath = resolve(rootDir, 'README.md');
 const markerStart = '<!-- contributors:start -->';
@@ -66,41 +68,6 @@ async function fetchContributors(repoSlug) {
       contributions: item.contributions ?? 0,
     }))
     .sort((a, b) => b.contributions - a.contributions || a.login.localeCompare(b.login));
-}
-
-function buildWall(contributors) {
-  if (contributors.length === 0) {
-    return [
-      markerStart,
-      '_暂无贡献者数据，欢迎成为第一个贡献者。_',
-      markerEnd,
-    ].join('\n');
-  }
-
-  const cells = contributors.map((contributor) => [
-    '<td align="center" valign="top" width="120">',
-    `  <a href="${contributor.profileUrl}">`,
-    `    <img src="${contributor.avatarUrl}" width="72" height="72" alt="${contributor.login}" style="border-radius:50%;" /><br />`,
-    `    <sub><strong>${contributor.login}</strong></sub>`,
-    '  </a><br />',
-    `  <sub>${contributor.contributions} commit${contributor.contributions === 1 ? '' : 's'}</sub>`,
-    '</td>',
-  ].join('\n'));
-
-  const rows = [];
-  for (let index = 0; index < cells.length; index += 8) {
-    rows.push('<tr>');
-    rows.push(cells.slice(index, index + 8).join('\n'));
-    rows.push('</tr>');
-  }
-
-  return [
-    markerStart,
-    '<table>',
-    ...rows,
-    '</table>',
-    markerEnd,
-  ].join('\n');
 }
 
 function updateReadme(wallMarkup) {
