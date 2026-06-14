@@ -160,62 +160,62 @@ deepagents-in-action/
 ## 贡献者墙
 
 <!-- contributors:start -->
-<table width="100%">
+<table>
 <tr>
-<td align="center" valign="top" width="104">
-  <a href="https://github.com/webup" title="webup">
-    <img src="https://avatars.githubusercontent.com/u/2936504?v=4&s=144" width="72" height="72" alt="webup" style="border-radius:50%;" />
+<td align="center" valign="top" width="120">
+  <a href="https://github.com/webup">
+    <img src="https://avatars.githubusercontent.com/u/2936504?v=4&s=144" width="72" height="72" alt="webup" style="border-radius:50%;" /><br />
+    <sub><strong>webup</strong></sub>
   </a><br />
-  <a href="https://github.com/webup" title="打开 webup 的 GitHub 主页"><kbd><strong>webup</strong></kbd></a><br />
   <sub>48 commits</sub>
 </td>
-<td align="center" valign="top" width="104">
-  <a href="https://github.com/knqiufan" title="knqiufan">
-    <img src="https://avatars.githubusercontent.com/u/34114995?v=4&s=144" width="72" height="72" alt="knqiufan" style="border-radius:50%;" />
+<td align="center" valign="top" width="120">
+  <a href="https://github.com/knqiufan">
+    <img src="https://avatars.githubusercontent.com/u/34114995?v=4&s=144" width="72" height="72" alt="knqiufan" style="border-radius:50%;" /><br />
+    <sub><strong>knqiufan</strong></sub>
   </a><br />
-  <a href="https://github.com/knqiufan" title="打开 knqiufan 的 GitHub 主页"><kbd><strong>knqiufa…</strong></kbd></a><br />
   <sub>3 commits</sub>
 </td>
-<td align="center" valign="top" width="104">
-  <a href="https://github.com/Spr1ng7" title="Spr1ng7">
-    <img src="https://avatars.githubusercontent.com/u/188573471?v=4&s=144" width="72" height="72" alt="Spr1ng7" style="border-radius:50%;" />
+<td align="center" valign="top" width="120">
+  <a href="https://github.com/Spr1ng7">
+    <img src="https://avatars.githubusercontent.com/u/188573471?v=4&s=144" width="72" height="72" alt="Spr1ng7" style="border-radius:50%;" /><br />
+    <sub><strong>Spr1ng7</strong></sub>
   </a><br />
-  <a href="https://github.com/Spr1ng7" title="打开 Spr1ng7 的 GitHub 主页"><kbd><strong>Spr1ng7</strong></kbd></a><br />
   <sub>2 commits</sub>
 </td>
-<td align="center" valign="top" width="104">
-  <a href="https://github.com/1iyouzhen" title="1iyouzhen">
-    <img src="https://avatars.githubusercontent.com/u/184539312?v=4&s=144" width="72" height="72" alt="1iyouzhen" style="border-radius:50%;" />
+<td align="center" valign="top" width="120">
+  <a href="https://github.com/1iyouzhen">
+    <img src="https://avatars.githubusercontent.com/u/184539312?v=4&s=144" width="72" height="72" alt="1iyouzhen" style="border-radius:50%;" /><br />
+    <sub><strong>1iyouzhen</strong></sub>
   </a><br />
-  <a href="https://github.com/1iyouzhen" title="打开 1iyouzhen 的 GitHub 主页"><kbd><strong>1iyouzh…</strong></kbd></a><br />
   <sub>1 commit</sub>
 </td>
-<td align="center" valign="top" width="104">
-  <a href="https://github.com/codeMonkeyWang" title="codeMonkeyWang">
-    <img src="https://avatars.githubusercontent.com/u/3906539?v=4&s=144" width="72" height="72" alt="codeMonkeyWang" style="border-radius:50%;" />
+<td align="center" valign="top" width="120">
+  <a href="https://github.com/codeMonkeyWang">
+    <img src="https://avatars.githubusercontent.com/u/3906539?v=4&s=144" width="72" height="72" alt="codeMonkeyWang" style="border-radius:50%;" /><br />
+    <sub><strong>codeMonkeyWang</strong></sub>
   </a><br />
-  <a href="https://github.com/codeMonkeyWang" title="打开 codeMonkeyWang 的 GitHub 主页"><kbd><strong>codeMon…</strong></kbd></a><br />
   <sub>1 commit</sub>
 </td>
-<td align="center" valign="top" width="104">
-  <a href="https://github.com/dongyu23" title="dongyu23">
-    <img src="https://avatars.githubusercontent.com/u/101914323?v=4&s=144" width="72" height="72" alt="dongyu23" style="border-radius:50%;" />
+<td align="center" valign="top" width="120">
+  <a href="https://github.com/dongyu23">
+    <img src="https://avatars.githubusercontent.com/u/101914323?v=4&s=144" width="72" height="72" alt="dongyu23" style="border-radius:50%;" /><br />
+    <sub><strong>dongyu23</strong></sub>
   </a><br />
-  <a href="https://github.com/dongyu23" title="打开 dongyu23 的 GitHub 主页"><kbd><strong>dongyu2…</strong></kbd></a><br />
   <sub>1 commit</sub>
 </td>
-<td align="center" valign="top" width="104">
-  <a href="https://github.com/Walt-like" title="Walt-like">
-    <img src="https://avatars.githubusercontent.com/u/56186222?v=4&s=144" width="72" height="72" alt="Walt-like" style="border-radius:50%;" />
+<td align="center" valign="top" width="120">
+  <a href="https://github.com/Walt-like">
+    <img src="https://avatars.githubusercontent.com/u/56186222?v=4&s=144" width="72" height="72" alt="Walt-like" style="border-radius:50%;" /><br />
+    <sub><strong>Walt-like</strong></sub>
   </a><br />
-  <a href="https://github.com/Walt-like" title="打开 Walt-like 的 GitHub 主页"><kbd><strong>Walt-li…</strong></kbd></a><br />
   <sub>1 commit</sub>
 </td>
-<td align="center" valign="top" width="104">
-  <a href="https://github.com/YangLeeFangfei" title="YangLeeFangfei">
-    <img src="https://avatars.githubusercontent.com/u/111680955?v=4&s=144" width="72" height="72" alt="YangLeeFangfei" style="border-radius:50%;" />
+<td align="center" valign="top" width="120">
+  <a href="https://github.com/YangLeeFangfei">
+    <img src="https://avatars.githubusercontent.com/u/111680955?v=4&s=144" width="72" height="72" alt="YangLeeFangfei" style="border-radius:50%;" /><br />
+    <sub><strong>YangLeeFangfei</strong></sub>
   </a><br />
-  <a href="https://github.com/YangLeeFangfei" title="打开 YangLeeFangfei 的 GitHub 主页"><kbd><strong>YangLee…</strong></kbd></a><br />
   <sub>1 commit</sub>
 </td>
 </tr>

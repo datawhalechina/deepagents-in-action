@@ -11,8 +11,8 @@ export function buildWall(contributors) {
   }
 
   const cells = contributors.map((contributor) => {
-    const displayedLogin = contributor.login.length > 7
-      ? `${contributor.login.slice(0, 7)}…`
+    const displayedLogin = contributor.login.length > 10
+      ? `${contributor.login.slice(0, 10)}…`
       : contributor.login;
 
     return [

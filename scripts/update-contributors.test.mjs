@@ -25,7 +25,7 @@ test('builds eight equal columns with abbreviated clickable keycap names', () =>
   assert.equal((wall.match(/width="104"/g) ?? []).length, contributors.length);
   assert.match(
     wall,
-    /<a href="https:\/\/github\.com\/codeMonkeyWang" title="codeMonkeyWang">\s+<img[^>]+>\s+<\/a><br \/>\s+<a href="https:\/\/github\.com\/codeMonkeyWang" title="打开 codeMonkeyWang 的 GitHub 主页"><kbd><strong>codeMon…<\/strong><\/kbd><\/a>/,
+    /<a href="https:\/\/github\.com\/codeMonkeyWang" title="codeMonkeyWang">\s+<img[^>]+>\s+<\/a><br \/>\s+<a href="https:\/\/github\.com\/codeMonkeyWang" title="打开 codeMonkeyWang 的 GitHub 主页"><kbd><strong>codeMonkey…<\/strong><\/kbd><\/a>/,
   );
   assert.match(
     wall,
