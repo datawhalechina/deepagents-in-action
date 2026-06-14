@@ -14,7 +14,7 @@ export function buildWall(contributors) {
     const displayedLogin = contributor.login.length > 7
       ? `${contributor.login.slice(0, 7)}…`
       : contributor.login;
-    const padding = 8 - displayedLogin.length;
+    const padding = 12 - displayedLogin.length;
     const paddedLogin = [
       '&#160;'.repeat(Math.floor(padding / 2)),
       displayedLogin.replaceAll('-', '&#8209;'),

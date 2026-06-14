@@ -25,10 +25,10 @@ test('builds eight equal columns with abbreviated clickable names', () => {
   assert.equal((wall.match(/width="12.5%"/g) ?? []).length, contributors.length);
   assert.match(
     wall,
-    /<a href="https:\/\/github\.com\/codeMonkeyWang" title="codeMonkeyWang">\s+<img[^>]+><br \/>\s+<sub><samp>codeMon…<\/samp><\/sub>\s+<\/a>/,
+    /<a href="https:\/\/github\.com\/codeMonkeyWang" title="codeMonkeyWang">\s+<img[^>]+><br \/>\s+<sub><samp>&#160;&#160;codeMon…&#160;&#160;<\/samp><\/sub>\s+<\/a>/,
   );
   assert.match(
     wall,
-    /<a href="https:\/\/github\.com\/user0" title="user0">\s+<img[^>]+><br \/>\s+<sub><samp>&#160;user0&#160;&#160;<\/samp><\/sub>\s+<\/a>/,
+    /<a href="https:\/\/github\.com\/user0" title="user0">\s+<img[^>]+><br \/>\s+<sub><samp>&#160;&#160;&#160;user0&#160;&#160;&#160;&#160;<\/samp><\/sub>\s+<\/a>/,
   );
 });
