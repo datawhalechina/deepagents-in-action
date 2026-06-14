@@ -14,18 +14,12 @@ export function buildWall(contributors) {
     const displayedLogin = contributor.login.length > 7
       ? `${contributor.login.slice(0, 7)}…`
       : contributor.login;
-    const padding = 12 - displayedLogin.length;
-    const paddedLogin = [
-      '&#160;'.repeat(Math.floor(padding / 2)),
-      displayedLogin.replaceAll('-', '&#8209;'),
-      '&#160;'.repeat(Math.ceil(padding / 2)),
-    ].join('');
 
     return [
-      '<td align="center" valign="top" width="12.5%">',
+      '<td align="center" valign="top" width="100">',
       `  <a href="${contributor.profileUrl}" title="${contributor.login}">`,
       `    <img src="${contributor.avatarUrl}" width="72" height="72" alt="${contributor.login}" style="border-radius:50%;" /><br />`,
-      `    <sub><strong><samp>${paddedLogin}</samp></strong></sub>`,
+      `    <sub><strong>${displayedLogin}</strong></sub>`,
       '  </a><br />',
       `  <sub>${contributor.contributions} commit${contributor.contributions === 1 ? '' : 's'}</sub>`,
       '</td>',

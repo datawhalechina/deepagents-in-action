@@ -22,13 +22,14 @@ test('builds eight equal columns with abbreviated clickable names', () => {
   const wall = buildWall(contributors);
 
   assert.equal((wall.match(/<tr>/g) ?? []).length, 1);
-  assert.equal((wall.match(/width="12.5%"/g) ?? []).length, contributors.length);
+  assert.equal((wall.match(/width="100"/g) ?? []).length, contributors.length);
   assert.match(
     wall,
-    /<a href="https:\/\/github\.com\/codeMonkeyWang" title="codeMonkeyWang">\s+<img[^>]+><br \/>\s+<sub><strong><samp>&#160;&#160;codeMon…&#160;&#160;<\/samp><\/strong><\/sub>\s+<\/a>/,
+    /<a href="https:\/\/github\.com\/codeMonkeyWang" title="codeMonkeyWang">\s+<img[^>]+><br \/>\s+<sub><strong>codeMon…<\/strong><\/sub>\s+<\/a>/,
   );
   assert.match(
     wall,
-    /<a href="https:\/\/github\.com\/user0" title="user0">\s+<img[^>]+><br \/>\s+<sub><strong><samp>&#160;&#160;&#160;user0&#160;&#160;&#160;&#160;<\/samp><\/strong><\/sub>\s+<\/a>/,
+    /<a href="https:\/\/github\.com\/user0" title="user0">\s+<img[^>]+><br \/>\s+<sub><strong>user0<\/strong><\/sub>\s+<\/a>/,
   );
+  assert.doesNotMatch(wall, /<samp>|&#160;/);
 });
