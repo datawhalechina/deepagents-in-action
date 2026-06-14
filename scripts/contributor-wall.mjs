@@ -16,11 +16,11 @@ export function buildWall(contributors) {
       : contributor.login;
 
     return [
-      '<td align="center" valign="top" width="100">',
+      '<td align="center" valign="top" width="104">',
       `  <a href="${contributor.profileUrl}" title="${contributor.login}">`,
-      `    <img src="${contributor.avatarUrl}" width="72" height="72" alt="${contributor.login}" style="border-radius:50%;" /><br />`,
-      `    <sub><strong>${displayedLogin}</strong></sub>`,
+      `    <img src="${contributor.avatarUrl}" width="72" height="72" alt="${contributor.login}" style="border-radius:50%;" />`,
       '  </a><br />',
+      `  <sub><strong title="${contributor.login}">${displayedLogin}</strong></sub><br />`,
       `  <sub>${contributor.contributions} commit${contributor.contributions === 1 ? '' : 's'}</sub>`,
       '</td>',
     ].join('\n');
