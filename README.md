@@ -24,6 +24,7 @@
 
 > [!NOTE]
 > 本课程讲授的 Deep Agents 版本为 **≥ 0.5**。
+> 部分进阶功能有更高最低版本要求，章节正文会单独标注；例如 `FilesystemPermission` 基础权限需要 `deepagents>=0.5.2`，`interrupt` 权限模式需要 `deepagents>=0.6.8`。
 > 官方文档：[Deep Agents Overview](https://docs.langchain.com/oss/python/deepagents/overview)
 
 ---

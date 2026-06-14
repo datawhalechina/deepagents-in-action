@@ -546,6 +546,8 @@ Search arXiv for papers matching the user's query.
 
 解释器技能将 Skill 中的代码模块暴露给 Agent 的代码解释器环境。Agent 可以直接 `import` 经过测试的辅助函数，而不必每次都重新生成逻辑。
 
+> 运行前提：Interpreter Skills 需要安装 QuickJS 中间件，例如 `pip install -U "deepagents[quickjs]"` 或 `uv add "deepagents[quickjs]"`。官方文档要求 `langchain-quickjs>=0.1.0` 且 Python `>=3.11`。解释器运行在 QuickJS 内存环境中，适合导入确定性的 JS/TS helper；如果需要执行 Shell、安装包或访问完整文件系统，应使用沙箱后端。
+
 要让一个 Skill 可被导入，需要三步配置：
 
 1. 在 frontmatter 的 `metadata.entrypoint` 中指定入口文件（JS/TS）
