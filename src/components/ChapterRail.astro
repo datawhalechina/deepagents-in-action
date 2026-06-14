@@ -1,0 +1,288 @@
+---
+interface RailItem {
+  id: string;
+  title: string;
+}
+interface RailSection {
+  section: string;
+  items: RailItem[];
+}
+interface Props {
+  sections: RailSection[];
+}
+
+const { sections } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+{/* Mobile/tablet (<lg): sticky bar + tap-to-open dropdown. */}
+<div class="chapter-rail-mobile lg:hidden" data-rail-mobile>
+  <button
+    type="button"
+    class="chapter-rail-mobile__bar"
+    aria-expanded="false"
+    aria-controls="chapter-rail-panel"
+    data-rail-toggle
+  >
+    <span class="inline-flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <span class="text-sm font-medium">课程目录</span>
+    </span>
+    <span class="text-xs text-ink-muted/60" data-rail-current></span>
+  </button>
+  <div id="chapter-rail-panel" class="chapter-rail-mobile__panel" hidden>
+    {sections.map(group => (
+      <div class="mb-3 last:mb-0">
+        <p class="text-[11px] font-semibold tracking-wide text-ink-muted/75 mb-1">{group.section}</p>
+        <ul class="space-y-0.5">
+          {group.items.map(item => (
+            <li>
+              <a
+                href={`${base}/#ch-${item.id}`}
+                data-rail-target={`ch-${item.id}`}
+                title={item.title}
+                class="rail-link block truncate py-1.5 pl-3 text-[13px] text-ink-muted/70 hover:text-ink transition-colors"
+              >{item.title}</a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+</div>
+
+{/* Desktop rail: quiet, sticky, lg+ only. */}
+<nav class="chapter-rail hidden lg:block lg:mt-16 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto" aria-label="课程目录">
+  <p class="text-[10px] font-mono uppercase tracking-[0.15em] text-ink-muted/35 mb-3">目录</p>
+  {sections.map(group => (
+    <div class="mb-5 last:mb-0">
+      <p class="text-[11px] font-semibold tracking-wide text-ink-muted/75 mb-1.5">{group.section}</p>
+      <ul class="space-y-1">
+        {group.items.map(item => (
+          <li>
+            <a
+              href={`${base}/#ch-${item.id}`}
+              data-rail-target={`ch-${item.id}`}
+              title={item.title}
+              class="rail-link block truncate py-1.5 pl-3 text-[13px] leading-snug text-ink-muted/65 hover:text-ink transition-colors"
+            >{item.title}</a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ))}
+</nav>
+
+<style>
+  /* Active item (set by scrollspy JS in Task 5): firm the text + a single 1px gold tick.
+     This is the only color in the rail. No background, no bold gold text. */
+  .rail-link {
+    border-left: 2px solid transparent;
+    margin-left: -2px; /* keep text aligned whether or not the tick shows */
+  }
+  .rail-link.is-active {
+    color: var(--color-ink);
+    border-left-color: var(--color-gold);
+  }
+  .chapter-rail-mobile {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0 -1.5rem 1.5rem; /* bleed to viewport edges (counteract main px-6) */
+    background: var(--color-paper);
+    border-bottom: 1px solid var(--color-gold-pale);
+  }
+  .chapter-rail-mobile__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    color: var(--color-ink);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+  .chapter-rail-mobile__panel {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 0.5rem 1.5rem 1rem;
+    border-top: 1px solid var(--color-gold-pale);
+  }
+
+  .rail-link:focus-visible {
+    outline: none;
+    color: var(--color-ink);
+    border-left-color: var(--color-gold);
+    background: var(--color-gold-pale);
+    border-radius: 2px;
+  }
+
+  @media (min-width: 1600px) {
+    /* Detach the rail into the viewport's left gutter without disturbing the
+       cards. It stays in normal document order as the first child of
+       .chapter-grid (now display:block), so its TOP naturally begins at the
+       grid/body start, below the hero — not pinned to the viewport top.
+       sticky keeps it scroll-following; the float + negative right margin
+       cancel its horizontal footprint so the cards keep main's full width and
+       are not pushed down. The negative left margin pulls it from main's
+       content-left edge out to ~1.5rem from the viewport edge:
+         main content-left = (100vw - 72rem)/2 + 1.5rem (max-w-6xl + px-6)
+         want rail-left     = 1.5rem  ->  margin-left = -((100vw - 72rem)/2) */
+    .chapter-rail {
+      position: sticky;
+      top: 6rem;
+      float: left;
+      width: 192px;
+      margin-top: 0; /* drop lg:mt-16 so the rail top lines up with the cards */
+      margin-left: calc(-1 * (100vw - 72rem) / 2);
+      margin-right: -192px;
+      max-height: calc(100vh - 7rem);
+      overflow-y: auto;
+    }
+  }
+</style>
+
+<script>
+  // Scrollspy: highlight the rail item whose card is nearest the top of the viewport.
+  // Rail links carry data-rail-target="ch-<id>"; cards have id="ch-<id>".
+  let prevObserver: IntersectionObserver | undefined;
+  let railCurrentLabel: HTMLElement | null = null;
+  let railSectionOfTarget = new Map<string, string>();
+  let prevDocClickHandler: ((e: MouseEvent) => void) | undefined;
+  let prevDocKeydownHandler: ((e: KeyboardEvent) => void) | undefined;
+  function initChapterRail() {
+    prevObserver?.disconnect();
+    if (prevDocClickHandler) document.removeEventListener('click', prevDocClickHandler);
+    if (prevDocKeydownHandler) document.removeEventListener('keydown', prevDocKeydownHandler);
+    const links = Array.from(
+      document.querySelectorAll<HTMLAnchorElement>('.chapter-rail .rail-link[data-rail-target]')
+    );
+    if (links.length === 0) return;
+
+    const linkByTarget = new Map<string, HTMLAnchorElement>();
+    for (const link of links) {
+      const t = link.dataset.railTarget;
+      if (t) linkByTarget.set(t, link);
+    }
+
+    const cards = links
+      .map((l) => document.getElementById(l.dataset.railTarget!))
+      .filter((el): el is HTMLElement => el !== null);
+    if (cards.length === 0) return;
+
+    let activeId = '';
+    const setActive = (id: string) => {
+      if (id === activeId) return;
+      activeId = id;
+      if (railCurrentLabel) {
+        const label = railSectionOfTarget.get(id);
+        if (label) railCurrentLabel.textContent = label;
+      }
+      for (const link of links) {
+        link.classList.remove('is-active');
+        link.removeAttribute('aria-current');
+      }
+      const active = linkByTarget.get(id);
+      if (active) {
+        active.classList.add('is-active');
+        active.setAttribute('aria-current', 'true');
+        // Keep the active item visible if the rail itself scrolled.
+        active.scrollIntoView({ block: 'nearest' });
+      }
+    };
+
+    // Track which cards are currently intersecting; pick the topmost one.
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target.id);
+          else visible.delete(entry.target.id);
+        }
+        // Choose the visible card highest on the page (smallest top offset).
+        let topId = '';
+        let topY = Infinity;
+        for (const id of visible) {
+          const el = document.getElementById(id);
+          if (!el) continue;
+          const y = el.getBoundingClientRect().top;
+          if (y < topY) {
+            topY = y;
+            topId = id;
+          }
+        }
+        if (topId) setActive(topId);
+      },
+      // Bias the active band toward the upper part of the viewport so the
+      // highlight changes as a card reaches the top, reducing boundary jitter.
+      { rootMargin: '-20% 0px -70% 0px', threshold: 0 }
+    );
+
+    for (const card of cards) observer.observe(card);
+    prevObserver = observer;
+
+    // --- Mobile bar: toggle panel + reflect current section ---
+    const mobile = document.querySelector<HTMLElement>('[data-rail-mobile]');
+    const toggle = document.querySelector<HTMLButtonElement>('[data-rail-toggle]');
+    const panel = document.getElementById('chapter-rail-panel');
+    const currentLabel = document.querySelector<HTMLElement>('[data-rail-current]');
+
+    const closePanel = () => {
+      if (!toggle || !panel) return;
+      toggle.setAttribute('aria-expanded', 'false');
+      panel.hidden = true;
+    };
+    const openPanel = () => {
+      if (!toggle || !panel) return;
+      toggle.setAttribute('aria-expanded', 'true');
+      panel.hidden = false;
+    };
+
+    if (toggle && panel) {
+      toggle.addEventListener('click', () => {
+        if (panel.hidden) openPanel();
+        else closePanel();
+      });
+      // Tap an item: close, then let the anchor scroll happen.
+      panel.querySelectorAll('a[data-rail-target]').forEach((a) =>
+        a.addEventListener('click', () => closePanel())
+      );
+      // Tap outside closes.
+      const clickHandler = (e: MouseEvent) => {
+        if (!mobile) return;
+        if (!panel.hidden && !mobile.contains(e.target as Node)) closePanel();
+      };
+      const keydownHandler = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && !panel.hidden) closePanel();
+      };
+      document.addEventListener('click', clickHandler);
+      document.addEventListener('keydown', keydownHandler);
+      prevDocClickHandler = clickHandler;
+      prevDocKeydownHandler = keydownHandler;
+    }
+
+    // Reflect the active card's SECTION name in the mobile bar.
+    const sectionOfTarget = new Map<string, string>();
+    document.querySelectorAll<HTMLElement>('[data-rail-mobile] [data-rail-target]').forEach((a) => {
+      const group = a.closest('div');
+      const label = group?.querySelector('p')?.textContent?.trim();
+      const t = (a as HTMLElement).dataset.railTarget;
+      if (label && t) sectionOfTarget.set(t, label);
+    });
+
+    // Make the current-section label available to setActive via closure.
+    railCurrentLabel = currentLabel;
+    railSectionOfTarget = sectionOfTarget;
+
+    // Seed the mobile bar label so it's never blank before scrollspy fires.
+    if (currentLabel && !currentLabel.textContent) {
+      const firstLabel = sectionOfTarget.values().next().value;
+      if (firstLabel) currentLabel.textContent = firstLabel;
+    }
+  }
+
+  initChapterRail();
+  // Re-init after Astro view transitions / client navigations, if ever enabled.
+  document.addEventListener('astro:page-load', initChapterRail);
+</script>

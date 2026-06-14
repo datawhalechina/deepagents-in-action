@@ -153,7 +153,8 @@ from langchain.agents import create_agent
 from langchain.agents.middleware import TodoListMiddleware, FilesystemMiddleware
 
 model = ChatOpenAI(
-    model="THUDM/glm-4-9b-chat",
+    # 任务规划属于复杂推理场景，需要 SOTA 模型；小模型（如 7B）往往无法稳定完成多步骤规划任务
+    model="Pro/zai-org/GLM-5.1",
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )
@@ -232,7 +233,7 @@ agent = create_agent(
         TodoListMiddleware(),
         FilesystemMiddleware(),   # read_file / write_file 通过中间件注入
         SummarizationMiddleware(
-            model="THUDM/glm-4-9b-chat",
+            model="Pro/zai-org/GLM-5.1",  # 总结压缩影响后续推理质量，建议用 SOTA 模型
             trigger=("tokens", 4000),  # 可自定义：("ratio", 0.85) 或 ("tokens", N)
             keep=("messages", 20),
         ),
@@ -255,7 +256,8 @@ from deepagents import create_deep_agent
 
 # 配置模型
 model = ChatOpenAI(
-    model="THUDM/glm-4-9b-chat",  # 免费模型，可替换为 "Pro/zai-org/GLM-5"
+    # 多步骤规划任务需要 SOTA 模型才能稳定完成；小模型可能无法跑通完整流程
+    model="Pro/zai-org/GLM-5.1",
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )

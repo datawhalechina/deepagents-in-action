@@ -27,6 +27,9 @@
 > 部分进阶功能有更高最低版本要求，章节正文会单独标注；例如 `FilesystemPermission` 基础权限需要 `deepagents>=0.5.2`，`interrupt` 权限模式需要 `deepagents>=0.6.8`。
 > 官方文档：[Deep Agents Overview](https://docs.langchain.com/oss/python/deepagents/overview)
 
+> [!NOTE]
+> **模型选择**：示例默认通过 [硅基流动](https://cloud.siliconflow.cn/) 接入模型。入门与简单任务使用免费的 `Qwen/Qwen2.5-7B-Instruct` 即可；但任务规划、上下文总结、多子 Agent 编排等复杂场景，小模型往往**无法稳定跑通**，请改用 SOTA 模型 `Pro/zai-org/GLM-5.1`。建议用 `MODEL_NAME` 环境变量管理模型名，而非写死在代码里。平台模型会不定期上下线，最新可用模型见 [模型广场](https://cloud.siliconflow.cn/models)。
+
 ---
 
 ## 课程大纲

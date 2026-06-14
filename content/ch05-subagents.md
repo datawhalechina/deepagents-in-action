@@ -140,7 +140,7 @@ agent = create_deep_agent(
             "system_prompt": "你是一个通用助手。",
             "tools": [internet_search],
             "model": ChatOpenAI(  # 子 Agent 用更强的模型
-                model="Pro/zai-org/GLM-5",
+                model="Pro/zai-org/GLM-5.1",
                 api_key=os.environ["SILICONFLOW_API_KEY"],
                 base_url="https://api.siliconflow.cn/v1",
             ),
@@ -197,7 +197,8 @@ from langchain_openai import ChatOpenAI
 from deepagents import create_deep_agent
 
 model = ChatOpenAI(
-    model="THUDM/glm-4-9b-chat",  # 免费模型，可替换为 "Pro/zai-org/GLM-5"
+    # 主 Agent 负责协调多个子 Agent，属于复杂编排场景，需要 SOTA 模型才能稳定完成
+    model="Pro/zai-org/GLM-5.1",
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )
@@ -331,7 +332,7 @@ subagents = [
         "description": "快速查询简单事实",
         "tools": [internet_search],
         "model": ChatOpenAI(  # 轻量快速模型
-            model="THUDM/glm-4-9b-chat",
+            model="Qwen/Qwen2.5-7B-Instruct",
             api_key=os.environ["SILICONFLOW_API_KEY"],
             base_url="https://api.siliconflow.cn/v1",
         ),
@@ -342,7 +343,7 @@ subagents = [
         "description": "执行需要深入推理的复杂分析任务",
         "tools": [internet_search, statistical_analysis],
         "model": ChatOpenAI(  # 强推理模型
-            model="Pro/zai-org/GLM-5",
+            model="Pro/zai-org/GLM-5.1",
             api_key=os.environ["SILICONFLOW_API_KEY"],
             base_url="https://api.siliconflow.cn/v1",
         ),

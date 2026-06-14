@@ -1,0 +1,89 @@
+---
+---
+{/* Floating back-to-top button. Fixed to the bottom-right corner, hidden until
+    the user scrolls past ~60% of a viewport, then fades in. Smooth-scrolls to
+    top (respecting prefers-reduced-motion via the global html scroll rule). */}
+<button
+  type="button"
+  class="back-to-top"
+  aria-label="回到顶部"
+  data-back-to-top
+  hidden
+>
+  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+  </svg>
+</button>
+
+<style>
+  .back-to-top {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 40;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    color: var(--color-gold);
+    background: var(--color-paper);
+    border: 1px solid var(--color-gold-pale);
+    border-radius: 9999px;
+    box-shadow: 0 2px 8px rgba(26, 26, 46, 0.08);
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(0.5rem);
+    transition: opacity 0.2s ease, transform 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+  .back-to-top[hidden] {
+    display: none;
+  }
+  .back-to-top.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .back-to-top:hover {
+    color: var(--color-ink);
+    border-color: var(--color-gold);
+  }
+  .back-to-top:focus-visible {
+    outline: none;
+    border-color: var(--color-gold);
+    box-shadow: 0 0 0 3px var(--color-gold-pale);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .back-to-top {
+      transition: opacity 0.2s ease;
+      transform: none;
+    }
+    .back-to-top.is-visible {
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  function initBackToTop() {
+    const btn = document.querySelector<HTMLButtonElement>('[data-back-to-top]');
+    if (!btn) return;
+
+    const threshold = () => window.innerHeight * 0.6;
+    const update = () => {
+      const show = window.scrollY > threshold();
+      btn.hidden = !show;
+      // Toggle on the next frame so the fade-in transition runs after unhide.
+      if (show) requestAnimationFrame(() => btn.classList.add('is-visible'));
+      else btn.classList.remove('is-visible');
+    };
+
+    btn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  }
+
+  initBackToTop();
+  document.addEventListener('astro:page-load', initBackToTop);
+</script>

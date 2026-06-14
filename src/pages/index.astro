@@ -5,6 +5,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import ChapterCard from '../components/ChapterCard.astro';
 import SectionHeading from '../components/SectionHeading.astro';
+import ChapterRail from '../components/ChapterRail.astro';
 import '../styles/global.css';
 
 const allChapters = await getCollection('chapters');
@@ -15,6 +16,17 @@ const grouped = sections.map(section => ({
   section,
   chapters: sorted.filter(ch => ch.data.section === section),
 }));
+
+// Rail navigation data: published chapters only, sections with >=1 published chapter.
+// Same source as the cards, so rail items always have a matching card anchor (ch-<id>).
+const railSections = grouped
+  .map(({ section, chapters }) => ({
+    section,
+    items: chapters
+      .filter(ch => ch.data.published)
+      .map(ch => ({ id: ch.id, title: ch.data.title })),
+  }))
+  .filter(group => group.items.length > 0);
 
 const publishedCount = sorted.filter(ch => ch.data.published && ch.data.section !== '准备篇').length;
 
@@ -32,7 +44,7 @@ try {
 
 <BaseLayout title="Deep Agents 实战 — 从零构建生产级 AI Agent 的完整指南">
   <Header />
-  <main class="max-w-5xl mx-auto px-6">
+  <main class="max-w-6xl mx-auto px-6">
     <!-- Hero -->
     <section class="py-24 md:py-32 text-center relative">
       <div class="absolute inset-0 bg-dot-grid opacity-[0.03] pointer-events-none"></div>
@@ -109,11 +121,14 @@ try {
       </div>
     </section>
 
+    <div class="chapter-grid lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12 lg:items-start">
+      <ChapterRail sections={railSections} />
+      <div class="min-w-0">
     <!-- Chapter list by section -->
     {grouped.map(({ section, chapters }) => {
       const hasPublished = chapters.some(ch => ch.data.published);
       return hasPublished ? (
-        <section class="mb-12">
+        <section id={`sec-${section}`} class="mb-12 scroll-mt-24">
           {section === '准备篇' ? (
             <div class="skills-promo-combined">
               <div class="skills-promo-combined__header">
@@ -163,25 +178,40 @@ try {
           )}
           <div class="grid md:grid-cols-2 gap-5">
           {chapters.map(ch => (
-            <ChapterCard
-              id={ch.id}
-              title={ch.data.title}
-              chapter={ch.data.chapter}
-              section={ch.data.section}
-              description={ch.data.description}
-              published={ch.data.published}
-              slides={ch.data.slides}
-              bilibili={ch.data.bilibili}
-              xhs={ch.data.xhs}
-            />
+            <div id={`ch-${ch.id}`} class="scroll-mt-24 grid">
+              <ChapterCard
+                id={ch.id}
+                title={ch.data.title}
+                chapter={ch.data.chapter}
+                section={ch.data.section}
+                description={ch.data.description}
+                published={ch.data.published}
+                slides={ch.data.slides}
+                bilibili={ch.data.bilibili}
+                xhs={ch.data.xhs}
+              />
+            </div>
           ))}
         </div>
       </section>
       ) : null;
     })}
+      </div>
+    </div>
   </main>
   <Footer />
 </BaseLayout>
+
+<style>
+  /* On wide screens the rail detaches into the left gutter so the chapter
+     cards recenter to main's full width (aligned with the centered hero).
+     Below this width there isn't enough gutter, so the grid keeps its
+     default 220px squeeze-in column (see lg: classes on .chapter-grid). */
+  @media (min-width: 1600px) {
+    .chapter-grid { display: block; }
+  }
+</style>
+
 
 <script>
   (async () => {

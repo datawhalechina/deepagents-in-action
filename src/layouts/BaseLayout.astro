@@ -1,4 +1,6 @@
 ---
+import BackToTop from '../components/BackToTop.astro';
+
 interface Props {
   title: string;
   description?: string;
@@ -23,5 +25,6 @@ const base = import.meta.env.BASE_URL;
   </head>
   <body class="bg-paper text-ink font-serif antialiased">
     <slot />
+    <BackToTop />
   </body>
 </html>
