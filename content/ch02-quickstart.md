@@ -6,17 +6,17 @@
 
 ### 安装 Deep Agents
 
-Deep Agents 以独立的 Python 包发布。选择你习惯的包管理工具安装：
+Deep Agents 以独立的 Python 包发布。本章示例通过 `ChatOpenAI` 接入模型，因此同时安装 `langchain-openai`。选择你习惯的包管理工具安装：
 
 ```bash
 # pip
-pip install deepagents
+pip install deepagents langchain-openai
 
 # uv（推荐，速度更快）
-uv pip install deepagents
+uv pip install deepagents langchain-openai
 
 # poetry
-poetry add deepagents
+poetry add deepagents langchain-openai
 ```
 
 Python 版本要求 3.10+。

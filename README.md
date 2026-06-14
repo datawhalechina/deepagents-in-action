@@ -167,7 +167,7 @@ deepagents-in-action/
     <img src="https://avatars.githubusercontent.com/u/2936504?v=4&s=144" width="72" height="72" alt="webup" style="border-radius:50%;" />
   </a><br />
   <a href="https://github.com/webup" title="打开 webup 的 GitHub 主页"><kbd><strong>webup</strong></kbd></a><br />
-  <sub>45 commits</sub>
+  <sub>48 commits</sub>
 </td>
 <td align="center" valign="top" width="104">
   <a href="https://github.com/knqiufan" title="knqiufan">
