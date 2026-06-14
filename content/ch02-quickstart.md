@@ -42,7 +42,7 @@ export MODEL_NAME="Qwen/Qwen2.5-7B-Instruct"   # 免费、支持 Tools，适合�
 
 > 当然，你也可以使用其他提供商（Anthropic、OpenAI、Google 等），只需配置对应的 API Key 即可。本系列的所有示例代码都以硅基流动为默认配置，但原理完全相同。
 
-> **模型版本维护说明**：本系列示例默认使用免费的 `Qwen/Qwen2.5-7B-Instruct`（轻量、支持工具调用，适合学习）；需要更强效果时推荐付费的 `Pro/zai-org/GLM-5.1`。平台模型会不定期上下线，**建议用上面的 `MODEL_NAME` 环境变量管理模型名，而非写死在代码里**——这样模型变更时只需改一处环境变量。最新可用模型见 [模型广场](https://cloud.siliconflow.cn/models)。
+> **模型版本维护说明**：本系列示例默认使用免费的 `Qwen/Qwen2.5-7B-Instruct`（轻量、支持工具调用，适合入门学习与简单任务）。**注意：任务规划、上下文总结、多子 Agent 编排等复杂场景，以及叠加了中间件的进阶示例，小模型（如 7B）往往无法稳定跑通完整流程，请使用 SOTA 模型 `Pro/zai-org/GLM-5.1`**——后续 ch04 / ch05 等章节会按场景标注推荐模型。平台模型会不定期上下线，**建议用上面的 `MODEL_NAME` 环境变量管理模型名，而非写死在代码里**——这样模型变更时只需改一处环境变量。最新可用模型见 [模型广场](https://cloud.siliconflow.cn/models)。
 
 ## Hello World：最简单的 Deep Agent
 
@@ -328,12 +328,12 @@ agent = create_deep_agent(model="openai:gpt-4.1")
 | 模型 | 参数量 | 特点 |
 |---|---|---|
 | `Pro/zai-org/GLM-5.1` | 744B (MoE, 40B 激活) | 智谱最新旗舰，Agent 任务同类最佳，支持推理模式 |
-| `Pro/moonshotai/Kimi-K2.5` | 1T (MoE, 32B 激活) | Kimi 最新旗舰，原生多模态智能体模型，256K 上下文 |
-| `Qwen/Qwen3.5-27B` | 27B | Qwen 最新系列，支持思考模式和视觉理解 |
+| `Pro/moonshotai/Kimi-K2.6` | 1T (MoE, 32B 激活) | Kimi 最新旗舰，原生多模态智能体模型，256K 上下文 |
+| `Pro/deepseek-ai/DeepSeek-V4-Pro` | 671B (MoE) | 推理和 Agent 能力顶级 |
+| `Qwen/Qwen3.6-27B` | 27B | Qwen 最新系列，支持思考模式和视觉理解 |
 | `Qwen/Qwen3.5-122B-A10B` | 122B (MoE, 10B 激活) | 旗舰级 MoE，仅 10B 激活参数，性价比极高 |
-| `deepseek-ai/DeepSeek-V3.2` | 671B (MoE) | 推理和 Agent 能力顶级 |
 
-> 本系列示例代码默认使用免费的 `Qwen/Qwen2.5-7B-Instruct` 以降低学习门槛。实际项目中推荐使用 GLM-5.1、Kimi-K2.5 或 Qwen3.5 系列的更大尺寸模型，效果更佳。建议用 `MODEL_NAME` 环境变量管理模型名，避免写死在代码中；完整模型列表见 [模型广场](https://cloud.siliconflow.cn/models)。
+> 本系列示例代码默认使用免费的 `Qwen/Qwen2.5-7B-Instruct` 以降低入门门槛，它足以跑通本章的简单示例。但任务规划、多 Agent 编排等复杂场景小模型往往无法稳定完成，需改用 GLM-5.1、Kimi-K2.6 或 Qwen3.6 系列等更大尺寸模型。建议用 `MODEL_NAME` 环境变量管理模型名，避免写死在代码中；完整模型列表见 [模型广场](https://cloud.siliconflow.cn/models)。
 
 ## 调试与追踪：LangSmith
 

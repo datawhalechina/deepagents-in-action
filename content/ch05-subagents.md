@@ -197,7 +197,8 @@ from langchain_openai import ChatOpenAI
 from deepagents import create_deep_agent
 
 model = ChatOpenAI(
-    model="Qwen/Qwen2.5-7B-Instruct",  # 免费模型，可替换为 "Pro/zai-org/GLM-5.1"
+    # 主 Agent 负责协调多个子 Agent，属于复杂编排场景，需要 SOTA 模型才能稳定完成
+    model="Pro/zai-org/GLM-5.1",
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )
