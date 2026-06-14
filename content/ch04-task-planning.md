@@ -153,7 +153,7 @@ from langchain.agents import create_agent
 from langchain.agents.middleware import TodoListMiddleware, FilesystemMiddleware
 
 model = ChatOpenAI(
-    model="THUDM/glm-4-9b-chat",
+    model="Qwen/Qwen2.5-7B-Instruct",
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )
@@ -232,7 +232,7 @@ agent = create_agent(
         TodoListMiddleware(),
         FilesystemMiddleware(),   # read_file / write_file 通过中间件注入
         SummarizationMiddleware(
-            model="THUDM/glm-4-9b-chat",
+            model="Qwen/Qwen2.5-7B-Instruct",
             trigger=("tokens", 4000),  # 可自定义：("ratio", 0.85) 或 ("tokens", N)
             keep=("messages", 20),
         ),
@@ -255,7 +255,7 @@ from deepagents import create_deep_agent
 
 # 配置模型
 model = ChatOpenAI(
-    model="THUDM/glm-4-9b-chat",  # 免费模型，可替换为 "Pro/zai-org/GLM-5"
+    model="Qwen/Qwen2.5-7B-Instruct",  # 免费模型，可替换为 "Pro/zai-org/GLM-5.1"
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )
