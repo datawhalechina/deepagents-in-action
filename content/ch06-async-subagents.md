@@ -283,6 +283,20 @@ agent = create_deep_agent(
 
 **解法**：worker pool 被打满。`langgraph dev` 启动时加上 `--n-jobs-per-worker 10`（或更大），按你预期的并发量调整。
 
+### 部署排查清单
+
+异步子 Agent 涉及主 Agent、子 Agent、Agent Protocol 服务和后台 run，排查时不要只看主对话窗口。建议按下面顺序检查：
+
+| 现象 | 优先检查 | 处理方式 |
+|---|---|---|
+| `start_async_task` 报找不到 Agent | `graph_id` 是否与 `langgraph.json` 注册名一致 | 确认主 Agent 使用的 `graph_id` 和部署配置完全一致，尤其注意大小写和下划线 |
+| 远程 HTTP 子 Agent 调用失败 | `url`、`headers`、`LANGSMITH_API_KEY` / `LANGGRAPH_API_KEY` | LangSmith 部署优先依赖环境变量；自托管服务则把鉴权头显式放进 `headers` |
+| 本地同部署能跑，远程拆分后失败 | 子 Agent 服务是否兼容 Agent Protocol | 先用 SDK 直接访问远程服务创建 thread / run，再接回 `AsyncSubAgent` |
+| 任务一直 `running` | worker 数、外部工具超时、子 Agent 是否卡在长工具调用 | 提高 `--n-jobs-per-worker`，给外部 API / 搜索 / 代码执行设置超时，避免后台 run 永久占住 worker |
+| `cancel_async_task` 后状态不立刻变化 | 服务端取消是异步生效 | cancel 后再调用一次 `check_async_task` 或 `list_async_tasks` 确认最终状态，不要只依赖本地旧消息 |
+| 主 Agent 查不到之前的任务 | thread / checkpoint 是否持久化 | 确保主 Agent 配置 checkpointer；任务元数据依赖 `async_tasks` channel，进程重启后需要可恢复状态 |
+| LangSmith 中 trace 对不上 | task ID、thread ID、run ID 是否记录完整 | 保留完整 task ID；用 thread ID 串联主 Agent 的 launch 工具调用和子 Agent 的实际 run |
+
 ## 参考实现
 
 LangChain 官方提供了一个完整可跑的示例仓库：[async-deep-agents](https://github.com/langchain-ai/async-deep-agents)，Python 与 TypeScript 双版本，演示了一个主 Agent + researcher + coder 子 Agent 的部署形态，配套部署到 LangSmith Deployments。读完本章后，强烈建议把这个仓库 clone 下来跑一遍，亲眼看看主 Agent "派活之后立刻能继续聊"的实际效果。
@@ -299,4 +313,3 @@ LangChain 官方提供了一个完整可跑的示例仓库：[async-deep-agents]
 6. **避坑要点**：worker pool 要足够、描述要具体、永远基于实时 `check` 而非对话历史报告状态。
 
 下一章我们将学习 Skills——可复用的 Agent 能力包，让 Agent 获得领域专属的多步骤工作流与知识模板。
-
