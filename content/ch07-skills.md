@@ -179,12 +179,12 @@ FilesystemBackend 直接从本地磁盘读取 Skills 文件，适合本地开发
 from deepagents import create_deep_agent
 from deepagents.backends.filesystem import FilesystemBackend
 
-backend = FilesystemBackend(root_dir="./my-project")
+backend = FilesystemBackend(root_dir="./my-project", virtual_mode=True)
 
 agent = create_deep_agent(
     model="anthropic:claude-sonnet-4-6",
     backend=backend,
-    skills=["./my-project/skills/"],
+    skills=["/skills/"],
 )
 
 result = agent.invoke(
@@ -196,7 +196,8 @@ result = agent.invoke(
 关键点：
 
 - `skills` 参数接受一个**路径列表**，每个路径指向包含 Skill 子目录的父目录
-- 路径使用正斜杠（`/`），相对于 Backend 的根目录
+- 路径使用正斜杠（`/`），相对于 Backend 的根目录；上例中 `/skills/` 对应本地的 `./my-project/skills/`
+- 本地磁盘后端建议显式传入 `virtual_mode=True`，与第 3 章的路径沙箱说明保持一致
 - 当多个路径中存在同名 Skill 时，**后面的覆盖前面的**（last wins）
 
 ### StateBackend：通过 state 注入 Skills
@@ -393,19 +394,33 @@ agent = create_deep_agent(
 企业场景中，运维团队维护一套经过审核的 Skill 库，Agent 只能读取和执行，不能擅自修改。使用 `FilesystemPermission` 配合 `CompositeBackend` 实现：
 
 ```python
+from dataclasses import dataclass
+
 from deepagents import FilesystemPermission, create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 from langgraph.store.memory import InMemoryStore
+
+
+@dataclass(frozen=True)
+class TenantContext:
+    org_id: str
+
+
+def org_skill_namespace(rt):
+    org_id = getattr(rt.context, "org_id", "default-org")
+    return ("curated-skills", org_id)
+
 
 store = InMemoryStore()
 
 agent = create_deep_agent(
     model="anthropic:claude-sonnet-4-6",
+    context_schema=TenantContext,
     backend=CompositeBackend(
         default=StateBackend(),
         routes={
             "/skills/": StoreBackend(
-                namespace=lambda rt: ("curated-skills", rt.context.org_id),
+                namespace=org_skill_namespace,
             ),
         },
     ),
@@ -422,6 +437,16 @@ agent = create_deep_agent(
 ```
 
 核心逻辑：`mode="deny"` 拒绝所有对 `/skills/**` 路径的写入操作。Agent 可以正常发现和读取 Skill 内容，但 `write_file` 和 `edit_file` 调用会被直接拦截并返回权限错误。Skill 库的更新只能通过管理员代码直接操作 Store 完成。
+
+本地调试或自托管服务中，需要在调用时传入组织上下文，例如：
+
+```python
+agent.invoke(
+    {"messages": [{"role": "user", "content": "列出可用 Skills"}]},
+    context=TenantContext(org_id="org-acme"),
+    config={"configurable": {"thread_id": "1"}},
+)
+```
 
 ### 写入需审批（interrupt 模式）
 
@@ -458,22 +483,41 @@ agent = create_deep_agent(
 实际部署中，最常见的模式是两层结构：团队共享的只读 Skill 库 + 用户个人的可写 Skill 空间。
 
 ```python
+from dataclasses import dataclass
+
 from deepagents import FilesystemPermission, create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 
+
+@dataclass(frozen=True)
+class TenantContext:
+    org_id: str
+    user_id: str
+
+
+def shared_skill_namespace(rt):
+    org_id = getattr(rt.context, "org_id", "default-org")
+    return ("curated-skills", org_id)
+
+
+def personal_skill_namespace(rt):
+    if rt.server_info and rt.server_info.user:
+        return ("user-skills", rt.server_info.user.identity)
+    user_id = getattr(rt.context, "user_id", "local-user")
+    return ("user-skills", user_id)
+
+
 agent = create_deep_agent(
     model="anthropic:claude-sonnet-4-6",
+    context_schema=TenantContext,
     backend=CompositeBackend(
         default=StateBackend(),
         routes={
             "/skills/shared/": StoreBackend(
-                namespace=lambda rt: ("curated-skills", rt.context.org_id),
+                namespace=shared_skill_namespace,
             ),
             "/skills/personal/": StoreBackend(
-                namespace=lambda rt: (
-                    "user-skills",
-                    rt.server_info.user.identity,
-                ),
+                namespace=personal_skill_namespace,
             ),
         },
     ),
