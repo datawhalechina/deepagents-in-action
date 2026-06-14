@@ -595,6 +595,13 @@ cron_job = await client.crons.create(
 
 多个线程可以并行写入记忆，但对**同一文件**的并发写入可能产生 last-write-wins 冲突。对用户级记忆这种情况很少（用户通常一次只有一个活跃对话）。对 Agent 级或组织级记忆，考虑用后台整合来序列化写入，或将记忆按主题拆分成独立文件以减少冲突。
 
+更稳妥的做法是把“写入热路径”和“整理冷路径”分开：
+
+- **按主题拆文件**：把 `/memories/preferences.md`、`/memories/project/tech-stack.md`、`/memories/research/sources.md` 拆开，减少多个线程同时改同一文件的概率
+- **追加式记录，再后台合并**：对话中先写入 `/memories/events/2026-xx-xx-thread-id.md` 这类追加日志，后台整合 Agent 定期去重、合并到稳定记忆文件
+- **共享记忆只让后台任务写入**：Agent 级、组织级记忆尽量只读；普通对话只提交候选更新，由后台整合任务串行审核后写入
+- **敏感记忆加审批**：涉及组织策略、安全规则、长期偏好覆盖时，用 Permissions 或 Human-in-the-Loop 阻止未经确认的直接覆盖
+
 ## 从开发到生产：Store 的升级路径
 
 ### 开发阶段：InMemoryStore

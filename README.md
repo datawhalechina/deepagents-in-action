@@ -170,18 +170,18 @@ deepagents-in-action/
   <sub>48 commits</sub>
 </td>
 <td align="center" valign="top" width="120">
+  <a href="https://github.com/Spr1ng7">
+    <img src="https://avatars.githubusercontent.com/u/188573471?v=4&s=144" width="72" height="72" alt="Spr1ng7" style="border-radius:50%;" /><br />
+    <sub><strong>Spr1ng7</strong></sub>
+  </a><br />
+  <sub>5 commits</sub>
+</td>
+<td align="center" valign="top" width="120">
   <a href="https://github.com/knqiufan">
     <img src="https://avatars.githubusercontent.com/u/34114995?v=4&s=144" width="72" height="72" alt="knqiufan" style="border-radius:50%;" /><br />
     <sub><strong>knqiufan</strong></sub>
   </a><br />
   <sub>3 commits</sub>
-</td>
-<td align="center" valign="top" width="120">
-  <a href="https://github.com/Spr1ng7">
-    <img src="https://avatars.githubusercontent.com/u/188573471?v=4&s=144" width="72" height="72" alt="Spr1ng7" style="border-radius:50%;" /><br />
-    <sub><strong>Spr1ng7</strong></sub>
-  </a><br />
-  <sub>2 commits</sub>
 </td>
 <td align="center" valign="top" width="120">
   <a href="https://github.com/1iyouzhen">
