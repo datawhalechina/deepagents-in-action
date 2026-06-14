@@ -18,18 +18,19 @@ const contributors = [
   })),
 ];
 
-test('builds eight equal columns with abbreviated names and profile key links', () => {
+test('builds eight equal columns with abbreviated clickable keycap names', () => {
   const wall = buildWall(contributors);
 
   assert.equal((wall.match(/<tr>/g) ?? []).length, 1);
   assert.equal((wall.match(/width="104"/g) ?? []).length, contributors.length);
   assert.match(
     wall,
-    /<a href="https:\/\/github\.com\/codeMonkeyWang" title="codeMonkeyWang">\s+<img[^>]+>\s+<\/a><br \/>\s+<sub><strong title="codeMonkeyWang">codeMon…<\/strong><\/sub><br \/>\s+<a href="https:\/\/github\.com\/codeMonkeyWang" title="打开 codeMonkeyWang 的 GitHub 主页"><kbd>主页 ↗<\/kbd><\/a>/,
+    /<a href="https:\/\/github\.com\/codeMonkeyWang" title="codeMonkeyWang">\s+<img[^>]+>\s+<\/a><br \/>\s+<a href="https:\/\/github\.com\/codeMonkeyWang" title="打开 codeMonkeyWang 的 GitHub 主页"><kbd><strong>codeMon…<\/strong><\/kbd><\/a>/,
   );
   assert.match(
     wall,
-    /<a href="https:\/\/github\.com\/user0" title="user0">\s+<img[^>]+>\s+<\/a><br \/>\s+<sub><strong title="user0">user0<\/strong><\/sub><br \/>\s+<a href="https:\/\/github\.com\/user0" title="打开 user0 的 GitHub 主页"><kbd>主页 ↗<\/kbd><\/a>/,
+    /<a href="https:\/\/github\.com\/user0" title="user0">\s+<img[^>]+>\s+<\/a><br \/>\s+<a href="https:\/\/github\.com\/user0" title="打开 user0 的 GitHub 主页"><kbd><strong>user0<\/strong><\/kbd><\/a>/,
   );
+  assert.doesNotMatch(wall, /主页 ↗/);
   assert.doesNotMatch(wall, /<samp>|&#160;/);
 });

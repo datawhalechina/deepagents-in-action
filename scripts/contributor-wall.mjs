@@ -20,8 +20,7 @@ export function buildWall(contributors) {
       `  <a href="${contributor.profileUrl}" title="${contributor.login}">`,
       `    <img src="${contributor.avatarUrl}" width="72" height="72" alt="${contributor.login}" style="border-radius:50%;" />`,
       '  </a><br />',
-      `  <sub><strong title="${contributor.login}">${displayedLogin}</strong></sub><br />`,
-      `  <a href="${contributor.profileUrl}" title="打开 ${contributor.login} 的 GitHub 主页"><kbd>主页 ↗</kbd></a><br />`,
+      `  <a href="${contributor.profileUrl}" title="打开 ${contributor.login} 的 GitHub 主页"><kbd><strong>${displayedLogin}</strong></kbd></a><br />`,
       `  <sub>${contributor.contributions} commit${contributor.contributions === 1 ? '' : 's'}</sub>`,
       '</td>',
     ].join('\n');
