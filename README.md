@@ -161,56 +161,56 @@ deepagents-in-action/
 <td align="center" valign="top" width="12.5%">
   <a href="https://github.com/webup" title="webup">
     <img src="https://avatars.githubusercontent.com/u/2936504?v=4&s=144" width="72" height="72" alt="webup" style="border-radius:50%;" /><br />
-    <sub><strong>webup</strong></sub>
+    <sub><samp>&#160;webup&#160;&#160;</samp></sub>
   </a><br />
   <sub>45 commits</sub>
 </td>
 <td align="center" valign="top" width="12.5%">
   <a href="https://github.com/knqiufan" title="knqiufan">
     <img src="https://avatars.githubusercontent.com/u/34114995?v=4&s=144" width="72" height="72" alt="knqiufan" style="border-radius:50%;" /><br />
-    <sub><strong>knqiufa…</strong></sub>
+    <sub><samp>knqiufa…</samp></sub>
   </a><br />
   <sub>3 commits</sub>
 </td>
 <td align="center" valign="top" width="12.5%">
   <a href="https://github.com/Spr1ng7" title="Spr1ng7">
     <img src="https://avatars.githubusercontent.com/u/188573471?v=4&s=144" width="72" height="72" alt="Spr1ng7" style="border-radius:50%;" /><br />
-    <sub><strong>Spr1ng7</strong></sub>
+    <sub><samp>Spr1ng7&#160;</samp></sub>
   </a><br />
   <sub>2 commits</sub>
 </td>
 <td align="center" valign="top" width="12.5%">
   <a href="https://github.com/1iyouzhen" title="1iyouzhen">
     <img src="https://avatars.githubusercontent.com/u/184539312?v=4&s=144" width="72" height="72" alt="1iyouzhen" style="border-radius:50%;" /><br />
-    <sub><strong>1iyouzh…</strong></sub>
+    <sub><samp>1iyouzh…</samp></sub>
   </a><br />
   <sub>1 commit</sub>
 </td>
 <td align="center" valign="top" width="12.5%">
   <a href="https://github.com/codeMonkeyWang" title="codeMonkeyWang">
     <img src="https://avatars.githubusercontent.com/u/3906539?v=4&s=144" width="72" height="72" alt="codeMonkeyWang" style="border-radius:50%;" /><br />
-    <sub><strong>codeMon…</strong></sub>
+    <sub><samp>codeMon…</samp></sub>
   </a><br />
   <sub>1 commit</sub>
 </td>
 <td align="center" valign="top" width="12.5%">
   <a href="https://github.com/dongyu23" title="dongyu23">
     <img src="https://avatars.githubusercontent.com/u/101914323?v=4&s=144" width="72" height="72" alt="dongyu23" style="border-radius:50%;" /><br />
-    <sub><strong>dongyu2…</strong></sub>
+    <sub><samp>dongyu2…</samp></sub>
   </a><br />
   <sub>1 commit</sub>
 </td>
 <td align="center" valign="top" width="12.5%">
   <a href="https://github.com/Walt-like" title="Walt-like">
     <img src="https://avatars.githubusercontent.com/u/56186222?v=4&s=144" width="72" height="72" alt="Walt-like" style="border-radius:50%;" /><br />
-    <sub><strong>Walt-li…</strong></sub>
+    <sub><samp>Walt&#8209;li…</samp></sub>
   </a><br />
   <sub>1 commit</sub>
 </td>
 <td align="center" valign="top" width="12.5%">
   <a href="https://github.com/YangLeeFangfei" title="YangLeeFangfei">
     <img src="https://avatars.githubusercontent.com/u/111680955?v=4&s=144" width="72" height="72" alt="YangLeeFangfei" style="border-radius:50%;" /><br />
-    <sub><strong>YangLee…</strong></sub>
+    <sub><samp>YangLee…</samp></sub>
   </a><br />
   <sub>1 commit</sub>
 </td>
