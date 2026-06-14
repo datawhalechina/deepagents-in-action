@@ -153,7 +153,7 @@ deepagents-in-action/
 ## 开源协议
 
 课程文字内容采用 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh) 协议。  
-网站源代码采用 [MIT](LICENSE) 协议。
+网站源代码采用 [MIT](https://opensource.org/license/mit) 协议。
 
 ---
 

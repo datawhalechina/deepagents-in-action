@@ -421,7 +421,7 @@ await client.store.put_item(
 )
 ```
 
-使用 [Permissions](/oss/python/deepagents/permissions) 确保组织级记忆只读。
+使用 [Permissions](https://docs.langchain.com/oss/python/deepagents/permissions) 确保组织级记忆只读。
 
 ### 情景记忆（Episodic Memory）
 
