@@ -27,8 +27,9 @@
 > 部分进阶功能有更高最低版本要求，章节正文会单独标注；例如 `FilesystemPermission` 基础权限需要 `deepagents>=0.5.2`，`interrupt` 权限模式需要 `deepagents>=0.6.8`。
 > 官方文档：[Deep Agents Overview](https://docs.langchain.com/oss/python/deepagents/overview)
 
-> [!NOTE]
-> **模型选择**：示例默认通过 [硅基流动](https://cloud.siliconflow.cn/) 接入模型。入门与简单任务使用免费的 `Qwen/Qwen2.5-7B-Instruct` 即可；但任务规划、上下文总结、多子 Agent 编排等复杂场景，小模型往往**无法稳定跑通**，请改用 SOTA 模型 `Pro/zai-org/GLM-5.1`。建议用 `MODEL_NAME` 环境变量管理模型名，而非写死在代码里。平台模型会不定期上下线，最新可用模型见 [模型广场](https://cloud.siliconflow.cn/models)。
+#### 🤖 模型选择
+
+示例默认通过 [硅基流动](https://cloud.siliconflow.cn/i/Fq9zUwPf) 接入模型。入门与简单任务使用免费的 `Qwen/Qwen2.5-7B-Instruct` 即可；但任务规划、上下文总结、多子 Agent 编排等复杂场景，小模型往往**无法稳定跑通**，需改用 SOTA 模型——其中 `nex-agi/Nex-N2-Pro`（能动性思考模型，开源 SOTA）**当前限免**，是复杂任务的首选，也可用 `Pro/zai-org/GLM-5.1`。建议用 `MODEL_NAME` 环境变量管理模型名，而非写死在代码里。平台模型会不定期上下线，最新可用模型见 [模型广场](https://cloud.siliconflow.cn/models)。
 
 ---
 
@@ -93,7 +94,10 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
 ## 模型算力支持
 
 <a href="https://cloud.siliconflow.cn/i/Fq9zUwPf" target="_blank" rel="noopener">
-  <img src="public/imgs/siliconflow.svg" alt="SiliconFlow 硅基流动" height="40" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/imgs/siliconflow-dark.svg" />
+    <img src="public/imgs/siliconflow.svg" alt="SiliconFlow 硅基流动" height="40" />
+  </picture>
 </a>
 
 本课程的模型算力由 **[硅基流动（SiliconFlow）](https://cloud.siliconflow.cn/i/Fq9zUwPf)** 支持。硅基流动是一站式大模型云服务平台，基于自研推理引擎实现大模型高效推理加速，提供高效能、低成本的多品类 AI 模型服务，让开发者和企业聚焦产品创新，无须担心大规模推广带来的高昂算力成本。

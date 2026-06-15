@@ -327,13 +327,14 @@ agent = create_deep_agent(model="openai:gpt-4.1")
 
 | 模型 | 参数量 | 特点 |
 |---|---|---|
+| `nex-agi/Nex-N2-Pro` | — | 🔥 **限免**：能动性思考模型，自适应推理深度，编码/搜索/工具任务开源 SOTA，可与 Claude Code、Cursor 等即插即用——**限免期间是复杂任务的首选** |
 | `Pro/zai-org/GLM-5.1` | 744B (MoE, 40B 激活) | 智谱最新旗舰，Agent 任务同类最佳，支持推理模式 |
 | `Pro/moonshotai/Kimi-K2.6` | 1T (MoE, 32B 激活) | Kimi 最新旗舰，原生多模态智能体模型，256K 上下文 |
 | `Pro/deepseek-ai/DeepSeek-V4-Pro` | 671B (MoE) | 推理和 Agent 能力顶级 |
 | `Qwen/Qwen3.6-27B` | 27B | Qwen 最新系列，支持思考模式和视觉理解 |
 | `Qwen/Qwen3.5-122B-A10B` | 122B (MoE, 10B 激活) | 旗舰级 MoE，仅 10B 激活参数，性价比极高 |
 
-> 本系列示例代码默认使用免费的 `Qwen/Qwen2.5-7B-Instruct` 以降低入门门槛，它足以跑通本章的简单示例。但任务规划、多 Agent 编排等复杂场景小模型往往无法稳定完成，需改用 GLM-5.1、Kimi-K2.6 或 Qwen3.6 系列等更大尺寸模型。建议用 `MODEL_NAME` 环境变量管理模型名，避免写死在代码中；完整模型列表见 [模型广场](https://cloud.siliconflow.cn/models)。
+> 本系列示例代码默认使用免费的 `Qwen/Qwen2.5-7B-Instruct` 以降低入门门槛，它足以跑通本章的简单示例。但任务规划、多 Agent 编排等复杂场景小模型往往无法稳定完成，需改用 SOTA 模型——其中 `nex-agi/Nex-N2-Pro` **当前限免**，是复杂任务的首选，也可用 GLM-5.1、Kimi-K2.6 或 Qwen3.6 系列。建议用 `MODEL_NAME` 环境变量管理模型名，避免写死在代码中；完整模型列表见 [模型广场](https://cloud.siliconflow.cn/models)。
 
 ## 调试与追踪：LangSmith
 
