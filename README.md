@@ -148,7 +148,7 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
   <a href="https://github.com/Walt-like" title="Walt-like">
     <img src="https://avatars.githubusercontent.com/u/56186222?v=4&s=144" width="72" height="72" alt="Walt-like" style="border-radius:50%;" />
   </a><br />
-  <a href="https://github.com/Walt-like" title="打开 Walt-like 的 GitHub 主页"><kbd><strong>Walt-like</strong></kbd></a><br />
+  <a href="https://github.com/Walt-like" title="打开 Walt-like 的 GitHub 主页"><kbd><strong>Walt‑like</strong></kbd></a><br />
   <sub>1 commit</sub>
 </td>
 </tr>
@@ -157,7 +157,7 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
   <a href="https://github.com/xschen-beb" title="xschen-beb">
     <img src="https://avatars.githubusercontent.com/u/61721839?v=4&s=144" width="72" height="72" alt="xschen-beb" style="border-radius:50%;" />
   </a><br />
-  <a href="https://github.com/xschen-beb" title="打开 xschen-beb 的 GitHub 主页"><kbd><strong>xschen-beb</strong></kbd></a><br />
+  <a href="https://github.com/xschen-beb" title="打开 xschen-beb 的 GitHub 主页"><kbd><strong>xschen‑beb</strong></kbd></a><br />
   <sub>1 commit</sub>
 </td>
 </tr>
