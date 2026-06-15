@@ -103,6 +103,13 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
   <sub>49 commits</sub>
 </td>
 <td align="center" valign="top" width="104">
+  <a href="https://github.com/Spr1ng7" title="Spr1ng7">
+    <img src="https://avatars.githubusercontent.com/u/188573471?v=4&s=144" width="72" height="72" alt="Spr1ng7" style="border-radius:50%;" />
+  </a><br />
+  <a href="https://github.com/Spr1ng7" title="打开 Spr1ng7 的 GitHub 主页"><kbd><strong>Spr1ng7</strong></kbd></a><br />
+  <sub>5 commits</sub>
+</td>
+<td align="center" valign="top" width="104">
   <a href="https://github.com/knqiufan" title="knqiufan">
     <img src="https://avatars.githubusercontent.com/u/34114995?v=4&s=144" width="72" height="72" alt="knqiufan" style="border-radius:50%;" />
   </a><br />
@@ -142,6 +149,15 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
     <img src="https://avatars.githubusercontent.com/u/56186222?v=4&s=144" width="72" height="72" alt="Walt-like" style="border-radius:50%;" />
   </a><br />
   <a href="https://github.com/Walt-like" title="打开 Walt-like 的 GitHub 主页"><kbd><strong>Walt-like</strong></kbd></a><br />
+  <sub>1 commit</sub>
+</td>
+</tr>
+<tr>
+<td align="center" valign="top" width="104">
+  <a href="https://github.com/xschen-beb" title="xschen-beb">
+    <img src="https://avatars.githubusercontent.com/u/61721839?v=4&s=144" width="72" height="72" alt="xschen-beb" style="border-radius:50%;" />
+  </a><br />
+  <a href="https://github.com/xschen-beb" title="打开 xschen-beb 的 GitHub 主页"><kbd><strong>xschen-beb</strong></kbd></a><br />
   <sub>1 commit</sub>
 </td>
 </tr>

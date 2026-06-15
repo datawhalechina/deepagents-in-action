@@ -27,6 +27,11 @@ function resolveRepoSlug() {
   return match[1];
 }
 
+// Aggregate contributors from the commits API rather than the /contributors
+// stats endpoint. The latter is cached/eventually-consistent: after pushes it
+// can return a transitional snapshot that omits real contributors or surfaces
+// bots, which would silently drop people from the wall. Tallying commit authors
+// is authoritative and real-time.
 async function fetchContributors(repoSlug) {
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
   const headers = {
@@ -38,11 +43,11 @@ async function fetchContributors(repoSlug) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const contributors = [];
+  const byLogin = new Map();
   let page = 1;
 
   while (true) {
-    const url = `https://api.github.com/repos/${repoSlug}/contributors?per_page=100&page=${page}`;
+    const url = `https://api.github.com/repos/${repoSlug}/commits?per_page=100&page=${page}`;
     const response = await fetch(url, { headers });
 
     if (!response.ok) {
@@ -55,19 +60,32 @@ async function fetchContributors(repoSlug) {
       break;
     }
 
-    contributors.push(...pageItems);
+    for (const commit of pageItems) {
+      const author = commit?.author;
+      // Skip commits with no linked GitHub user (e.g. unmatched email) and bots.
+      if (!author?.login || author.type !== 'User') {
+        continue;
+      }
+
+      const existing = byLogin.get(author.login);
+      if (existing) {
+        existing.contributions += 1;
+      } else {
+        byLogin.set(author.login, {
+          login: author.login,
+          profileUrl: author.html_url,
+          avatarUrl: `${author.avatar_url}&s=144`,
+          contributions: 1,
+        });
+      }
+    }
+
     page += 1;
   }
 
-  return contributors
-    .filter((item) => item?.type === 'User' && item?.login)
-    .map((item) => ({
-      login: item.login,
-      profileUrl: item.html_url,
-      avatarUrl: `${item.avatar_url}&s=144`,
-      contributions: item.contributions ?? 0,
-    }))
-    .sort((a, b) => b.contributions - a.contributions || a.login.localeCompare(b.login));
+  return [...byLogin.values()].sort(
+    (a, b) => b.contributions - a.contributions || a.login.localeCompare(b.login),
+  );
 }
 
 function updateReadme(wallMarkup) {
