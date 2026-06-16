@@ -96,7 +96,7 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
 ---
 
 ## 友情链接
-由 **[沧海九粟](https://space.bilibili.com/28357052)** 在 DataWhale 上开源的另一门课程，是面向所有 AI 爱好者的 Data 与 AI 基础入门教程 —— [《Easy Data x AI》](https://github.com/datawhalechina/easy-data-x-ai)。目前已经进入了内测阶段，欢迎大家来学习和积极参与共建~
+由 **[沧海九粟](https://space.bilibili.com/28357052)** 在 DataWhale 上开源的另一门课程，是面向所有 AI 爱好者的 Data 与 AI 基础入门教程 —— [《Easy Data x AI》](https://github.com/datawhalechina/easy-data-x-ai)。目前已经进入了内测阶段，欢迎大家来学习和积极参与共建。
 
 ---
 
