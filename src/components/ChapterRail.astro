@@ -15,7 +15,8 @@ const { sections } = Astro.props;
 const base = import.meta.env.BASE_URL;
 ---
 
-{/* Mobile/tablet (<lg): sticky bar + tap-to-open dropdown. */}
+{/* Mobile/tablet (<lg): sticky bar + tap-to-open dropdown. Desktop shows nothing —
+    on wide screens the chapter cards take main's full width. */}
 <div class="chapter-rail-mobile lg:hidden" data-rail-mobile>
   <button
     type="button"
@@ -51,31 +52,7 @@ const base = import.meta.env.BASE_URL;
   </div>
 </div>
 
-{/* Desktop rail: quiet, sticky, lg+ only. */}
-<nav class="chapter-rail hidden lg:block lg:mt-16 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto" aria-label="课程目录">
-  <p class="text-[10px] font-mono uppercase tracking-[0.15em] text-ink-muted/35 mb-3">目录</p>
-  {sections.map(group => (
-    <div class="mb-5 last:mb-0">
-      <p class="text-[11px] font-semibold tracking-wide text-ink-muted/75 mb-1.5">{group.section}</p>
-      <ul class="space-y-1">
-        {group.items.map(item => (
-          <li>
-            <a
-              href={`${base}/#ch-${item.id}`}
-              data-rail-target={`ch-${item.id}`}
-              title={item.title}
-              class="rail-link block truncate py-1.5 pl-3 text-[13px] leading-snug text-ink-muted/65 hover:text-ink transition-colors"
-            >{item.title}</a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  ))}
-</nav>
-
 <style>
-  /* Active item (set by scrollspy JS in Task 5): firm the text + a single 1px gold tick.
-     This is the only color in the rail. No background, no bold gold text. */
   .rail-link {
     border-left: 2px solid transparent;
     margin-left: -2px; /* keep text aligned whether or not the tick shows */
@@ -117,34 +94,11 @@ const base = import.meta.env.BASE_URL;
     background: var(--color-gold-pale);
     border-radius: 2px;
   }
-
-  @media (min-width: 1600px) {
-    /* Detach the rail into the viewport's left gutter without disturbing the
-       cards. It stays in normal document order as the first child of
-       .chapter-grid (now display:block), so its TOP naturally begins at the
-       grid/body start, below the hero — not pinned to the viewport top.
-       sticky keeps it scroll-following; the float + negative right margin
-       cancel its horizontal footprint so the cards keep main's full width and
-       are not pushed down. The negative left margin pulls it from main's
-       content-left edge out to ~1.5rem from the viewport edge:
-         main content-left = (100vw - 72rem)/2 + 1.5rem (max-w-6xl + px-6)
-         want rail-left     = 1.5rem  ->  margin-left = -((100vw - 72rem)/2) */
-    .chapter-rail {
-      position: sticky;
-      top: 6rem;
-      float: left;
-      width: 192px;
-      margin-top: 0; /* drop lg:mt-16 so the rail top lines up with the cards */
-      margin-left: calc(-1 * (100vw - 72rem) / 2);
-      margin-right: -192px;
-      max-height: calc(100vh - 7rem);
-      overflow-y: auto;
-    }
-  }
 </style>
 
 <script>
-  // Scrollspy: highlight the rail item whose card is nearest the top of the viewport.
+  // Scrollspy for the mobile course-directory bar: highlight the rail item whose
+  // card is nearest the top of the viewport and reflect its section in the bar.
   // Rail links carry data-rail-target="ch-<id>"; cards have id="ch-<id>".
   let prevObserver: IntersectionObserver | undefined;
   let railCurrentLabel: HTMLElement | null = null;
@@ -156,7 +110,7 @@ const base = import.meta.env.BASE_URL;
     if (prevDocClickHandler) document.removeEventListener('click', prevDocClickHandler);
     if (prevDocKeydownHandler) document.removeEventListener('keydown', prevDocKeydownHandler);
     const links = Array.from(
-      document.querySelectorAll<HTMLAnchorElement>('.chapter-rail .rail-link[data-rail-target]')
+      document.querySelectorAll<HTMLAnchorElement>('[data-rail-mobile] .rail-link[data-rail-target]')
     );
     if (links.length === 0) return;
 
@@ -166,8 +120,8 @@ const base = import.meta.env.BASE_URL;
       if (t) linkByTarget.set(t, link);
     }
 
-    const cards = links
-      .map((l) => document.getElementById(l.dataset.railTarget!))
+    const cards = Array.from(linkByTarget.keys())
+      .map((id) => document.getElementById(id))
       .filter((el): el is HTMLElement => el !== null);
     if (cards.length === 0) return;
 
@@ -187,8 +141,6 @@ const base = import.meta.env.BASE_URL;
       if (active) {
         active.classList.add('is-active');
         active.setAttribute('aria-current', 'true');
-        // Keep the active item visible if the rail itself scrolled.
-        active.scrollIntoView({ block: 'nearest' });
       }
     };
 

@@ -1,0 +1,263 @@
+---
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+interface Props {
+  headings: Heading[];
+}
+
+const { headings } = Astro.props;
+// Only H2/H3 make a useful contents rail; deeper levels add noise.
+const items = headings.filter(h => h.depth === 2 || h.depth === 3);
+---
+
+{items.length > 0 && (
+  <>
+    {/* Mobile/tablet: sticky bar + tap-to-open dropdown. Hidden once the
+        viewport is wide enough for the gutter rail (see @media below). */}
+    <div class="contents-rail-mobile" data-contents-mobile>
+      <button
+        type="button"
+        class="contents-rail-mobile__bar"
+        aria-expanded="false"
+        aria-controls="contents-rail-panel"
+        data-contents-toggle
+      >
+        <span class="inline-flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h12M4 18h8"/></svg>
+          <span class="text-sm font-medium">本页目录</span>
+        </span>
+        <span class="text-xs text-ink-muted/60 truncate max-w-[55%]" data-contents-current></span>
+      </button>
+      <div id="contents-rail-panel" class="contents-rail-mobile__panel" hidden>
+        <ul class="space-y-0.5">
+          {items.map(h => (
+            <li>
+              <a
+                href={`#${h.slug}`}
+                data-toc-target={h.slug}
+                title={h.text}
+                class={`toc-link block truncate py-1.5 text-[13px] text-ink-muted/70 hover:text-ink transition-colors ${h.depth === 3 ? 'pl-6' : 'pl-3'}`}
+              >{h.text}</a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+
+    {/* Desktop rail: quiet, sticky. Floated into the article's right gutter;
+        only shown when the viewport is wide enough to hold it (see @media). */}
+    <nav class="contents-rail sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto" aria-label="本页目录">
+      <p class="text-[10px] font-mono uppercase tracking-[0.15em] text-ink-muted/35 mb-3">本页目录</p>
+      <ul class="space-y-1">
+        {items.map(h => (
+          <li>
+            <a
+              href={`#${h.slug}`}
+              data-toc-target={h.slug}
+              title={h.text}
+              class={`toc-link block truncate py-1.5 text-[13px] leading-snug text-ink-muted/65 hover:text-ink transition-colors ${h.depth === 3 ? 'pl-6' : 'pl-3'}`}
+            >{h.text}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </>
+)}
+
+<style>
+  .toc-link {
+    border-left: 2px solid transparent;
+    margin-left: -2px; /* keep text aligned whether or not the tick shows */
+  }
+  .toc-link.is-active {
+    color: var(--color-ink);
+    border-left-color: var(--color-gold);
+  }
+  .toc-link:focus-visible {
+    outline: none;
+    color: var(--color-ink);
+    border-left-color: var(--color-gold);
+    background: var(--color-gold-pale);
+    border-radius: 2px;
+  }
+  .contents-rail-mobile {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0 -1.5rem 1.5rem; /* bleed to viewport edges (counteract article px-6) */
+    background: var(--color-paper);
+    border-bottom: 1px solid var(--color-gold-pale);
+  }
+  .contents-rail-mobile__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    color: var(--color-ink);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+  .contents-rail-mobile__panel {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 0.5rem 1.5rem 1rem;
+    border-top: 1px solid var(--color-gold-pale);
+  }
+
+  /* Default (narrow): the gutter rail is hidden; only the mobile bar shows. */
+  .contents-rail { display: none; }
+
+  /* Wide enough for a real right gutter beside the max-w-3xl (48rem) article:
+       gutter each side = (100vw - 48rem) / 2
+     A 192px rail + breathing room needs ~1280px before it's worth detaching.
+     Float it into the right gutter (negative margin cancels its horizontal
+     footprint so the centered article column is undisturbed) and drop the
+     mobile bar. The rail lives at the top of <article> in document order, so
+     it floats alongside the header + prose that follow it.
+       article right edge from viewport-right = (100vw - 48rem) / 2
+       float-right inner edge adds the 1.5rem px-6 padding
+       margin-right = -((100vw - 48rem) / 2) pulls it to ~1.5rem from the edge */
+  @media (min-width: 1280px) {
+    .contents-rail-mobile { display: none; }
+    .contents-rail {
+      display: block;
+      float: right;
+      width: 192px;
+      margin-right: calc(-1 * (100vw - 48rem) / 2);
+      margin-left: -192px; /* cancel the float's footprint so prose keeps full width */
+      margin-top: 4rem; /* clear the article header's top padding */
+    }
+  }
+</style>
+
+<script>
+  // Scrollspy for the article contents rail: highlight the TOC item whose
+  // heading is nearest the top of the viewport. TOC links carry
+  // data-toc-target="<slug>"; headings render with matching id="<slug>".
+  let prevObserver: IntersectionObserver | undefined;
+  let prevDocClickHandler: ((e: MouseEvent) => void) | undefined;
+  let prevDocKeydownHandler: ((e: KeyboardEvent) => void) | undefined;
+  function initContentsRail() {
+    prevObserver?.disconnect();
+    if (prevDocClickHandler) document.removeEventListener('click', prevDocClickHandler);
+    if (prevDocKeydownHandler) document.removeEventListener('keydown', prevDocKeydownHandler);
+
+    const links = Array.from(
+      document.querySelectorAll<HTMLAnchorElement>('.toc-link[data-toc-target]')
+    );
+    if (links.length === 0) return;
+
+    // Group links by target slug (the same heading appears in both the desktop
+    // rail and the mobile panel), so activating a slug lights up both.
+    const linksByTarget = new Map<string, HTMLAnchorElement[]>();
+    for (const link of links) {
+      const t = link.dataset.tocTarget;
+      if (!t) continue;
+      const list = linksByTarget.get(t) ?? [];
+      list.push(link);
+      linksByTarget.set(t, list);
+    }
+
+    const headings = Array.from(linksByTarget.keys())
+      .map((slug) => document.getElementById(slug))
+      .filter((el): el is HTMLElement => el !== null);
+    if (headings.length === 0) return;
+
+    const currentLabel = document.querySelector<HTMLElement>('[data-contents-current]');
+    const textOf = (slug: string) =>
+      linksByTarget.get(slug)?.[0]?.textContent?.trim() ?? '';
+
+    let activeId = '';
+    const setActive = (id: string) => {
+      if (id === activeId) return;
+      activeId = id;
+      if (currentLabel) currentLabel.textContent = textOf(id);
+      for (const link of links) {
+        link.classList.remove('is-active');
+        link.removeAttribute('aria-current');
+      }
+      for (const link of linksByTarget.get(id) ?? []) {
+        link.classList.add('is-active');
+        link.setAttribute('aria-current', 'true');
+        link.scrollIntoView({ block: 'nearest' });
+      }
+    };
+
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target.id);
+          else visible.delete(entry.target.id);
+        }
+        let topId = '';
+        let topY = Infinity;
+        for (const id of visible) {
+          const el = document.getElementById(id);
+          if (!el) continue;
+          const y = el.getBoundingClientRect().top;
+          if (y < topY) {
+            topY = y;
+            topId = id;
+          }
+        }
+        if (topId) setActive(topId);
+      },
+      { rootMargin: '-20% 0px -70% 0px', threshold: 0 }
+    );
+
+    for (const h of headings) observer.observe(h);
+    prevObserver = observer;
+
+    // --- Mobile bar: toggle panel ---
+    const mobile = document.querySelector<HTMLElement>('[data-contents-mobile]');
+    const toggle = document.querySelector<HTMLButtonElement>('[data-contents-toggle]');
+    const panel = document.getElementById('contents-rail-panel');
+
+    const closePanel = () => {
+      if (!toggle || !panel) return;
+      toggle.setAttribute('aria-expanded', 'false');
+      panel.hidden = true;
+    };
+    const openPanel = () => {
+      if (!toggle || !panel) return;
+      toggle.setAttribute('aria-expanded', 'true');
+      panel.hidden = false;
+    };
+
+    if (toggle && panel) {
+      toggle.addEventListener('click', () => {
+        if (panel.hidden) openPanel();
+        else closePanel();
+      });
+      panel.querySelectorAll('a[data-toc-target]').forEach((a) =>
+        a.addEventListener('click', () => closePanel())
+      );
+      const clickHandler = (e: MouseEvent) => {
+        if (!mobile) return;
+        if (!panel.hidden && !mobile.contains(e.target as Node)) closePanel();
+      };
+      const keydownHandler = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && !panel.hidden) closePanel();
+      };
+      document.addEventListener('click', clickHandler);
+      document.addEventListener('keydown', keydownHandler);
+      prevDocClickHandler = clickHandler;
+      prevDocKeydownHandler = keydownHandler;
+    }
+
+    // Seed the mobile bar label so it's never blank before scrollspy fires.
+    if (currentLabel && !currentLabel.textContent) {
+      const first = linksByTarget.keys().next().value;
+      if (first) currentLabel.textContent = textOf(first);
+    }
+  }
+
+  initContentsRail();
+  document.addEventListener('astro:page-load', initContentsRail);
+</script>

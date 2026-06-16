@@ -6,6 +6,7 @@ import Prose from '../components/Prose.astro';
 import PdfDownload from '../components/PdfDownload.astro';
 import SocialLinks from '../components/SocialLinks.astro';
 import ChapterNav from '../components/ChapterNav.astro';
+import ContentsRail from '../components/ContentsRail.astro';
 
 interface Props {
   title: string;
@@ -16,11 +17,12 @@ interface Props {
   bilibili?: string;
   xhs?: string;
   chapterId?: string;
+  headings?: Array<{ depth: number; slug: string; text: string }>;
   prev?: { id: string; title: string; chapter: number } | null;
   next?: { id: string; title: string; chapter: number } | null;
 }
 
-const { title, chapter, section, description, slides, bilibili, xhs, chapterId, prev, next } = Astro.props;
+const { title, chapter, section, description, slides, bilibili, xhs, chapterId, headings = [], prev, next } = Astro.props;
 const CONTENT_REPO = 'https://github.com/datawhalechina/deepagents-in-action';
 const editUrl = chapterId ? `${CONTENT_REPO}/blob/main/content/${chapterId}.md` : `${CONTENT_REPO}/tree/main/content`;
 
@@ -38,6 +40,7 @@ const isExtra = section === '准备篇';
 <BaseLayout title={`${isExtra ? '' : `第 ${chapter} 章：`}${title} — Deep Agents 实战`} description={description}>
   <Header />
   <article class="max-w-3xl mx-auto px-6 py-16">
+    <ContentsRail headings={headings} />
     <header class="mb-14 relative">
       <div class="flex items-center gap-3 mb-6">
         <span class={`inline-block text-[10px] font-mono font-medium tracking-wider px-2.5 py-1 rounded ${tagClass}`}>

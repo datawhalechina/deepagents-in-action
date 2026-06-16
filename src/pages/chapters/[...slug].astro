@@ -22,7 +22,7 @@ export async function getStaticPaths() {
 }
 
 const { chapter, prev, next } = Astro.props;
-const { Content } = await render(chapter);
+const { Content, headings } = await render(chapter);
 ---
 
 <ChapterLayout
@@ -34,6 +34,7 @@ const { Content } = await render(chapter);
   bilibili={chapter.data.bilibili || chapter.data.slides?.[0]?.bilibili}
   xhs={chapter.data.xhs || chapter.data.slides?.[0]?.xhs}
   chapterId={chapter.id}
+  headings={headings}
   prev={prev}
   next={next}
 >
