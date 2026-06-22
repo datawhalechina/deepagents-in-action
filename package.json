@@ -8,7 +8,6 @@
   "scripts": {
     "assets:check": "bash scripts/optimize-assets.sh && git diff --exit-code -- public content src README.md CONTRIBUTING.md scripts package.json .github/workflows",
     "assets:optimize": "bash scripts/optimize-assets.sh",
-    "contributors:update": "node scripts/update-contributors.mjs",
     "predev": "node scripts/prep-content.mjs",
     "dev": "astro dev",
     "prebuild": "node scripts/prep-content.mjs",
