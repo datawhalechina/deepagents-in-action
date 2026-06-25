@@ -73,17 +73,6 @@ const hasXhs = !!xhs || slides.some(s => s.xhs);
     <ChapterNav prev={prev} next={next} />
   </article>
 
-  <!-- Back to top button -->
-  <button
-    id="back-to-top"
-    class="fixed bottom-8 right-8 p-3 bg-white border border-gold-pale/80 rounded-full shadow-lg opacity-0 invisible transition-all duration-300 hover:border-gold hover:shadow-xl z-50"
-    aria-label="回到顶部"
-  >
-    <svg class="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
-    </svg>
-  </button>
-
   <script>
     const backToTop = document.getElementById('back-to-top');
     const toggleVisibility = () => {
