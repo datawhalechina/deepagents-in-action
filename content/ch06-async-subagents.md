@@ -163,7 +163,7 @@ ASGI 优势：
 
 ### 本地最小验证方案（单部署 + ASGI，可直接复制运行）
 
-如果你只是想先确认"异步子 Agent 真的能派活后立刻返回"，**不需要先上远程部署**。下面这套最小示例可以直接复制到一个空目录里跑起来：
+如果你只是想先确认异步子 Agent 真的能派活后立刻返回，**不需要先上远程部署**。下面这套最小示例可以直接复制到一个空目录里跑起来：
 
 ```text
 async-subagent-demo/
@@ -198,7 +198,7 @@ langchain-openai
 
 ### 第 2 步：准备环境变量
 
-本地 `langgraph dev` 也需要 LangSmith API Key，模型调用则需要你所选模型提供商的 Key。为了让示例尽量短，下面默认用 OpenAI；如果你想和前面章节保持一致，也可以直接改成硅基流动的 OpenAI 兼容接口。对于本章这种多 Agent / 中间件叠加场景，更建议用能力更强的模型；如果你只是验证最小 demo，也可以尝试 `Qwen/Qwen2.5-7B-Instruct`。
+本地 `langgraph dev` 也需要 LangSmith API Key，模型调用则需要你所选模型提供商的 Key。为了让示例尽量短，下面默认用 OpenAI；如果你想和前面章节保持一致，也可以直接改成硅基流动的 OpenAI 兼容接口。对于本章这种多 Agent / 中间件叠加场景，更建议用能力更强的模型；如果你只是验证最小 Demo，也可以尝试 `Qwen/Qwen2.5-7B-Instruct`。
 
 ```bash
 OPENAI_API_KEY=sk-...
@@ -215,14 +215,14 @@ OPENAI_API_KEY=sk-...
 LANGSMITH_API_KEY=lsv2-...
 ```
 
-如果你要改成和 ch02 一致的硅基流动写法，把 `.env` 改成下面这样即可：
+如果你要改成和第二章一致的硅基流动写法，把 `.env` 改成下面这样即可：
 
 ```dotenv
 SILICONFLOW_API_KEY=your-siliconflow-key
 MODEL_NAME=Pro/zai-org/GLM-5.1
 ```
 
-### 第 3 步：写 `langgraph.json`
+### 第 3 步：编写 `langgraph.json`
 
 这里的关键点有两个：
 
@@ -240,7 +240,7 @@ MODEL_NAME=Pro/zai-org/GLM-5.1
 }
 ```
 
-### 第 4 步：写一个故意"很慢"的子 Agent
+### 第 4 步：编写一个故意运行很慢的 Subagent
 
 为了让异步效果稳定可见，我们不让 `researcher` 去调搜索 API，而是直接写一个 **固定 sleep 8 秒** 的 LangGraph。这样你每次都能观察到：
 
@@ -281,11 +281,11 @@ builder.add_edge("slow_research", END)
 graph = builder.compile()
 ```
 
-### 第 5 步：写 supervisor
+### 第 5 步：创建 Supervisor
 
-`supervisor` 用 `create_deep_agent()` 创建，并只注册一个 `AsyncSubAgent`。最关键的是：
+主智能体用 `create_deep_agent()` 创建，并只注册一个 `AsyncSubAgent`。最关键的是：
 
-- `graph_id="researcher"` 必须和 `langgraph.json` 中的 graph 名一致；
+- `graph_id="researcher"` 必须和 `langgraph.json` 中的 `graphs` 键名一致；
 - **不要写 `url`**，这样才会走 ASGI；
 - 在 `system_prompt` 里明确要求：先启动异步任务并把 `task_id` 返回给用户，不要立刻轮询。
 
@@ -341,7 +341,7 @@ model = ChatOpenAI(
 
 ### 第 6 步：启动本地 Agent Server
 
-worker 槽位要至少容纳 1 个 supervisor run + 1 个 researcher run。这个 demo 建议直接开到 4：
+Worker 槽位要至少容纳 1 个 Supervisor + 1 个 Researcher 的运行。这里的演示建议直接开到 `4`：
 
 ```bash
 langgraph dev --n-jobs-per-worker 4
@@ -353,11 +353,11 @@ langgraph dev --n-jobs-per-worker 4
 API: http://127.0.0.1:2024
 ```
 
-### 第 7 步：用 SDK 验证异步行为
+### 第 7 步：使用 SDK 验证异步行为
 
-下面这个脚本会在**同一个 thread** 上连续做三件事：
+下面这个脚本会在**同一个 Thread** 上连续做三件事：
 
-1. 让 supervisor 启动一个后台 researcher 任务；
+1. 让 Supervisor 启动一个后台 Researcher 任务；
 2. 立刻追问进度，验证它没有阻塞；
 3. 再追加一个新约束，验证 `update_async_task` 可用。
 
@@ -446,7 +446,7 @@ python run_demo.py
 3. `third response` 不会要求你重开任务，而是会尝试更新已有后台任务。
 4. 过几秒后再次问进度时，状态会从 `running` 变成 `success`，并带上 `researcher` 的最终结果。
 
-这个示例的目标不是做"真实研究"，而是**稳定验证异步机制本身**。一旦这套最小示例跑通，你再把 `researcher` 替换成真正的 Deep Agent、搜索工具或远程 HTTP 子 Agent，排障成本会低很多。
+这个示例的目标不是做真实研究，而是**稳定验证异步机制本身**。一旦这套最小示例跑通，你再把 `researcher` 替换成真正的深度智能体、搜索工具或远程 HTTP 子智能体，排障成本会低很多。
 
 ### HTTP 传输（远程，按需切换）
 
@@ -455,7 +455,7 @@ python run_demo.py
 ```python
 AsyncSubAgent(
     name="researcher",
-    description="研究 Agent",
+    description="Research Agent",
     graph_id="researcher",
     url="https://my-research-deployment.langsmith.dev",
 )
@@ -465,9 +465,9 @@ LangGraph 部署的鉴权由 SDK 自动处理：从环境变量读取 `LANGSMITH
 
 **什么时候用 HTTP？**
 
-- 子 Agent 需要**独立扩缩容**
-- 子 Agent 要不一样的资源画像（GPU / 大内存）
-- 子 Agent 由**另一个团队**维护、独立发布
+- 子智能体需要**独立扩缩容**
+- 子智能体要不一样的资源画像（GPU / 大内存）
+- 子智能体由**另一个团队**维护、独立发布
 
 ## 三种部署拓扑
 
@@ -501,9 +501,9 @@ async_subagents = [
 
 ## 最佳实践
 
-### 1. 本地开发要把 worker pool 调大
+### 1. 本地开发要把 Worker Pool 调大
 
-每个活跃 run 占用一个 worker 槽位。一个主 Agent 同时跑 3 个子 Agent，至少需要 4 个槽位（1 主 + 3 子）。槽位不够时，新启动的 run 会**排队**。常见表现包括：`start_async_task` 长时间不返回，或虽然拿到了 task ID，但后续 `check_async_task` 长时间看不到实质进展。
+每个活跃的运行会占用一个 Worker 槽位。一个主 Agent 同时跑 3 个子 Agent，至少需要 4 个槽位（1 主 + 3 子）。槽位不够时，新启动的任务会**排队**。常见表现包括：`start_async_task` 长时间不返回，或虽然拿到了任务 ID，但后续 `check_async_task` 长时间看不到实质进展。
 
 ```bash
 langgraph dev --n-jobs-per-worker 10
@@ -529,15 +529,15 @@ AsyncSubAgent(
 )
 ```
 
-### 3. 用 thread ID 串联追踪
+### 3. 用 Thread ID 串联追踪
 
 LangGraph 部署里，每次异步子 Agent 运行都是一次普通的 LangGraph run，在 LangSmith 中完整可见。主 Agent 的 trace 会显示 launch / check / update / cancel / list 这些工具调用；每个子 Agent 的运行是另一条 trace，**通过 thread ID（也就是 task ID）就能把两边对上**。出问题时这条线索极其重要。
 
 ## 常见问题排查
 
-### 问题 1：刚启动就立刻轮询 check
+### 问题 1：刚启动就立刻轮询状态
 
-**症状**：主 Agent 调完 `start_async_task` 立刻又调 `check_async_task`，循环往复——异步直接退化成"伪同步"。
+**症状**：主 Agent 调完 `start_async_task` 立刻又调 `check_async_task`，循环往复——异步直接退化成伪同步。
 
 **解法**：中间件本身已经在系统提示词里加了相关规则。如果模型仍然不听话，在你自己的主 Agent system_prompt 里再强化一次：
 
