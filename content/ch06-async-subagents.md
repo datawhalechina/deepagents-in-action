@@ -2,7 +2,7 @@
 
 > 上一章我们学习了同步子 Agent，主 Agent 通过 `task` 工具委派、然后**等待**子 Agent 跑完。但是，当子任务要花上几分钟、甚至几十分钟时，主 Agent 在用户面前就成了“死机状态”——既无法继续聊，也无法插话调整方向。本章学习 Deep Agents 0.5.0 的预览特性：**Async Subagent（异步子 Agent）**——主 Agent 立即拿到任务 ID 就返回，子 Agent 在后台继续跑；用户可以随时问进度、追加要求，甚至中途取消。
 
-> ⚠️ Async Subagent 是 `deepagents>=0.5.0` 的**预览特性**（preview），仍在迭代中，API 可能变化。本章对应的代码示例需要部署到 LangSmith Deployments 或自托管的 Agent Protocol 服务。
+> ⚠️ Async Subagent 是 `deepagents>=0.5.0` 的**预览特性**（preview），仍在迭代中，API 可能变化。本章对应的代码示例需要运行在支持 Agent Protocol 的 LangGraph 服务环境中。起步时不必先上 LangSmith Deployments；本地单部署 + ASGI 传输就能完成最小验证。
 
 ## 同步子 Agent 的瓶颈
 
@@ -160,6 +160,293 @@ ASGI 优势：
 - **子 Agent 仍跑在独立 thread 上**，状态隔离不打折
 
 绝大多数项目从这里起步就够了。
+
+### 本地最小验证方案（单部署 + ASGI，可直接复制运行）
+
+如果你只是想先确认"异步子 Agent 真的能派活后立刻返回"，**不需要先上远程部署**。下面这套最小示例可以直接复制到一个空目录里跑起来：
+
+```text
+async-subagent-demo/
+├── .env
+├── langgraph.json
+├── requirements.txt
+├── run_demo.py
+└── graphs/
+    ├── researcher.py
+    └── supervisor.py
+```
+
+### 第 1 步：安装依赖
+
+官方文档要求本地 Agent Server 使用 `langgraph dev` 启动，`langgraph.json` 里至少配置 `dependencies` 和 `graphs`；本地调试模式推荐安装 `langgraph-cli[inmem]`，并用 `langgraph-sdk` 调 API。按下面命令准备环境即可：
+
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install -U "langgraph-cli[inmem]"
+uv pip install -r requirements.txt
+```
+
+`requirements.txt`：
+
+```txt
+deepagents>=0.5.0
+langgraph
+langgraph-sdk
+langchain-openai
+```
+
+### 第 2 步：准备环境变量
+
+本地 `langgraph dev` 也需要 LangSmith API Key，模型调用则需要你所选模型提供商的 Key。为了让示例尽量短，下面默认用 OpenAI；如果你想和前面章节保持一致，也可以直接改成硅基流动的 OpenAI 兼容接口。对于本章这种多 Agent / 中间件叠加场景，更建议用能力更强的模型；如果你只是验证最小 demo，也可以尝试 `Qwen/Qwen2.5-7B-Instruct`。
+
+```bash
+OPENAI_API_KEY=sk-...
+LANGSMITH_API_KEY=lsv2-...
+# 或者改用硅基流动：
+# SILICONFLOW_API_KEY=your-siliconflow-key
+# MODEL_NAME=Pro/zai-org/GLM-5.1
+```
+
+把这两行保存到 `.env`：
+
+```dotenv
+OPENAI_API_KEY=sk-...
+LANGSMITH_API_KEY=lsv2-...
+```
+
+如果你要改成和 ch02 一致的硅基流动写法，把 `.env` 改成下面这样即可：
+
+```dotenv
+SILICONFLOW_API_KEY=your-siliconflow-key
+MODEL_NAME=Pro/zai-org/GLM-5.1
+```
+
+### 第 3 步：写 `langgraph.json`
+
+这里的关键点有两个：
+
+- `dependencies` 指向当前目录 `./`，因为 `requirements.txt` 在项目根目录；
+- `supervisor` 和 `researcher` 同时注册到一个本地 Agent Server 中，`AsyncSubAgent` 才能用 **ASGI 进程内传输** 直接调用 `researcher`，不需要写 `url`。
+
+```json
+{
+  "dependencies": ["./"],
+  "graphs": {
+    "supervisor": "./graphs/supervisor.py:graph",
+    "researcher": "./graphs/researcher.py:graph"
+  },
+  "env": "./.env"
+}
+```
+
+### 第 4 步：写一个故意"很慢"的子 Agent
+
+为了让异步效果稳定可见，我们不让 `researcher` 去调搜索 API，而是直接写一个 **固定 sleep 8 秒** 的 LangGraph。这样你每次都能观察到：
+
+- supervisor 先立刻返回 `task_id`
+- researcher 在后台继续跑
+- 之后 `check_async_task` 能看到从 `running` 变成 `success`
+
+`graphs/researcher.py`：
+
+```python
+import asyncio
+
+from langgraph.graph import END, START, MessagesState, StateGraph
+
+
+async def slow_research(state: MessagesState):
+    last_human = state["messages"][-1].content if state["messages"] else "No task provided."
+    await asyncio.sleep(8)
+    return {
+        "messages": [
+            {
+                "role": "ai",
+                "content": (
+                    "[researcher finished after 8s]\\n"
+                    f"latest task: {last_human}\\n"
+                    "summary: async subagents return a task ID immediately, "
+                    "run in the background, and can be checked or updated later."
+                ),
+            }
+        ]
+    }
+
+
+builder = StateGraph(MessagesState)
+builder.add_node("slow_research", slow_research)
+builder.add_edge(START, "slow_research")
+builder.add_edge("slow_research", END)
+graph = builder.compile()
+```
+
+### 第 5 步：写 supervisor
+
+`supervisor` 用 `create_deep_agent()` 创建，并只注册一个 `AsyncSubAgent`。最关键的是：
+
+- `graph_id="researcher"` 必须和 `langgraph.json` 中的 graph 名一致；
+- **不要写 `url`**，这样才会走 ASGI；
+- 在 `system_prompt` 里明确要求：先启动异步任务并把 `task_id` 返回给用户，不要立刻轮询。
+
+`graphs/supervisor.py`：
+
+```python
+import os
+
+from deepagents import AsyncSubAgent, create_deep_agent
+from langgraph.checkpoint.memory import InMemorySaver
+
+
+graph = create_deep_agent(
+    model=os.environ.get("MODEL_NAME", "openai:gpt-4.1-mini"),
+    system_prompt=(
+        "You are a supervisor agent for an async-subagent demo. "
+        "When the user asks for a long-running research task, you must delegate "
+        "to the async subagent named researcher immediately. "
+        "After calling start_async_task, return the task_id to the user and stop. "
+        "Do not call check_async_task unless the user explicitly asks for progress. "
+        "If the user asks to revise the background task, call update_async_task."
+    ),
+    subagents=[
+        AsyncSubAgent(
+            name="researcher",
+            description=(
+                "Use for any long-running background research or async demo task. "
+                "This agent intentionally sleeps before returning so the async "
+                "behavior is easy to observe."
+            ),
+            graph_id="researcher",
+        )
+    ],
+    checkpointer=InMemorySaver(),
+)
+```
+
+如果你想和课程前文保持一致，可以把 `MODEL_NAME` 设成硅基流动上的模型，并把 `model=` 改成一个 `ChatOpenAI(...)` 实例：
+
+```python
+import os
+
+from langchain_openai import ChatOpenAI
+
+model = ChatOpenAI(
+    model=os.environ.get("MODEL_NAME", "Pro/zai-org/GLM-5.1"),
+    api_key=os.environ["SILICONFLOW_API_KEY"],
+    base_url="https://api.siliconflow.cn/v1",
+)
+```
+
+然后把上面 `create_deep_agent()` 里的 `model=os.environ.get("MODEL_NAME", "openai:gpt-4.1-mini")` 替换成 `model=model` 即可。
+
+### 第 6 步：启动本地 Agent Server
+
+worker 槽位要至少容纳 1 个 supervisor run + 1 个 researcher run。这个 demo 建议直接开到 4：
+
+```bash
+langgraph dev --n-jobs-per-worker 4
+```
+
+启动成功后，终端里应该能看到本地地址，例如：
+
+```text
+API: http://127.0.0.1:2024
+```
+
+### 第 7 步：用 SDK 验证异步行为
+
+下面这个脚本会在**同一个 thread** 上连续做三件事：
+
+1. 让 supervisor 启动一个后台 researcher 任务；
+2. 立刻追问进度，验证它没有阻塞；
+3. 再追加一个新约束，验证 `update_async_task` 可用。
+
+`run_demo.py`：
+
+```python
+import asyncio
+from pprint import pprint
+
+from langgraph_sdk import get_client
+
+
+client = get_client(url="http://127.0.0.1:2024")
+assistant_id = "supervisor"
+
+
+async def main():
+    thread = await client.threads.create()
+    thread_id = thread["thread_id"]
+    print("thread_id =", thread_id)
+
+    first = await client.runs.wait(
+        thread_id,
+        assistant_id,
+        input={
+            "messages": [
+                {
+                    "role": "user",
+                    "content": (
+                        "请把这个任务交给 researcher 异步处理："
+                        "用后台任务总结 async subagent 的关键行为。"
+                    ),
+                }
+            ]
+        },
+    )
+    print("\\n=== first response ===")
+    pprint(first)
+
+    second = await client.runs.wait(
+        thread_id,
+        assistant_id,
+        input={
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "刚才那个后台任务现在进展如何？",
+                }
+            ]
+        },
+    )
+    print("\\n=== second response ===")
+    pprint(second)
+
+    third = await client.runs.wait(
+        thread_id,
+        assistant_id,
+        input={
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "补充约束：完成时请把答案写成 3 条 bullet。",
+                }
+            ]
+        },
+    )
+    print("\\n=== third response ===")
+    pprint(third)
+
+
+asyncio.run(main())
+```
+
+运行它：
+
+```bash
+python run_demo.py
+```
+
+### 你应该看到什么
+
+只要出现下面这组现象，就说明这条本地 ASGI 路径已经打通了：
+
+1. `first response` 很快返回，里面有一个后台任务 ID，而不是卡 8 秒等 `researcher` 完成。
+2. `second response` 大概率会看到 `running`，或者已经拿到阶段性状态信息。
+3. `third response` 不会要求你重开任务，而是会尝试更新已有后台任务。
+4. 过几秒后再次问进度时，状态会从 `running` 变成 `success`，并带上 `researcher` 的最终结果。
+
+这个示例的目标不是做"真实研究"，而是**稳定验证异步机制本身**。一旦这套最小示例跑通，你再把 `researcher` 替换成真正的 Deep Agent、搜索工具或远程 HTTP 子 Agent，排障成本会低很多。
 
 ### HTTP 传输（远程，按需切换）
 
