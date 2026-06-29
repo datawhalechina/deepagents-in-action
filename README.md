@@ -199,6 +199,9 @@ deepagents-in-action/
 `content/` 目录中的 Markdown 文件是**源文件**，不含 frontmatter。  
 `scripts/prep-content.mjs` 在 `dev` / `build` 前自动运行，从 `scripts/chapters.json` 读取元数据，生成带 frontmatter 的文件到 `src/content/chapters/`。
 
+> 注意：`content/` 下 `.md` 文件的首行 H1 标题在生成时会被自动移除，
+> 页面标题统一取自 `scripts/chapters.json`。
+
 **添加或修改章节内容，只需编辑 `content/` 目录下对应的 `.md` 文件。**  
 **修改标题、发布状态、视频链接等元数据，编辑 `scripts/chapters.json`。**
 

@@ -95,6 +95,9 @@ docs: 改善第 X 章 <简要说明>
 它读取 `scripts/chapters.json` 中的元数据，为 `content/` 下的 Markdown 注入 frontmatter，  
 生成到 `src/content/chapters/`（已加入 `.gitignore`，无需提交）。
 
+> 注意：`content/` 下 `.md` 文件的首行 H1 标题（`# 第X章...`）在生成时会被自动移除，
+> 页面标题统一取自 `scripts/chapters.json` 中的 `title` 字段。
+
 ### 文件不要提交
 
 以下目录已在 `.gitignore` 中，请勿手动提交：
