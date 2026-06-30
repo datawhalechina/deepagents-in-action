@@ -137,7 +137,7 @@ def internet_search(
 | **Docstring** | 告诉 Agent 这个工具的用途 | 没有 docstring，Agent 不知道何时该使用这个工具 |
 | **默认值** | 标记哪些参数是可选的 | Agent 只需要填必需参数，减少出错概率 |
 
-> 你可以把 docstring 想象成给 Agent 看的"使用说明书"——写得越清晰，Agent 用得越准确。
+> 你可以把 docstring 想象成给 Agent 看的“使用说明书”——写得越清晰，Agent 用得越准确。
 
 ## 小试牛刀：写一个计算器 Agent
 
@@ -242,7 +242,7 @@ def internet_search(
 
 ### Step 3：创建 Agent 并配置系统提示词
 
-系统提示词（System Prompt）是 Agent 的"人设"——它定义了 Agent 的角色、能力和工作方式：
+系统提示词（System Prompt）是 Agent 的“人设”——它定义了 Agent 的角色、能力和工作方式：
 
 ```python
 from langchain_openai import ChatOpenAI
@@ -284,7 +284,7 @@ print(result["messages"][-1].content)
 
 当你调用 `agent.invoke()` 时，Deep Agent 会自动执行一系列操作。这正是它作为 Harness 的价值所在——你只写了几行代码，但 Agent 背后的工作流程远比你看到的复杂：
 
-1. **规划任务** — 调用内置的 `write_todos` 工具，把"研究 LangGraph"拆解为多个子步骤
+1. **规划任务** — 调用内置的 `write_todos` 工具，把“研究 LangGraph”拆解为多个子步骤
 2. **搜索信息** — 调用你提供的 `internet_search` 工具，执行多次网络搜索
 3. **管理上下文** — 调用内置的 `write_file` 将大量搜索结果写入虚拟文件系统，避免上下文溢出
 4. **委派子任务**（如需要）— 调用内置的 `task` 工具，将复杂子任务委派给专门的子 Agent
@@ -389,7 +389,7 @@ agent = create_deep_agent(model="openai:gpt-4.1")
 
 ## 调试与追踪：LangSmith
 
-当 Agent 的行为不符合预期时，你需要看到它"内部在想什么"。LangSmith 是 LangChain 的可观测性平台，可以记录 Agent 的每一次模型调用、工具调用和状态变化。
+当 Agent 的行为不符合预期时，你需要看到它“内部在想什么”。LangSmith 是 LangChain 的可观测性平台，可以记录 Agent 的每一次模型调用、工具调用和状态变化。
 
 ### 快速配置
 
@@ -410,7 +410,7 @@ export LANGSMITH_API_KEY="your-langsmith-key"
 - 每一步的 token 消耗和耗时
 - 虚拟文件系统中文件的变化
 
-这对于理解"Agent 为什么做了这个决定"至关重要，尤其是在调试复杂的多步骤任务时。
+这对于理解“Agent 为什么做了这个决定”至关重要，尤其是在调试复杂的多步骤任务时。
 
 ## 完整代码
 
