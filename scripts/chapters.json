@@ -133,8 +133,8 @@
     "order": 11,
     "description": "利用 LangGraph 的中断机制，为敏感操作添加人工审批。按风险等级分层的最佳实践。",
     "slides": [
-      { "id": "ch09-1", "title": "HITL（上）— 配置、决策与恢复" },
-      { "id": "ch09-2", "title": "HITL（下）— 中断机制与最佳实践" }
+      { "id": "ch09-1", "title": "Lec 12: HITL（上）— 配置代码与恢复流程" },
+      { "id": "ch09-2", "title": "Lec 13: HITL（下）— interrupt() 代码与运行时规则" }
     ],
     "published": true,
     "pubDate": "2026-07-06"
