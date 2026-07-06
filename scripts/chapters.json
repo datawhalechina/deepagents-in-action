@@ -126,45 +126,46 @@
     "published": true,
     "pubDate": "2026-06-11"
   },
-  "ch10-human-in-the-loop": {
+  "ch09-human-in-the-loop": {
     "title": "Human-in-the-Loop — 构建安全的人机协作流程",
-    "chapter": 10,
+    "chapter": 9,
     "section": "进阶篇",
     "order": 11,
     "description": "利用 LangGraph 的中断机制，为敏感操作添加人工审批。按风险等级分层的最佳实践。",
     "slides": [],
-    "published": false
+    "published": true,
+    "pubDate": "2026-07-06"
   },
-  "ch12-sandboxes": {
+  "ch10-sandboxes": {
     "title": "沙箱执行 — 让 Agent 安全地运行代码",
-    "chapter": 12,
+    "chapter": 10,
     "section": "进阶篇",
     "order": 12,
     "description": "使用远程沙箱环境安全地执行 Agent 生成的代码。Modal、Daytona、Runloop 三大提供商。",
     "slides": [],
     "published": false
   },
-  "ch13-streaming-frontend": {
+  "ch11-streaming-frontend": {
     "title": "实时流式输出与前端集成",
-    "chapter": 13,
+    "chapter": 11,
     "section": "实战篇",
     "order": 13,
     "description": "实现 Agent 的实时流式输出，并用 React 构建可视化前端。多种 Streaming 模式与自定义事件。",
     "slides": [],
     "published": false
   },
-  "ch14-data-analysis-agent": {
+  "ch12-data-analysis-agent": {
     "title": "实战项目 — 构建数据分析 Agent",
-    "chapter": 14,
+    "chapter": 12,
     "section": "实战篇",
     "order": 14,
     "description": "综合运用前面所学，构建一个完整的数据分析 Agent。沙箱后端、子 Agent 协作、LangSmith 追踪。",
     "slides": [],
     "published": false
   },
-  "ch15-cli-deployment": {
+  "ch13-cli-deployment": {
     "title": "Deep Agents CLI 与生产部署",
-    "chapter": 15,
+    "chapter": 13,
     "section": "实战篇",
     "order": 15,
     "description": "CLI 工具使用指南 + 从开发到生产的部署路径。LangGraph Platform、ACP、模型选择策略。",
