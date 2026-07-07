@@ -1,13 +1,6 @@
 # generated content
 src/content/chapters/
 
-# local generation workspaces
-infographic/
-slide-regeneration/
-public/imgs/prompts/
-public/imgs/30-infographic-hitl-config.png
-public/imgs/31-infographic-hitl-runtime.png
-
 # build output
 dist/
 
