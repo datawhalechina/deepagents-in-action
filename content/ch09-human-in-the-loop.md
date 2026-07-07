@@ -29,7 +29,7 @@ from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 model = ChatOpenAI(
-    model="THUDM/glm-4-9b-chat",
+    model=os.environ.get("MODEL_NAME", "Pro/zai-org/GLM-5.1"),
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )
@@ -79,9 +79,15 @@ agent = create_deep_agent(
 | `approve` | 批准执行，使用 Agent 提出的原始参数 | "确认删除这个文件" |
 | `edit` | 修改参数后执行 | "收件人改一下再发" |
 | `reject` | 跳过此次工具调用，并把拒绝原因反馈给 Agent | "不要删除，取消" |
-| `respond` | 不执行工具，直接把人的回复作为合成工具结果返回 | `ask_user` 这类"询问用户"工具 |
+| `respond` | 不执行工具，把人的 `message` 当作一次成功的合成工具结果返回 | `ask_user` 这类"询问用户"工具 |
 
-注意：**拒绝副作用工具时用 `reject`，不要用 `respond`**。`respond` 的内容会被模型当作一次成功的工具结果，更适合人类临时代替工具回答问题；删除文件、发送邮件、部署上线这类工具应该用 `reject` 明确告诉 Agent 工具没有执行。
+注意：**拒绝副作用工具时用 `reject`，不要用 `respond`**。`respond` 的内容会被模型当作一次成功的 ToolMessage，更适合人类临时代替工具回答问题；删除文件、发送邮件、部署上线这类工具应该用 `reject` 明确告诉 Agent 工具没有执行。
+
+可以把它记成三条规则：
+
+- **不同意执行**：用 `reject`，并在 `message` 里说明原因和下一步
+- **同意但要改参数**：用 `edit`，只修改必要参数
+- **工具本来就是问人**：用 `respond`，让人的回答成为工具结果
 
 ## 条件中断：只拦截真正危险的调用
 
@@ -152,8 +158,9 @@ if result.interrupts:
     # 展示给用户
     for action in action_requests:
         review_config = config_map[action["name"]]
+        args = action.get("arguments", action.get("args", {}))
         print(f"工具: {action['name']}")
-        print(f"参数: {action['args']}")
+        print(f"参数: {args}")
         print(f"可选决策: {review_config['allowed_decisions']}")
 
     # Step 3: 用户做出决策
@@ -179,6 +186,8 @@ print(result.value["messages"][-1].content)
 - **必须使用 `version="v2"`**：HITL 需要 v2 版本的 invoke 接口
 - **决策数量和顺序必须匹配**：`decisions` 要和 `action_requests` 一一对应，顺序不能乱
 
+> 字段名说明：Deep Agents 文档示例里常见 `action_request["args"]`，LangChain 标准 `HumanInTheLoopMiddleware` 示例里展示的是 `action_request["arguments"]`。如果你的审批界面要兼容两种入口，可以像上面的代码一样读取 `arguments`，没有时再回退到 `args`。但恢复 `edit` 决策时，`edited_action` 仍然使用 `args`。
+
 ## 拒绝时写清楚反馈
 
 当用户返回 `reject` 时，Deep Agents 会跳过该工具调用，并把拒绝反馈返回给 Agent。如果不传 `message`，默认反馈会告诉模型工具没有执行、不要重复调用同一个工具。对于敏感工具，建议写清楚下一步应该怎么做：
@@ -190,6 +199,37 @@ decisions = [{
 }]
 ```
 
+## 直接响应：只用于问用户的工具
+
+`respond` 不是"软拒绝"，而是"人类亲自返回工具结果"。它适合专门设计成占位的 `ask_user` 工具：工具调用本身不执行，人的回答直接作为成功的工具结果交还给 Agent。
+
+```python
+from langchain.tools import tool
+
+
+@tool
+def ask_user(question: str) -> str:
+    """向用户提问；真实回答由 HITL 的 respond 决策提供。"""
+    return "等待用户回答"
+
+
+agent = create_deep_agent(
+    model=model,
+    tools=[ask_user],
+    interrupt_on={
+        "ask_user": {"allowed_decisions": ["respond"]},
+    },
+    checkpointer=checkpointer,
+)
+
+decisions = [{
+    "type": "respond",
+    "message": "使用季度维度，并排除测试数据。",
+}]
+```
+
+这里的 `message` 会被 Agent 当作 `ask_user` 的成功返回值。如果人的意思是"不要执行删除/发送/部署"，仍然应该用 `reject`；如果只是改收件人、路径或 SQL 条件，应该用 `edit`。
+
 ## 编辑工具参数
 
 当决策类型包含 `edit` 时，用户可以修改工具的参数再执行：
@@ -200,8 +240,9 @@ if result.interrupts:
     action_request = interrupt_value["action_requests"][0]
 
     # Agent 原始参数
-    print(action_request["args"])
-    # {"to": "全公司@company.com", "subject": "通知", "body": "..."}
+    original_args = action_request.get("arguments", action_request.get("args", {}))
+    print(original_args)
+    # {"to": "all@example.com", "subject": "通知", "body": "..."}
 
     # 用户决定修改收件人
     decisions = [{
@@ -209,7 +250,7 @@ if result.interrupts:
         "edited_action": {
             "name": action_request["name"],  # 必须包含工具名
             "args": {
-                "to": "团队@company.com",    # 修改后的参数
+                "to": "team@example.com",    # 修改后的收件人
                 "subject": "通知",
                 "body": "...",
             }
@@ -222,6 +263,8 @@ if result.interrupts:
         version="v2",
     )
 ```
+
+编辑时尽量只做保守修改，例如改收件人、路径或 SQL 条件。大幅改写工具参数可能让模型重新评估原计划，进而重复调用工具或走向你没有预期的动作。
 
 ## 批量工具调用的中断处理
 
@@ -305,6 +348,9 @@ interrupt_on = {
     "ls": False,
     "grep": False,
     "glob": False,
+
+    # === 人工输入型：人类就是工具结果 ===
+    "ask_user": {"allowed_decisions": ["respond"]},
 }
 ```
 
@@ -315,6 +361,7 @@ interrupt_on = {
 | 高风险 | 删除、发送、部署 | `approve/edit/reject` | 操作不可逆或影响外部系统，避免 `respond` 被误当成成功结果 |
 | 中风险 | 写入、外部调用 | `approve/reject` | 可审批但不需要修改参数 |
 | 低风险 | 读取、搜索、列表 | `False` | 只读操作，安全无副作用 |
+| 人工输入型 | 询问偏好、补充缺失信息 | `respond` | 工具本来就是让人回答，人的 `message` 会成为成功工具结果 |
 
 ## 文件系统权限中断
 

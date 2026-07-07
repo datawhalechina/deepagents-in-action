@@ -83,8 +83,9 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
 |------|------|
 | 第 7 章 | [Skills — 可复用的 Agent 能力包](https://datawhalechina.github.io/deepagents-in-action/chapters/ch07-skills/) |
 | 第 8 章 | [长期记忆 — 让 Agent 拥有跨对话的记忆](https://datawhalechina.github.io/deepagents-in-action/chapters/ch08-long-term-memory/) |
+| 第 9 章 | [Human-in-the-Loop — 构建安全的人机协作流程](https://datawhalechina.github.io/deepagents-in-action/chapters/ch09-human-in-the-loop/) |
 
-后续还有 Human-in-the-Loop、沙箱执行等进阶内容，以及实战篇（流式前端、数据分析 Agent、生产部署）正在规划中，持续更新。
+后续还有沙箱执行等进阶内容，以及实战篇（流式前端、数据分析 Agent、生产部署）正在规划中，持续更新。
 
 ---
 
