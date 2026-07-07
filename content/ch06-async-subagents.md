@@ -295,7 +295,6 @@ graph = builder.compile()
 import os
 
 from deepagents import AsyncSubAgent, create_deep_agent
-from langgraph.checkpoint.memory import InMemorySaver
 
 
 graph = create_deep_agent(
@@ -318,8 +317,7 @@ graph = create_deep_agent(
             ),
             graph_id="researcher",
         )
-    ],
-    checkpointer=InMemorySaver(),
+    ]
 )
 ```
 
