@@ -337,6 +337,21 @@ model = ChatOpenAI(
 
 然后把上面 `create_deep_agent()` 里的 `model=os.environ.get("MODEL_NAME", "openai:gpt-4.1-mini")` 替换成 `model=model` 即可。
 
+如果你想直接以 `python graphs/supervisor.py` 运行（例如做快速本地调试），需要手动为 `create_deep_agent()` 传入 `checkpointer=InMemorySaver()`，否则多轮对话的状态无法持久化。
+
+注意该参数**不能**在 `langgraph dev` 下使用，平台已内置持久化，传入会直接报 `ValueError`。
+
+```python
+from langgraph.checkpoint.memory import InMemorySaver
+
+graph = create_deep_agent(
+    model=...,
+    system_prompt=...,
+    subagents=[...],
+    checkpointer=InMemorySaver(),
+)
+```
+
 ### 第 6 步：启动本地 Agent Server
 
 Worker 槽位要至少容纳 1 个 Supervisor + 1 个 Researcher 的运行。这里的演示建议直接开到 `4`：
