@@ -31,6 +31,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg ghostscript file
 
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
       - name: Optimize assets
         run: bash scripts/optimize-assets.sh
 

@@ -32,5 +32,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg ghostscript file perl
 
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
       - name: Verify asset normalization
         run: npm run assets:check
