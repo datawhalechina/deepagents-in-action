@@ -5,6 +5,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Longest edge cap for raster images (px). Keeps diagrams crisp while
+# shrinking multi-MB screenshots that were previously only re-encoded.
+MAX_DIM="${MAX_DIM:-1600}"
+
 GHOSTSCRIPT_BIN="$(command -v gsc || command -v gs || true)"
 
 if [[ -z "$GHOSTSCRIPT_BIN" ]]; then
@@ -30,6 +36,14 @@ update_path_references() {
   fi
 }
 
+# Re-encode a raster image to a compressed truecolor PNG with its longest
+# edge capped at MAX_DIM. sharp (libvips) keeps text/diagram legibility and
+# is faster/more reliable than the previous ffmpeg re-encode.
+reencode_png() {
+  local in="$1" out="$2"
+  MAX_DIM="$MAX_DIM" node "${SCRIPT_DIR}/optimize-images.mjs" "$in" "$out"
+}
+
 convert_jpeg_uploads_to_png() {
   local file target tmp out
 
@@ -45,7 +59,7 @@ convert_jpeg_uploads_to_png() {
     rm -f "$tmp"
     out="$tmp.png"
 
-    ffmpeg -y -loglevel error -i "$file" -frames:v 1 -pix_fmt pal8 -compression_level 100 "$out" </dev/null
+    reencode_png "$file" "$out"
     mv "$out" "$target"
     rm -f "$file"
 
@@ -55,25 +69,14 @@ convert_jpeg_uploads_to_png() {
 }
 
 normalize_png_assets() {
-  local file mime tmp out
+  local file tmp out
 
   while IFS= read -r -d '' file; do
-    mime="$(file --brief --mime-type "$file")"
-
-    if [[ "$mime" == "image/png" ]]; then
-      continue
-    fi
-
-    if [[ "$mime" != "image/jpeg" ]]; then
-      echo "Unsupported PNG payload: $file ($mime)" >&2
-      exit 1
-    fi
-
     tmp="$(tmp_base)"
     rm -f "$tmp"
     out="$tmp.png"
 
-    ffmpeg -y -loglevel error -i "$file" -frames:v 1 -pix_fmt pal8 -compression_level 100 "$out" </dev/null
+    reencode_png "$file" "$out"
     mv "$out" "$file"
 
     echo "Normalized $file"
@@ -91,7 +94,13 @@ compress_pdfs() {
     "$GHOSTSCRIPT_BIN" \
       -sDEVICE=pdfwrite \
       -dCompatibilityLevel=1.6 \
-      -dPDFSETTINGS=/ebook \
+      -dPDFSETTINGS=/screen \
+      -dPassThroughJPEGImages=false \
+      -dColorImageResolution=72 \
+      -dGrayImageResolution=72 \
+      -dMonoImageResolution=150 \
+      -dDownsampleColorImages=true \
+      -dDownsampleGrayImages=true \
       -dNOPAUSE \
       -dQUIET \
       -dBATCH \

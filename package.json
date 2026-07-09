@@ -21,5 +21,8 @@
     "astro": "^6.2.2",
     "tailwindcss": "^4.2.4",
     "unist-util-visit": "^5.1.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5"
   }
 }
