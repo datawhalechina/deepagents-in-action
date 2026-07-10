@@ -8,6 +8,8 @@
 2. **Deep Agents Code（`dcode`）**：命令行工具在本机运行 LLM 循环，把工具调用定向到远程沙箱。
 3. **LangSmith Sandboxes**：LangSmith 提供的一方托管沙箱产品，除了 Python Backend 以外，还提供快照、服务 URL、Auth Proxy、挂载和 CLI 等资源能力。
 
+![DeepAgents 代码执行全景：Agent 位于中心，通过 Sandbox Backend、文件传输、执行工具、生命周期、依赖环境与安全边界协同完成任务到产物的流程](../public/imgs/33-framework-sandbox-overview.png)
+
 ## 1. 沙箱 Backend：执行环境，而不是权限开关
 
 在 Deep Agents 中，沙箱是一种 **Backend**。普通 Backend（`StateBackend`、`FilesystemBackend`、`StoreBackend` 等）只实现文件读写；沙箱 Backend 还实现 `execute()`，因此 Agent 能在隔离环境里运行 Shell 命令。
@@ -20,6 +22,8 @@
 | 典型任务 | 计划、笔记、资料读写 | 编码、测试、数据分析、产物生成 |
 
 传入沙箱 Backend 后，Deep Agents 会在每次模型调用前检查它是否实现了 `SandboxBackendProtocol`；只有满足该协议，模型才会看到 `execute` 工具。沙箱基类会把其他文件操作构造成沙箱中的脚本执行，因此提供商接入的核心通常就是可靠地实现 `execute()`。
+
+![代码执行的主路径：用户请求经由 Agent 规划，进入代码执行沙箱，通过 execute 产出运行结果并交付文件](../public/imgs/30-flowchart-code-execution.png)
 
 ### `execute()` 的返回值
 
@@ -170,6 +174,8 @@ RUN pip install deepagents-code
 | LLM / Agent | `read_file`、`write_file`、`edit_file`、`delete`、`ls`、`glob`、`grep`、`execute` | 只在沙箱内部完成任务 |
 | 宿主应用 | `upload_files()`、`download_files()` | 用 Provider 原生文件传输跨越宿主机与沙箱边界 |
 
+![文件的两个平面：宿主应用通过 upload_files 在运行前传入输入，并在运行后通过 download_files 取回产物；Agent 工具始终运行在代码执行沙箱内](../public/imgs/31-framework-sandbox-file-planes.png)
+
 ### 在运行前播种输入
 
 `upload_files()` 将源代码、配置或数据放进沙箱。路径使用绝对路径，内容使用 `bytes`：
@@ -202,6 +208,8 @@ for result in results:
 ## 7. 生命周期与作用域
 
 沙箱包含文件、安装的包、缓存与可能仍在运行的进程。创建后不清理会持续消耗资源；复用时又会引入状态累积。因此先确定作用域。
+
+![两种沙箱作用域对比：Thread-scoped 以单个 thread_id 和 TTL 管理独立沙箱；Assistant-scoped 让多个对话复用同一环境，并需要快照或重置策略](../public/imgs/32-comparison-sandbox-scopes.png)
 
 | 作用域 | 行为 | 适用情况 | 风险控制 |
 |---|---|---|---|
