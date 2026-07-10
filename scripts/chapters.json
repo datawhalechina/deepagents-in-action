@@ -144,9 +144,12 @@
     "chapter": 10,
     "section": "进阶篇",
     "order": 12,
-    "description": "使用远程沙箱环境安全地执行 Agent 生成的代码。Modal、Daytona、Runloop 三大提供商。",
-    "slides": [],
-    "published": false
+    "description": "使用隔离的沙箱后端安全执行 Agent 生成的代码，掌握文件传输、生命周期管理与安全边界。",
+    "slides": [
+      { "id": "ch08", "title": "Lec 13: 沙箱执行 — 安全运行代码" }
+    ],
+    "published": true,
+    "pubDate": "2026-07-10"
   },
   "ch11-streaming-frontend": {
     "title": "实时流式输出与前端集成",
