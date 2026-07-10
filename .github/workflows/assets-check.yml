@@ -12,7 +12,9 @@ on:
       - "README.md"
       - "CONTRIBUTING.md"
       - "scripts/optimize-assets.sh"
+      - "scripts/validate-assets.mjs"
       - "package.json"
+      - "package-lock.json"
       - ".github/workflows/assets-check.yml"
       - ".github/workflows/optimize-assets.yml"
   workflow_dispatch:
@@ -27,11 +29,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install asset tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg ghostscript file perl
-
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -41,5 +38,5 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: Verify asset normalization
+      - name: Validate asset metadata
         run: npm run assets:check

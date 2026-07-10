@@ -1,16 +1,6 @@
 name: Optimize Assets
 
 on:
-  push:
-    paths:
-      - "public/**/*.png"
-      - "public/**/*.jpg"
-      - "public/**/*.jpeg"
-      - "public/**/*.pdf"
-      - "content/**"
-      - "src/**"
-      - "README.md"
-      - "CONTRIBUTING.md"
   workflow_dispatch:
 
 permissions:

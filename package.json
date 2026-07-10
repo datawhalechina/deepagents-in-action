@@ -6,7 +6,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "assets:check": "bash scripts/optimize-assets.sh && git diff --exit-code -- public content src README.md CONTRIBUTING.md scripts package.json .github/workflows",
+    "assets:check": "node scripts/validate-assets.mjs",
     "assets:optimize": "bash scripts/optimize-assets.sh",
     "predev": "node scripts/prep-content.mjs",
     "dev": "astro dev",
