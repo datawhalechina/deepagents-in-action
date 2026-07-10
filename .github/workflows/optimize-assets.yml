@@ -10,6 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
 
 jobs:
@@ -78,9 +79,11 @@ jobs:
           bash scripts/optimize-assets.sh "${changed[@]}"
 
       - name: Commit optimized assets
+        id: commit-assets
         run: |
           if git diff --quiet; then
             echo "No asset updates were needed."
+            echo "committed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -89,3 +92,10 @@ jobs:
           git add public content src README.md CONTRIBUTING.md scripts package.json .github/workflows
           git commit -m "chore: optimize assets"
           git push
+          echo "committed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Run asset check for optimized commit
+        if: steps.commit-assets.outputs.committed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run assets-check.yml --ref "$GITHUB_REF_NAME"
