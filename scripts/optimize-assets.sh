@@ -10,6 +10,25 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Longest edge cap for raster images (px). Keeps diagrams crisp while
 # shrinking multi-MB screenshots that were previously only re-encoded.
 MAX_DIM="${MAX_DIM:-1600}"
+TARGETS=()
+
+if (( $# > 0 )); then
+  for file in "$@"; do
+    if [[ ! -f "$file" ]]; then
+      echo "Asset does not exist: $file" >&2
+      exit 1
+    fi
+    case "$file" in
+      public/*.png|public/*.jpg|public/*.jpeg|public/*.pdf)
+        TARGETS+=("$file")
+        ;;
+      *)
+        echo "Unsupported asset path: $file" >&2
+        exit 1
+        ;;
+    esac
+  done
+fi
 
 GHOSTSCRIPT_BIN="$(command -v gsc || command -v gs || true)"
 
@@ -20,6 +39,33 @@ fi
 
 tmp_base() {
   mktemp "${TMPDIR:-/tmp}/deepagents-asset-XXXXXX"
+}
+
+list_assets() {
+  local type="$1" file
+
+  if (( ${#TARGETS[@]} > 0 )); then
+    for file in "${TARGETS[@]}"; do
+      case "$type:$file" in
+        jpeg:*.jpg|jpeg:*.jpeg|png:*.png|pdf:*.pdf)
+          printf '%s\0' "$file"
+          ;;
+      esac
+    done
+    return
+  fi
+
+  case "$type" in
+    jpeg)
+      find public -type f \( -iname '*.jpg' -o -iname '*.jpeg' \) -print0
+      ;;
+    png)
+      find public -type f -name '*.png' -print0
+      ;;
+    pdf)
+      find public -type f -name '*.pdf' -print0
+      ;;
+  esac
 }
 
 update_path_references() {
@@ -65,7 +111,7 @@ convert_jpeg_uploads_to_png() {
 
     update_path_references "$file" "$target"
     echo "Converted $file -> $target"
-  done < <(find public -type f \( -iname '*.jpg' -o -iname '*.jpeg' \) -print0)
+  done < <(list_assets jpeg)
 }
 
 normalize_png_assets() {
@@ -80,7 +126,7 @@ normalize_png_assets() {
     mv "$out" "$file"
 
     echo "Normalized $file"
-  done < <(find public -type f -name '*.png' -print0)
+  done < <(list_assets png)
 }
 
 compress_pdfs() {
@@ -120,7 +166,7 @@ compress_pdfs() {
     else
       rm -f "$out"
     fi
-  done < <(find public -type f -name '*.pdf' -print0)
+  done < <(list_assets pdf)
 }
 
 convert_jpeg_uploads_to_png
