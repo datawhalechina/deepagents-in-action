@@ -7,6 +7,9 @@ dist/
 # dependencies
 node_modules/
 
+# unpublished presentation sources
+*.pptx
+
 # astro
 .astro/
 
