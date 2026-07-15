@@ -58,8 +58,8 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
 
 基于 [AgentSeek](https://github.com/ob-labs/agentseek) 工程化套件，帮助学员快速搭建开发环境：
 
-- [`agentseek create` 搭建模板应用](https://datawhalechina.github.io/deepagents-in-action/chapters/pre01-agentseek-create/)：拉取预制模板并前后端联调运行
-- [`agentseek skills` 安装开发技能](https://datawhalechina.github.io/deepagents-in-action/chapters/pre02-agentseek-skills/)：为 AI 编码助手加载 LangChain 工程经验
+- [AgentSeek 生命周期工作流](https://datawhalechina.github.io/deepagents-in-action/chapters/pre01-agentseek-create/)：创建 DeepAgents 模板，检查环境并启动前后端
+- [`npx skills` 安装开发技能](https://datawhalechina.github.io/deepagents-in-action/chapters/pre02-agentseek-skills/)：为 AI 编码助手加载 LangChain 工程经验
 
 ### 认知篇
 

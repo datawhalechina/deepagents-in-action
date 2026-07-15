@@ -78,25 +78,25 @@
     "pubDate": "2026-05-25"
   },
   "pre01-agentseek-create": {
-    "title": "AgentSeek CLI（上）— 用 create 命令快速搭建模板应用",
+    "title": "AgentSeek 准备篇（上）：用生命周期工作流启动 DeepAgents 模板",
     "chapter": 0,
     "section": "准备篇",
     "order": 7,
-    "description": "安装 AgentSeek CLI，一条命令拉取预制模板到本地，配置模型与 LangSmith 环境变量，前后端联调运行。",
+    "description": "安装 AgentSeek，创建 DeepAgents 研究模板，并通过 info、task、doctor、dev 完成项目准备、检查与前后端启动。",
     "slides": [
-      { "id": "pre01", "title": "AgentSeek CLI — create 模板应用", "bilibili": "https://www.bilibili.com/video/BV1cYEt6FEAq/" }
+      { "id": "pre01", "title": "旧版视频：AgentSeek CLI create 模板应用", "bilibili": "https://www.bilibili.com/video/BV1cYEt6FEAq/" }
     ],
     "published": true,
     "pubDate": "2026-06-08"
   },
   "pre02-agentseek-skills": {
-    "title": "AgentSeek CLI（下）— 用 skills 命令安装开发辅助技能",
+    "title": "AgentSeek 准备篇（下）：为 AI 编码助手安装开发技能",
     "chapter": 0,
     "section": "准备篇",
     "order": 8,
-    "description": "通过 agentseek skills 安装 LangChain 开发指南和 LangSmith Trace 技能，让 AI 编码助手在开发过程中提供框架级的专业指导。",
+    "description": "通过 npx skills 为 Codex、Claude Code 等编码助手安装 LangChain 开发指南和 LangSmith Trace 调试技能。",
     "slides": [
-      { "id": "pre02", "title": "AgentSeek CLI — skills 开发技能", "bilibili": "https://www.bilibili.com/video/BV16DEm6EEjN/", "xhs": "http://xhslink.com/o/8b9xPADEwDL" }
+      { "id": "pre02", "title": "旧版视频：AgentSeek CLI skills 开发技能", "bilibili": "https://www.bilibili.com/video/BV16DEm6EEjN/", "xhs": "http://xhslink.com/o/8b9xPADEwDL" }
     ],
     "published": true,
     "pubDate": "2026-06-10"
