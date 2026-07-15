@@ -84,7 +84,7 @@
     "order": 7,
     "description": "安装 AgentSeek，创建 DeepAgents 研究模板，并通过 info、task、doctor、dev 完成项目准备、检查与前后端启动。",
     "slides": [
-      { "id": "pre01", "title": "旧版视频：AgentSeek CLI create 模板应用", "bilibili": "https://www.bilibili.com/video/BV1cYEt6FEAq/" }
+      { "id": "pre01", "title": "AgentSeek CLI 创建模板应用", "bilibili": "https://www.bilibili.com/video/BV1cYEt6FEAq/" }
     ],
     "published": true,
     "pubDate": "2026-06-08"
@@ -96,7 +96,8 @@
     "order": 8,
     "description": "通过 npx skills 为 Codex、Claude Code 等编码助手安装 LangChain 开发指南和 LangSmith Trace 调试技能。",
     "slides": [
-      { "id": "pre02", "title": "旧版视频：AgentSeek CLI skills 开发技能", "bilibili": "https://www.bilibili.com/video/BV16DEm6EEjN/", "xhs": "http://xhslink.com/o/8b9xPADEwDL" }
+      { "id": "pre02-langchain-dev-guide", "title": "LangChain / DeepAgents 开发指南", "bilibili": "https://www.bilibili.com/video/BV1GVJP6UEaB/", "xhs": "http://xhslink.com/o/8b9xPADEwDL" },
+      { "id": "pre02-langsmith-trace", "title": "LangSmith Trace 链路追踪与调试", "bilibili": "https://www.bilibili.com/video/BV1xFjA6ZEWB/", "xhs": "http://xhslink.com/o/1eXpfomXOi6" }
     ],
     "published": true,
     "pubDate": "2026-06-10"

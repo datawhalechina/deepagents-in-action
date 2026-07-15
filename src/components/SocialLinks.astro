@@ -21,7 +21,7 @@ const items = slides.some(s => s.bilibili || s.xhs)
   <div class="flex flex-col gap-4">
     {items.map((item) => (
       <div class="flex flex-wrap items-center gap-3">
-        {item.title && <span class="text-sm text-ink-muted/80 font-mono mr-2">{item.title}</span>}
+        {item.title && <span class="w-full sm:w-auto text-sm text-ink-muted/80 font-mono">{item.title}</span>}
         <a
           href={item.bilibili || '#'}
           class:list={[

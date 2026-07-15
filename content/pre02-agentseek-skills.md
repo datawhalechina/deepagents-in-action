@@ -3,8 +3,6 @@
 > 完成本章后，Codex、Claude Code 或其他兼容工具可以在当前项目中使用 `langchain-dev-guide` 和 `langsmith-trace`。
 >
 > 本文命令于 2026-07-15 验证。Skills CLI 会继续更新；请以 `npx skills --help` 的输出为准。
->
-> **视频说明**：页面中的视频录制于旧版 `agentseek skills` 命令。新版安装流程以本文为准，视频将在重新录制后更新。
 
 ## 两类 Skill 的区别
 
