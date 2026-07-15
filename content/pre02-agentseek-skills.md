@@ -38,7 +38,7 @@ cd research_deepagent
 npx skills add ob-labs/agentseek --list
 ```
 
-仓库里的技能会继续增加，实际清单以命令输出为准。本课程只需要其中两个：
+仓库里的技能会继续增加，实际清单以命令输出为准。本课程重点使用其中两个：
 
 | Skill | 用途 |
 |------|------|

@@ -255,7 +255,7 @@ LANGSMITH_TRACING=false
 LANGSMITH_API_KEY=
 ```
 
-## 8. 启动并验证应用
+## 8. 启动并验证前后端连通
 
 启动前后端：
 
@@ -304,11 +304,13 @@ Research what LangGraph 1.0 added vs 0.x. Cite sources.
 
 `agentseek create` 需要访问 GitHub。先检查仓库连接：
 
+如果终端出现 `Could not resolve host`、`Connection timed out` 或 `Failed to connect`，通常应先排查网络，而不是直接判断 AgentSeek CLI 异常。
+
 ```bash
 git ls-remote https://github.com/ob-labs/agentseek.git
 ```
 
-如果连接失败，请先修复当前终端的网络或代理配置。不要通过删除 `~/.cookiecutters` 缓存来绕过连接问题。
+如果连接失败，请先修复当前终端的网络或代理配置。当前 AgentSeek 仍会把远程模板仓库缓存到 `~/.cookiecutters/agentseek`；不要为了绕过连接问题直接删除或覆盖这个目录，否则可能丢失可用缓存，或长期使用一个没有更新的旧模板。
 
 ### 为当前终端设置代理
 
@@ -373,15 +375,27 @@ git config --global --unset http.proxy
 - `UV_INDEX_URL` 和 npm registry 只改变 Python、Node.js 的包下载来源，不能解决 GitHub、SiliconFlow 或 Tavily 的连接问题。
 - `OPENAI_API_BASE=https://api.siliconflow.cn/v1` 指定模型服务地址，不是网络代理。
 
-只使用团队批准或你信任的代理和镜像。公共加速地址的可用性与安全性会变化，不要把它们硬编码进项目模板。
+只使用团队批准或你信任的代理和包镜像。公共 GitHub 加速地址的可用性与安全性会变化，不要把它们硬编码进项目模板。
 
-你也可以从已经下载到本地的模板目录创建项目：
+如果 Python 依赖下载较慢，可以临时为单次同步指定团队批准的 PyPI 镜像。下面的阿里云地址在 2026 年 7 月 15 日验证可用：
+
+```bash
+UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple agentseek task sync
+```
+
+这只改变 `sync` 任务的 Python 包来源，不会解决 GitHub、SiliconFlow 或 Tavily 的连接问题。npm registry 同理；镜像服务会变化，请在使用前重新验证来源和可用性。
+
+### 使用已经下载的模板仓库
+
+如果你在另一台能访问 GitHub 的机器上下载了 ZIP 或克隆了 AgentSeek 仓库，可以把完整目录复制到当前机器，再直接指定模板的绝对路径：
 
 ```bash
 agentseek create /absolute/path/to/agentseek/templates/deepagents/research --no-input
 ```
 
-依赖下载速度较慢时，可以按团队或所在网络的要求设置 `UV_INDEX_URL` 和 npm registry。镜像服务会变化，请在使用前验证来源和可用性。
+这条路径不会修改共享的 Cookiecutter 缓存，也不需要固定分支或 commit。当前 CLI 仍能读取 `~/.cookiecutters/agentseek`，但直接使用本地模板路径更容易看清版本，也不会覆盖其他项目正在使用的缓存。
+
+本次复核中，公共加速服务 `ghproxy.net` 的 `git ls-remote` 仍能返回当前 HEAD，但完整浅克隆超过一分钟后断开。因此本章不把公共加速服务作为推荐命令；如果团队有审核过的 GitHub 镜像，可以用它下载完整仓库，再使用上面的本地路径创建项目。
 
 ## 本章完成结果
 
