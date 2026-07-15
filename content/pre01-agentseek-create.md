@@ -228,7 +228,32 @@ agentseek dev --dry-run
 - LangGraph 后端，默认地址为 `http://127.0.0.1:2024`
 - React 前端，默认地址为 `http://127.0.0.1:5174`
 
-## 7. 启动并验证应用
+## 7. 可选：为下一章开启 LangSmith Trace
+
+下一章会用 `langsmith-trace` 分析这次研究过程。如果你准备继续该实操，请先在 `.env` 中开启 Trace：
+
+```bash
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=<your-langsmith-api-key>
+LANGSMITH_PROJECT=deepagents-course
+```
+
+`<your-langsmith-api-key>` 是占位符。请在 [LangSmith](https://smith.langchain.com/settings) 创建自己的 Key，并只把真实值写入不会提交到 Git 的 `.env`。
+
+LangChain 和 LangGraph 会自动记录 Trace，不需要修改应用代码。`LANGSMITH_PROJECT` 用于把本章的运行集中到 `deepagents-course` 项目；如果省略，Trace 通常会进入 `default` 项目。
+
+不要把真实 Key 直接写进 Shell 命令，也不要使用 `--api-key`。命令内容可能进入 Shell 历史、进程列表或编码助手日志。
+
+Trace 可能包含提示词、工具参数和模型输出。本章只使用公开研究问题。如果你的输入包含敏感数据，请先阅读 LangSmith 的数据脱敏设置，不要照搬本章配置。
+
+如果你暂时不使用 LangSmith，请保持：
+
+```bash
+LANGSMITH_TRACING=false
+LANGSMITH_API_KEY=
+```
+
+## 8. 启动并验证应用
 
 启动前后端：
 
@@ -257,19 +282,21 @@ Research what LangGraph 1.0 added vs 0.x. Cite sources.
 
 深度研究会进行多轮模型调用、搜索和网页读取，不同模型可能需要几分钟。运行期间请保持 `agentseek dev` 和前端页面打开；页面生成 thread URL 后，可以用它重新打开同一会话。
 
+如果你在上一节开启了 LangSmith，可以在运行期间打开 [LangSmith](https://smith.langchain.com/)，进入 `deepagents-course` 项目。最新 Trace 会在研究完成前出现；等待最终报告生成后，再检查完整耗时。
+
+你应该能找到：
+
+- 名为 `research` 的根 Trace
+- `research-agent` 子 Agent
+- `ChatOpenAI` 模型调用
+- `tavily_search` 搜索调用
+- `write_todos`、文件工具和 middleware 包装层
+
+本文使用 SiliconFlow GLM 的实测运行完成了 4/4 个任务，用时约 473.5 秒。该数字只说明 5–10 分钟的流程已经走通；你的模型、网络、搜索结果和 Run 数量可能不同。
+
+下一章不会要求你理解所有 middleware 节点。你只需要保留这条 Trace，并学会区分根流程、子 Agent、实际模型调用和工具调用。
+
 回到运行 `agentseek dev` 的终端，按 `Ctrl+C` 停止前后端。
-
-## 8. 可选：开启 LangSmith Trace
-
-你可以用 LangSmith 查看模型调用、工具执行、耗时和 Token 用量。修改 `.env`：
-
-```bash
-LANGSMITH_TRACING=true
-LANGSMITH_API_KEY=<your-langsmith-api-key>
-LANGSMITH_PROJECT=deepagents-course
-```
-
-重新运行 `agentseek dev` 并发起一次请求。随后在 [LangSmith](https://smith.langchain.com/) 中打开 `deepagents-course` 项目。
 
 ## 网络问题排查
 
@@ -296,7 +323,8 @@ agentseek create /absolute/path/to/agentseek/templates/deepagents/research --no-
 - 一个可编辑的 `deepagents/research` 项目
 - 一套由 `.agentseek/lifecycle.toml` 声明的本地开发流程
 - 可通过 `agentseek doctor` 检查、由 `agentseek dev` 启动的前后端
+- 如果启用了 LangSmith，一条可供下一章分析的真实研究 Trace
 
 下一章将为编码助手安装 `langchain-dev-guide` 和 `langsmith-trace`，帮助你继续修改和调试这个项目。
 
-参考来源：[AgentSeek 快速开始](https://github.com/ob-labs/agentseek/blob/main/docs/get-started/index.zh.md)、[CLI 参考](https://github.com/ob-labs/agentseek/blob/main/docs/reference/cli.zh.md)、[deepagents/research 模板](https://github.com/ob-labs/agentseek/tree/main/templates/deepagents/research)、[SiliconFlow OpenAI 兼容配置](https://docs.siliconflow.cn/cn/usercases/use-siliconcloud-in-KiloCode)。
+参考来源：[AgentSeek 快速开始](https://github.com/ob-labs/agentseek/blob/main/docs/get-started/index.zh.md)、[CLI 参考](https://github.com/ob-labs/agentseek/blob/main/docs/reference/cli.zh.md)、[deepagents/research 模板](https://github.com/ob-labs/agentseek/tree/main/templates/deepagents/research)、[SiliconFlow OpenAI 兼容配置](https://docs.siliconflow.cn/cn/usercases/use-siliconcloud-in-KiloCode)、[LangSmith Tracing Quickstart](https://docs.langchain.com/langsmith/observability-quickstart)。

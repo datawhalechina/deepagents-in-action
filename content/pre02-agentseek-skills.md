@@ -123,31 +123,29 @@ ls .agents/skills/langsmith-trace/SKILL.md
 先检查 Middleware 执行顺序和 state_schema 合并规则，再给出修改方案。
 ```
 
-## 5. 使用 langsmith-trace
+## 5. 实操：用 langsmith-trace 定位一次慢调用（5–10 分钟）
 
-`langsmith-trace` 教编码助手安装 LangSmith CLI、查询项目和 Trace，并检查每个 Run 的输入、输出和耗时。
+本节使用上一章 `deepagents/research` 生成的 Trace。完成后，你应该能指出研究过程慢在哪里、判断依据是什么，以及下一步如何优化。
 
-在上一章成功运行并开启 LangSmith Trace 后，可以输入：
+开始前确认：
 
-```text
-请使用 langsmith-trace 分析 deepagents-course 项目最近一次 Trace。
-找出耗时最长的模型或工具调用，并说明判断依据。
+- 上一章已经启用 `LANGSMITH_TRACING=true`
+- `.env` 中已经设置 `LANGSMITH_API_KEY` 和 `LANGSMITH_PROJECT=deepagents-course`
+- `deepagents-course` 或 `default` 中至少有一条已完成的 `research` Trace
+- 当前项目已经安装 `langsmith-trace`
+
+### 5.1 检查 CLI 和认证
+
+先确认 LangSmith CLI 是否可用：
+
+```bash
+command -v langsmith
+langsmith --version
 ```
 
-技能会引导编码助手完成以下流程：
+如果命令不存在，请让编码助手使用 `langsmith-trace` 中的安装步骤，不要自行猜测安装命令。
 
-1. 使用 `langsmith project list` 确认项目名称
-2. 使用 `langsmith trace list` 找到最近的 Trace
-3. 使用 `langsmith trace get` 查看完整运行树
-4. 使用 `langsmith run list` 或 `langsmith run get` 检查输入、输出和耗时
-
-LangSmith CLI 从环境变量读取凭证。先把 Key 写入上一章创建、且不会提交到 Git 的 `.env`：
-
-```dotenv
-LANGSMITH_API_KEY=replace-with-your-langsmith-api-key
-```
-
-再从项目根目录加载这个文件：
+LangSmith CLI 从环境变量读取凭证。请在项目根目录加载 `.env`：
 
 ```bash
 set -a
@@ -155,7 +153,87 @@ source .env
 set +a
 ```
 
-不要把真实 Key 直接写进 Shell 命令，也不要使用 `--api-key`。命令内容可能进入 Shell 历史、进程列表或编码助手日志。
+确认凭证有效，并找到最近有运行记录的项目：
+
+```bash
+langsmith --format pretty project list
+```
+
+你应该能在列表中找到 `deepagents-course`。如果最近的 `research` Trace 已经进入 `default`，可以把后续命令中的项目名换成 `default`，直接分析已有 Trace。`LANGSMITH_PROJECT` 只影响未来运行；只有两个项目中都没有已完成的 `research` Trace 时，才需要修正配置并重新运行研究问题。
+
+不要把真实 Key 写进 Shell 命令，也不要使用 `--api-key`。命令可能进入 Shell 历史、进程列表或编码助手日志。
+
+### 5.2 找到完整 Trace
+
+先列出最近的根 Trace：
+
+```bash
+langsmith trace list --project deepagents-course --name research --include-metadata --limit 5
+```
+
+复制最新、状态已完成的 `research` 根节点 `trace_id`，再查看完整运行树：
+
+```bash
+langsmith trace get <trace-id> --project deepagents-course --include-metadata
+```
+
+`<trace-id>` 是占位符，请替换为上一步返回的真实 ID。你会看到根 `research`、`research-agent` 子 Agent、`ChatOpenAI` 模型调用、`tavily_search` 工具调用，以及多层 middleware 包装。
+
+### 5.3 让编码助手分析瓶颈
+
+在 Codex、Claude Code 或其他已安装技能的编码助手中输入：
+
+```text
+请使用 langsmith-trace 分析刚才确认的 LangSmith 项目中最近一次已完成的 research Trace。
+优先使用 deepagents-course；如果该 Trace 在 default，就使用 default。
+
+请先确认项目和 trace_id，再区分：
+1. 根 research 流程；
+2. research-agent 子 Agent；
+3. run_type=llm 的实际模型调用；
+4. tavily_search 等实际工具调用。
+
+分别找出最慢的叶子模型调用和最慢的实际工具调用。
+不要把根 Trace、task 子 Agent 包装或 middleware 包装层直接当成瓶颈。
+对候选 Run 使用 run get --include-io 检查输入、输出和错误。
+
+最后输出表格：调用、类型、耗时、判断证据、可能原因、下一步建议。
+不要输出 API Key 或其他凭证。
+```
+
+技能应该先按类型缩小范围，不要一次输出所有 Run 的输入输出：
+
+```bash
+langsmith run list --trace-ids <trace-id> --project deepagents-course --run-type llm --include-metadata --limit 100
+langsmith run list --trace-ids <trace-id> --project deepagents-course --run-type tool --include-metadata --limit 100
+```
+
+LangSmith API 当前允许的单次 `run list` 上限是 100。复杂研究 Trace 可能超过这个数量；先用 `--run-type` 过滤，必要时再用 `--name` 缩小范围，避免截断结果或向终端输出大量 IO。工具结果中的 `task` 是子 Agent 包装，不要把它当成实际工具瓶颈。完整层级仍以 `trace get` 为准。
+
+找到候选 `run_id` 后，明确使用 `--include-io` 查看单次调用：
+
+```bash
+langsmith run get <run-id> --include-io --include-metadata
+```
+
+不要用 `run get --full` 代替。部分 CLI 版本中，`--full` 可能返回空的输入输出；显式使用 `--include-io` 更稳定。
+
+### 5.4 检查分析结果
+
+一次合格的分析至少包含：
+
+| 检查项 | 完成标准 |
+|--------|----------|
+| Trace 选择 | 使用最近一次已完成的 `research` Trace |
+| 层级区分 | 能区分根流程、子 Agent、模型和工具 |
+| 模型瓶颈 | 找到最慢的 `run_type=llm` 叶子 Run |
+| 工具瓶颈 | 找到最慢的实际工具 Run，例如 `tavily_search` |
+| 证据 | 给出 `run_id`、耗时、状态以及输入输出检查结果 |
+| 建议 | 建议与证据对应，而不是只说“换更快模型” |
+
+本文实测的研究 Trace 包含 162 个 Run，0 个错误，总耗时约 472.9 秒。按类型查询全部 22 个模型 Run 后，最慢的叶子 `ChatOpenAI` 调用约 85.9 秒；查询全部 17 个工具 Run 并排除 `task` 包装后，最慢的实际工具是约 25.1 秒的 `tavily_search`。你的结果会随模型、网络、问题和模板版本变化，不要把这些数字写成固定预期。
+
+Trace 可能保存提示词、工具参数和模型输出。如果你处理敏感数据，可以设置 `LANGSMITH_HIDE_INPUTS=true` 和 `LANGSMITH_HIDE_OUTPUTS=true`；启用后，本节用于分析内容的 Run 输入输出会被隐藏。
 
 ## 6. 更新技能
 
@@ -205,4 +283,4 @@ npx skills remove langchain-dev-guide langsmith-trace --yes
 
 接下来，你可以让编码助手使用这两个技能修改上一章生成的研究应用，或继续学习第 7 章的 DeepAgents 运行时 Skills。
 
-参考来源：[AgentSeek Skills](https://github.com/ob-labs/agentseek/tree/main/skills)、[Skills CLI](https://github.com/vercel-labs/skills)、[langchain-dev-guide](https://github.com/ob-labs/agentseek/tree/main/skills/langchain-dev-guide)、[langsmith-trace](https://github.com/ob-labs/agentseek/tree/main/skills/langsmith-trace)。
+参考来源：[AgentSeek Skills](https://github.com/ob-labs/agentseek/tree/main/skills)、[Skills CLI](https://github.com/vercel-labs/skills)、[langchain-dev-guide](https://github.com/ob-labs/agentseek/tree/main/skills/langchain-dev-guide)、[langsmith-trace](https://github.com/ob-labs/agentseek/tree/main/skills/langsmith-trace)、[LangSmith CLI](https://docs.langchain.com/langsmith/langsmith-cli)、[LangSmith 数据脱敏](https://docs.langchain.com/langsmith/mask-inputs-outputs)。
