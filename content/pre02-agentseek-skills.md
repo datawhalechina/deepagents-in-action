@@ -111,7 +111,8 @@ ls .agents/skills/langsmith-trace/SKILL.md
 
 ```text
 请使用 langchain-dev-guide 检查这个 deepagents/research 项目的模型配置。
-我准备接入一个 OpenAI 兼容服务，请指出需要修改的环境变量和常见错误。
+本课程默认通过 SiliconFlow 的 OpenAI 兼容接口使用 GLM。
+请核对环境变量，并说明 Tool Call、reasoning_content 等能力的兼容性边界。
 ```
 
 编码助手应该先读取 `langchain-dev-guide/SKILL.md`，再按需读取它引用的资料。你可以要求助手说明它使用了哪个参考文件，以确认技能已经生效。

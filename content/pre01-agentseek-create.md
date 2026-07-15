@@ -160,13 +160,13 @@ cp .env.example .env
 cp frontend/.env.example frontend/.env
 ```
 
-打开 `.env`，选择一个模型供应商，并填写对应的 Key。默认配置使用 OpenAI：
+打开 `.env` 并填写模型与搜索服务的 Key。本课程默认使用课程赞助方 SiliconFlow 提供的 OpenAI 兼容接口，并选择 GLM 作为演示模型：
 
 ```bash
 AGENTSEEK_MODEL_PROVIDER=openai
-AGENTSEEK_MODEL=gpt-4.1-mini
-OPENAI_API_KEY=<your-openai-api-key>
-OPENAI_API_BASE=
+AGENTSEEK_MODEL=zai-org/GLM-5.2
+OPENAI_API_BASE=https://api.siliconflow.cn/v1
+OPENAI_API_KEY=<your-siliconflow-api-key>
 
 TAVILY_API_KEY=<your-tavily-api-key>
 
@@ -174,7 +174,18 @@ LANGSMITH_TRACING=false
 LANGSMITH_API_KEY=
 ```
 
-`<your-openai-api-key>` 和 `<your-tavily-api-key>` 是占位符。请替换为你自己的值，不要把真实 Key 提交到 Git。
+SiliconFlow 提供 OpenAI 兼容接口，因此这里的供应商仍然写 `openai`，凭证仍然放在 `OPENAI_API_KEY`；不要改用模板没有声明的 `SILICONFLOW_API_KEY`、`GLM_API_KEY` 等变量。`<your-siliconflow-api-key>` 和 `<your-tavily-api-key>` 是占位符，请替换为自己的值，不要把真实 Key 提交到 Git。
+
+本章在 2026 年 7 月 15 日使用 `zai-org/GLM-5.2` 完成了真实运行。模型会上线、下线或改名；如果这个名称不可用，请在 [SiliconFlow 模型广场](https://cloud.siliconflow.cn/models) 复制当前可用的完整 GLM 模型 ID。
+
+如果你已有 OpenAI Key，也可以改用 OpenAI：
+
+```bash
+AGENTSEEK_MODEL_PROVIDER=openai
+AGENTSEEK_MODEL=gpt-4.1-mini
+OPENAI_API_BASE=
+OPENAI_API_KEY=<your-openai-api-key>
+```
 
 使用 Anthropic 时，修改模型供应商、模型名称和 Key：
 
@@ -192,18 +203,9 @@ AGENTSEEK_MODEL=gemini-2.5-pro
 GOOGLE_API_KEY=<your-google-api-key>
 ```
 
-OpenAI 兼容服务仍使用 `AGENTSEEK_MODEL_PROVIDER=openai`，并通过 `OPENAI_API_BASE` 和 `OPENAI_API_KEY` 配置地址与凭证。不要改用 `QWEN_API_KEY` 等模板未声明的变量。
+其他 OpenAI 兼容服务同样使用 `AGENTSEEK_MODEL_PROVIDER=openai`，通过 `OPENAI_API_BASE`、`OPENAI_API_KEY` 和完整模型 ID 配置地址、凭证与模型。
 
-例如，通过 SiliconFlow 使用 GLM 时可以这样配置：
-
-```bash
-AGENTSEEK_MODEL_PROVIDER=openai
-AGENTSEEK_MODEL=<从模型广场复制的完整-GLM-模型-ID>
-OPENAI_API_BASE=https://api.siliconflow.cn/v1
-OPENAI_API_KEY=<your-siliconflow-api-key>
-```
-
-SiliconFlow 的模型会上线或下线。不要长期照抄某个模型 ID；运行前请在 [SiliconFlow 模型广场](https://cloud.siliconflow.cn/models) 确认当前可用的完整名称。本章验证时使用的是 `zai-org/GLM-5.2`。
+> 开发者说明：OpenAI 兼容接口适合快速接入，但不代表所有扩展字段和工具行为完全一致。本章已经验证 SiliconFlow + GLM 的基础流式输出和 Tool Call；如果你准备修改 reasoning 模型、解析 `reasoning_content` 或自定义工具协议，请在下一章先用 `langchain-dev-guide` 检查兼容性边界。
 
 `TAVILY_API_KEY` 用于研究 Agent 的网络搜索。你可以在 [Tavily](https://app.tavily.com/) 创建 Key。
 
@@ -307,6 +309,71 @@ git ls-remote https://github.com/ob-labs/agentseek.git
 ```
 
 如果连接失败，请先修复当前终端的网络或代理配置。不要通过删除 `~/.cookiecutters` 缓存来绕过连接问题。
+
+### 为当前终端设置代理
+
+如果团队网络要求使用代理，建议新开一个专用终端，再设置标准代理环境变量。这样不会打乱你正在使用的开发终端；如果新终端已经有团队下发的代理变量，请沿用原配置，不要直接覆盖。macOS 或 Linux：
+
+```bash
+export HTTP_PROXY=http://127.0.0.1:7890
+export HTTPS_PROXY=http://127.0.0.1:7890
+export NO_PROXY=127.0.0.1,localhost
+```
+
+Windows PowerShell：
+
+```powershell
+$env:HTTP_PROXY="http://127.0.0.1:7890"
+$env:HTTPS_PROXY="http://127.0.0.1:7890"
+$env:NO_PROXY="127.0.0.1,localhost"
+```
+
+`127.0.0.1:7890` 只是示例，请替换为你实际使用的代理地址。`NO_PROXY` 可以避免把本机的 LangGraph 后端（端口 `2024`）和前端（端口 `5174`）也发给代理。
+
+这些变量通常会被同一终端启动的 Git、uv、npm、Python HTTP 客户端和 `agentseek dev` 子进程继承。设置后重新运行 `git ls-remote`；后续的 `agentseek create`、安装任务和 `agentseek dev` 也应从同一个终端启动。
+
+如果这是专门为本章新开的终端，完成后直接关闭即可。只有确认这些变量原本为空、并且是你按本章示例设置的，才在 macOS 或 Linux 中运行：
+
+```bash
+unset HTTP_PROXY HTTPS_PROXY NO_PROXY
+```
+
+Windows PowerShell 运行：
+
+```powershell
+Remove-Item Env:HTTP_PROXY -ErrorAction SilentlyContinue
+Remove-Item Env:HTTPS_PROXY -ErrorAction SilentlyContinue
+Remove-Item Env:NO_PROXY -ErrorAction SilentlyContinue
+```
+
+### 为 Git 单独设置代理
+
+如果浏览器和模型接口可以访问，只有 `git ls-remote` 失败，可以先查看 Git 是否已经配置代理：
+
+```bash
+git config --global --get http.proxy
+```
+
+如果命令没有输出，再按实际地址设置。Git 的 `http.proxy` 同时适用于 HTTP 和 HTTPS remote：
+
+```bash
+git config --global http.proxy http://127.0.0.1:7890
+git config --global --get http.proxy
+```
+
+`--global` 会影响当前用户的所有仓库。只有确认这个值是你按上面的示例新增、之前没有其他配置时，才在不再需要时清除，避免以后切换网络后 Git 继续连接旧代理：
+
+```bash
+git config --global --unset http.proxy
+```
+
+### 区分代理、包镜像和 API Base
+
+- `HTTP_PROXY`、`HTTPS_PROXY` 负责转发网络请求，可能影响 Git、依赖安装和运行时 API 调用。
+- `UV_INDEX_URL` 和 npm registry 只改变 Python、Node.js 的包下载来源，不能解决 GitHub、SiliconFlow 或 Tavily 的连接问题。
+- `OPENAI_API_BASE=https://api.siliconflow.cn/v1` 指定模型服务地址，不是网络代理。
+
+只使用团队批准或你信任的代理和镜像。公共加速地址的可用性与安全性会变化，不要把它们硬编码进项目模板。
 
 你也可以从已经下载到本地的模板目录创建项目：
 
