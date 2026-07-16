@@ -200,6 +200,8 @@ deepagents-in-action/
 `content/` 目录中的 Markdown 文件是**源文件**，不含 frontmatter。  
 `scripts/prep-content.mjs` 在 `dev` / `build` 前自动运行，从 `scripts/chapters.json` 读取元数据，生成带 frontmatter 的文件到 `src/content/chapters/`。
 
+正文图片统一写成 `../public/imgs/<文件名>`。内容预处理会将它转换为带站点 base 的 `/deepagents-in-action/imgs/<文件名>`；资产校验会同时检查 Markdown 中引用的图片是否真实存在于 `public/imgs/`。
+
 > 注意：`content/` 下 `.md` 文件的首行 H1 标题在生成时会被自动移除，
 > 页面标题统一取自 `scripts/chapters.json`。
 

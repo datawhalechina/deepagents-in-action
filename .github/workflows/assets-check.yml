@@ -11,8 +11,7 @@ on:
       - "src/**"
       - "README.md"
       - "CONTRIBUTING.md"
-      - "scripts/optimize-assets.sh"
-      - "scripts/validate-assets.mjs"
+      - "scripts/**"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/assets-check.yml"
@@ -38,5 +37,8 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: Validate asset metadata
+      - name: Test content image path handling
+        run: npm run assets:test
+
+      - name: Validate assets and content references
         run: npm run assets:check

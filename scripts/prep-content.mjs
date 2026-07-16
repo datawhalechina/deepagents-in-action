@@ -1,10 +1,12 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { rewriteContentImagePaths } from './content-images.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const OUT_DIR = resolve(ROOT, 'src/content/chapters');
+const BASE = '/deepagents-in-action';
 
 const manifest = JSON.parse(readFileSync(resolve(__dirname, 'chapters.json'), 'utf-8'));
 
@@ -25,9 +27,8 @@ for (const [id, meta] of Object.entries(manifest)) {
   // Strip the first H1 heading (layout renders title from frontmatter)
   body = body.replace(/^#\s+.+\n*/, '');
 
-  // Rewrite relative image paths to include base path
-  const BASE = '/deepagents-in-action';
-  body = body.replace(/!\[([\s\S]*?)\]\(\.\.\/public\/imgs\//g, `![$1](${BASE}/imgs/`);
+  // Rewrite authored public image paths to include the deployed site base.
+  body = rewriteContentImagePaths(body, BASE);
 
   const frontmatter = [
     '---',

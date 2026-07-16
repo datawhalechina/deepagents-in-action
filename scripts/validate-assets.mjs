@@ -1,10 +1,12 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
+import { validateContentImageReferences } from './content-images.mjs';
 
 const MAX_DIM = Number(process.env.MAX_DIM || 1600);
 const MAX_PDF_BYTES = 8 * 1024 * 1024;
 const publicDir = path.resolve('public');
+const contentDir = path.resolve('content');
 const imageExtensions = new Set(['.png', '.jpg', '.jpeg']);
 
 async function filesIn(directory) {
@@ -55,9 +57,14 @@ for (const file of files) {
   }
 }
 
+const contentImages = await validateContentImageReferences({ contentDir, publicDir });
+errors.push(...contentImages.errors.map((error) => `content/${error}`));
+
 if (errors.length > 0) {
   console.error(`Asset validation failed:\n${errors.map((error) => `- ${error}`).join('\n')}`);
   process.exit(1);
 }
 
-console.log(`Validated ${imageCount} raster images and ${pdfCount} PDFs (max image edge: ${MAX_DIM}px).`);
+console.log(
+  `Validated ${imageCount} raster images, ${pdfCount} PDFs, and ${contentImages.referenceCount} content image references (max image edge: ${MAX_DIM}px).`,
+);

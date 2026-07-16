@@ -7,6 +7,7 @@
   },
   "scripts": {
     "assets:check": "node scripts/validate-assets.mjs",
+    "assets:test": "node --test scripts/content-images.test.mjs",
     "assets:optimize": "bash scripts/optimize-assets.sh",
     "predev": "node scripts/prep-content.mjs",
     "dev": "astro dev",
@@ -19,8 +20,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.2.4",
     "astro": "^6.2.2",
-    "tailwindcss": "^4.2.4",
-    "unist-util-visit": "^5.1.0"
+    "tailwindcss": "^4.2.4"
   },
   "devDependencies": {
     "sharp": "^0.34.5"
