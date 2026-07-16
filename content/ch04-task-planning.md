@@ -115,6 +115,19 @@ Agent 调用 write_todos 更新列表：
 
 还记得第 1 章的三层架构吗？Deep Agents（Harness）构建在 LangChain（Framework）之上。而 LangChain 提供了一套<strong>中间件（Middleware）</strong>系统——它是 Agent 能力的插件机制。`create_deep_agent()` 内部做的事情，本质上就是把一组中间件**自动组装**到了 Agent 上。
 
+### 先分清两类 Hook
+
+LangChain 中间件提供两类执行边界。它们都叫 Hook，但适合解决的问题并不相同：
+
+| 风格 | Hook | 执行方式 | 适合场景 |
+|---|---|---|---|
+| **Node-style** | `before_agent`、`before_model`、`after_model`、`after_agent` | 编译成 Agent 图中的独立节点，按生命周期顺序运行 | 校验、状态更新、审计、人工中断 |
+| **Wrap-style** | `wrap_model_call`、`wrap_tool_call` | 包裹一次模型或工具调用；可以不调用、调用一次或多次 `handler` | 重试、缓存、降级、请求或响应转换 |
+
+这个区别对 `interrupt()` 尤其重要：Node-style Hook 有清晰的图节点边界，暂停与恢复时更容易推断哪些逻辑会重放；Wrap-style Hook 位于 model/tools 节点内部，恢复时可能连同 `handler` 一起重新执行。因此自定义人工中断优先放在 Node-style Hook 中，Wrap-style 即使技术上可以调用，也不适合作为默认中断边界。
+
+第 9 章会用一个完整例子展示[如何在自定义 Middleware 的 Node-style Hook 中直接调用 `interrupt()`](../ch09-human-in-the-loop/#在自定义-middleware-中使用-interrupt)。
+
 `create_deep_agent()` 的中间件堆栈分为三层：
 
 **常驻层（始终启用，无论传入什么参数）**：

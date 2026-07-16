@@ -21,6 +21,8 @@ Agent 的自主性是一把双刃剑：
 
 Deep Agents 通过 `interrupt_on` 参数配置哪些工具需要人工审批。设置后，Deep Agents 会在默认中间件栈中加入 `HumanInTheLoopMiddleware`；如果运行在工具返回前被中断或取消，同一栈里的 `PatchToolCallsMiddleware` 会自动修复消息历史。
 
+`interrupt_on` 是“工具调用审批”的便捷入口，不是 HITL 的能力边界。当暂停点不对应某个工具——例如发布最终答复前审稿、进入下一阶段前确认，或跨多个工具统一执行策略——可以在自定义 LangChain Middleware 中直接调用底层 `interrupt()`。Deep Agents 的 `middleware=[...]` 参数允许把这类能力注入现有 Harness。
+
 ```python
 import os
 from langchain_openai import ChatOpenAI
@@ -388,7 +390,7 @@ agent = create_deep_agent(
 
 ## 揭开引擎盖：LangGraph 的中断机制
 
-`interrupt_on` 的底层是 LangGraph 的<strong>中断（Interrupt）</strong>原语。当你在工具中直接调用 `interrupt()` 函数时，可以实现更灵活的审批逻辑：
+`interrupt_on` 的底层是 LangGraph 的<strong>中断（Interrupt）</strong>原语。当你在工具或图节点中直接调用 `interrupt()` 函数时，可以实现更灵活的审批逻辑：
 
 ```python
 from langgraph.types import interrupt
@@ -428,7 +430,81 @@ result = agent.invoke(
 )
 ```
 
-`interrupt()` 是 LangGraph 的底层能力，`interrupt_on` 是 Deep Agents 在此基础上封装的更易用的配置接口。
+`interrupt()` 是 LangGraph 的底层能力，`interrupt_on` 是 Deep Agents 在此基础上封装的工具审批接口。
+
+### 在自定义 Middleware 中使用 interrupt()
+
+LangChain 的 Node-style Middleware Hook 会成为 Agent 图中的独立节点，因此可以直接调用 `interrupt()`。官方 `HumanInTheLoopMiddleware` 本身就是这样实现的：在 `after_model` 中检查模型提出的工具调用，再通过 `interrupt()` 暂停。
+
+下面的例子不审批某个工具，而是在模型生成最终草稿后、结果交付给用户前统一审稿。这类跨工具策略无法只靠 `interrupt_on` 表达，却可以作为自定义 Middleware 注入 Deep Agents：
+
+```python
+from typing import Any
+
+from deepagents import create_deep_agent
+from langchain.agents.middleware import AgentMiddleware, AgentState
+from langchain.messages import AIMessage
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.runtime import Runtime
+from langgraph.types import Command, interrupt
+
+
+class DraftApprovalMiddleware(AgentMiddleware):
+    def after_model(
+        self,
+        state: AgentState,
+        runtime: Runtime,
+    ) -> dict[str, Any] | None:
+        last_message = state["messages"][-1]
+
+        # 有工具调用时让 Agent 继续执行；这里只审查最终草稿。
+        if not isinstance(last_message, AIMessage) or last_message.tool_calls:
+            return None
+
+        decision = interrupt({
+            "type": "draft_review",
+            "draft": last_message.content,
+            "message": "是否批准向用户发布这份草稿？",
+        })
+
+        if decision.get("approved"):
+            return None
+
+        reason = decision.get("reason", "审批未通过")
+        return {
+            "messages": [AIMessage(content=f"草稿未发布：{reason}")],
+        }
+
+
+agent = create_deep_agent(
+    model=model,
+    middleware=[DraftApprovalMiddleware()],
+    checkpointer=MemorySaver(),
+)
+
+config = {"configurable": {"thread_id": "draft-review-001"}}
+
+paused = agent.invoke(
+    {"messages": [{"role": "user", "content": "起草一份上线公告"}]},
+    config=config,
+    version="v2",
+)
+
+final = agent.invoke(
+    Command(resume={"approved": True}),
+    config=config,
+    version="v2",
+)
+```
+
+`before_model`、`after_model` 等 Node-style Hook 是推荐的中断位置。Wrap-style Hook 中虽然也能调用 `interrupt()`，但它运行在 model/tools 节点内部，而且 `handler` 可能被跳过、执行一次或因重试执行多次。如果在 `handler()` 之后中断，恢复时整个所在节点会从头重放，模型调用或工具调用也可能再次发生。因此 Wrap-style 更适合重试、缓存和转换，不应作为常规人工中断边界。
+
+| 需求 | 推荐位置 | 原因 |
+|---|---|---|
+| 调用模型前补充缺失信息 | `before_model` | 模型运行前暂停，边界清楚 |
+| 模型生成结果后统一审查 | `after_model` | 可检查模型输出或工具调用计划 |
+| 整次 Agent 运行前后确认 | `before_agent` / `after_agent` | 适合会话级策略 |
+| 重试、缓存、模型降级 | `wrap_model_call` / `wrap_tool_call` | 需要控制 `handler`，不以人工暂停为主 |
 
 ### 运行时视角：一次中断到底保存了什么？
 
@@ -658,12 +734,13 @@ graph.invoke(None, config=config)     # 传入 None 继续执行
 
 ### 什么时候直接使用底层 interrupt()？
 
-Deep Agents 的 `interrupt_on` 已经覆盖了大多数"工具调用前审批"场景。只有当你要控制**图节点级别**的流程时，才需要直接使用 `interrupt()`：
+Deep Agents 的 `interrupt_on` 已经覆盖了大多数“工具调用前审批”场景。当暂停点不属于单个工具，或需要在自定义业务节点、Middleware 生命周期中控制流程时，再直接使用 `interrupt()`：
 
 | 场景 | 推荐方式 | 原因 |
 |---|---|---|
 | 给某个工具加审批 | `interrupt_on` | 配置简单，自动生成 action request 和 ToolMessage |
 | 按工具参数决定是否审批 | `interrupt_on` + `when` | 保留 Deep Agents 的工具审查格式 |
+| 在模型调用前后统一审查 | Node-style Middleware + `interrupt()` | 可作为自定义能力注入 Deep Agents，不受单个工具限制 |
 | 在节点中收集缺失信息 | 直接调用 `interrupt()` | 不是工具审批，而是业务流程缺字段 |
 | 做多轮表单/输入验证 | 直接调用 `interrupt()` + 条件边 | 每次只暂停一次，无效输入通过状态回路重新提问 |
 | 调试图执行路径 | `interrupt_before` / `interrupt_after` | 静态断点不需要改节点代码 |
@@ -682,7 +759,8 @@ Deep Agents 的 `interrupt_on` 已经覆盖了大多数"工具调用前审批"�
 5. **子 Agent 独立配置**：子 Agent 可以有比主 Agent 更严格的审批策略
 6. **按风险分层**：高风险审批/修改/拒绝、中风险审批/拒绝、低风险无需中断
 7. **文件系统权限中断**：用 `FilesystemPermission(..., mode="interrupt")` 保护敏感路径
-8. **底层机制**：`interrupt()` 通过异常暂停 + Checkpointer 保存状态 + 恢复时节点从头执行。核心规则：不要裸 try/except、副作用要幂等、不要动态改变调用顺序，并行中断用 ID 映射恢复
-9. **扩展模式**：输入验证（单次 interrupt + 条件边回到节点）、静态中断（调试用 interrupt_before/after）
+8. **自定义 Middleware 中断**：Node-style Hook 可以直接使用 `interrupt()`，并通过 `middleware=[...]` 注入 Deep Agents；Wrap-style 不适合作为默认中断边界
+9. **底层机制**：`interrupt()` 通过异常暂停 + Checkpointer 保存状态 + 恢复时节点从头执行。核心规则：不要裸 try/except、副作用要幂等、不要动态改变调用顺序，并行中断用 ID 映射恢复
+10. **扩展模式**：输入验证（单次 interrupt + 条件边回到节点）、静态中断（调试用 interrupt_before/after）
 
 下一章，我们将学习沙箱执行——让 Agent 在受控环境中安全地运行代码。
