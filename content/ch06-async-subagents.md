@@ -2,7 +2,16 @@
 
 > 上一章我们学习了同步子 Agent，主 Agent 通过 `task` 工具委派、然后**等待**子 Agent 跑完。但是，当子任务要花上几分钟、甚至几十分钟时，主 Agent 在用户面前就成了“死机状态”——既无法继续聊，也无法插话调整方向。本章学习 Deep Agents 0.5.0 的预览特性：**Async Subagent（异步子 Agent）**——主 Agent 立即拿到任务 ID 就返回，子 Agent 在后台继续跑；用户可以随时问进度、追加要求，甚至中途取消。
 
-> ⚠️ Async Subagent 是 `deepagents>=0.5.0` 的**预览特性**（preview），仍在迭代中，API 可能变化。本章对应的代码示例需要运行在支持 Agent Protocol 的 LangGraph 服务环境中。起步时不必先上 LangSmith Deployments；本地单部署 + ASGI 传输就能完成最小验证。
+> ⚠️ **前置环境与运行模型变化**
+>
+> Async Subagent 是 `deepagents>=0.5.0` 的**预览特性**（preview），仍在迭代中，API 可能变化。与前几章直接在 Python 进程中调用 `agent.invoke()` 不同，本章示例需要运行在支持 Agent Protocol 的 LangGraph 服务环境中。开始前需要理解四个要素：
+>
+> - 用 `langgraph.json` 注册主 Agent 和异步子 Agent；
+> - `AsyncSubAgent.graph_id` 必须与配置中的 graph 名称一致；
+> - 用 `langgraph dev` 启动本地 Agent Server；
+> - 为并行任务预留足够的 worker slots（`--n-jobs-per-worker`）。
+>
+> 起步时不需要远程部署：本章后面会给出“本地单部署 + ASGI”的完整最小示例。
 
 ## 同步子 Agent 的瓶颈
 

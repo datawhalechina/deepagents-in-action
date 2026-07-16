@@ -450,4 +450,4 @@ subagents = [
 5. **结构化输出**：通过 `response_format` 让子 Agent 返回 JSON，方便主 Agent 程序化处理（需 deepagents>=0.5.3）
 6. **最佳实践**：描述要具体、提示词要详细、工具集要精简、模型按需选择、返回结果要精炼
 
-下一章（第 6 章），我们将学习 Async Subagent——异步委派与并行协同，让主 Agent 同时驱动多个子 Agent 并行工作。
+下一章（第 6 章），我们将学习 Async Subagent——异步委派与并行协同，让主 Agent 同时驱动多个子 Agent 并行工作。运行方式也会发生一次明确切换：本章示例可以直接在 Python 进程中调用 `agent.invoke()`，下一章则需要把主 Agent 和异步子 Agent 注册到 Agent Protocol 兼容的 LangGraph 服务中，再通过 thread / run 管理后台任务。
