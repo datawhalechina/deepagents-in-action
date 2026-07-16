@@ -367,7 +367,7 @@ interrupt_on = {
 
 ## 文件系统权限中断
 
-除了 `interrupt_on`，Deep Agents 的内置文件系统工具也可以通过权限规则触发中断。这个能力需要 `deepagents>=0.6.8`。当 `write_file` 或 `edit_file` 命中 `mode="interrupt"` 的权限规则时，Deep Agents 会抛出和普通工具审批相同格式的 HITL 中断：
+除了 `interrupt_on`，Deep Agents 的内置文件系统工具也可以通过权限规则触发中断。这个能力需要 `deepagents>=0.6.8`。第 3 章介绍的 [`write_file` 和 `edit_file`](../ch03-virtual-filesystem/#六大文件系统工具) 在命中 `mode="interrupt"` 的权限规则时，Deep Agents 会抛出和普通工具审批相同格式的 HITL 中断：
 
 ```python
 from deepagents import FilesystemPermission, create_deep_agent

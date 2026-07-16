@@ -32,6 +32,8 @@ Deep Agents 的虚拟文件系统提供了 6 个核心工具：
 
 ![虚拟文件系统六大工具：ls、read_file、write_file、edit_file、glob、grep](../public/imgs/07-infographic-six-tools.png)
 
+工具定义的是 Agent **能做什么**，权限规则决定一次具体操作**是否可以做**。例如，`write_file` 和 `edit_file` 默认都是普通文件操作，但可以通过 `FilesystemPermission` 对敏感路径直接拒绝，或在执行前暂停等待人工审批。后者的完整中断与恢复流程见[第 9 章的“文件系统权限中断”](../ch09-human-in-the-loop/#文件系统权限中断)。
+
 ### `read_file`：不只是"读文件"
 
 `read_file` 有两个值得特别关注的特性。
@@ -318,6 +320,16 @@ agent = create_deep_agent(
 > 💡 `namespace` 本地需要加 `if rt.server_info else ("local-user",)` 兜底。
 
 权限规则在工具调用前按声明顺序求值，采用 first-match-wins：第一个同时匹配 `operations` 和 `paths` 的规则决定结果；如果没有规则匹配，则默认允许。因此配置权限时，应将更具体的规则放在更宽泛的规则之前。
+
+`FilesystemPermission` 的 `mode` 决定命中规则后的处理方式：
+
+| `mode` | 行为 | 适用场景 |
+|---|---|---|
+| `"allow"` | 允许操作继续执行 | 为特定路径设置显式例外 |
+| `"deny"` | 直接拒绝，不执行文件操作 | 无论谁发起都不应访问的路径 |
+| `"interrupt"` | 暂停并等待人工决策 | 可以操作，但必须先经过审批的敏感路径 |
+
+`mode="interrupt"` 需要 Checkpointer，并使用与工具审批相同的 `Command(resume=...)` 恢复协议；具体配置和恢复代码统一放在[第 9 章](../ch09-human-in-the-loop/#文件系统权限中断)。
 
 ### 实现自定义后端
 
