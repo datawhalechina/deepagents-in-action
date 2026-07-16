@@ -45,6 +45,8 @@
 
 最常用的方式是用**字典**定义子 Agent：
 
+> **示意片段**：本节聚焦子 Agent 字段；`internet_search` 代表应用自行实现的工具，`/skills/...` 代表项目中实际存在的 Skill 目录。
+
 ```python
 from deepagents import create_deep_agent
 
@@ -91,6 +93,8 @@ agent = create_deep_agent(
 
 即使你不定义任何子 Agent，Deep Agents 也自带一个 **general-purpose 子 Agent**。它是唯一的例外——**继承主 Agent 的 system_prompt、tools、model 和 skills**。
 
+> **示意片段**：`model` 和 `internet_search` 沿用应用已有定义，这里只演示不传 `subagents` 时的继承行为。
+
 ```python
 # 不传 subagents 参数，也能用子 Agent
 agent = create_deep_agent(
@@ -129,6 +133,8 @@ agent = create_deep_agent(
 
 如果你想给默认子 Agent 配置不同的模型或工具，可以用 `name="general-purpose"` 来覆盖：
 
+> **示意片段**：`model`、`internet_search`、`ChatOpenAI` 和 `os` 沿用应用已有定义，这里只展示覆盖字段。
+
 ```python
 agent = create_deep_agent(
     model=model,  # 主 Agent 用 GLM-4-9B
@@ -152,6 +158,8 @@ agent = create_deep_agent(
 ## CompiledSubAgent：集成 LangGraph 工作流
 
 对于更复杂的场景，你可以用一个预构建的 LangGraph 图作为子 Agent。这适用于需要**多步骤、有分支逻辑**的工作流：
+
+> **示意片段**：`model`、`statistical_analysis` 和 `generate_chart` 代表应用已有的模型与工具；代码只演示如何把已编译图包装成 `CompiledSubAgent`。
 
 ```python
 from deepagents import create_deep_agent, CompiledSubAgent
@@ -190,6 +198,8 @@ agent = create_deep_agent(
 ## 多子 Agent 协作模式
 
 实际项目中，最常见的模式是**多个专业子 Agent 协作**，由主 Agent 作为协调者：
+
+> **示意片段**：`internet_search`、`api_call`、`statistical_analysis` 和 `format_document` 是应用自定义工具，示例重点是多个专业子 Agent 的分工方式。
 
 ```python
 import os
@@ -251,6 +261,8 @@ agent = create_deep_agent(
 ## 结构化输出：让子 Agent 返回 JSON
 
 默认情况下，主 Agent 收到的是子 Agent 最后一条消息的自由文本。通过 `response_format` 字段，可以让子 Agent 返回符合 Pydantic schema 的 JSON，方便主 Agent 程序化处理：
+
+> **示意片段**：`model` 和 `internet_search` 沿用应用已有定义，这里只展示 `response_format` 的配置方式。
 
 ```python
 from pydantic import BaseModel, Field
@@ -324,6 +336,8 @@ research_agent = {"tools": [internet_search, send_email, delete_file, execute_co
 ### 4. 不同子 Agent 用不同模型
 
 根据任务特点选择合适的模型：
+
+> **示意片段**：`internet_search`、`statistical_analysis`、`ChatOpenAI` 和 `os` 沿用应用已有定义，代码只对比不同子 Agent 的模型选择。
 
 ```python
 subagents = [

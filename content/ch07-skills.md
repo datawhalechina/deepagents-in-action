@@ -357,6 +357,8 @@ Deep Agents 支持多 Agent 协作，Skills 在主 Agent 与子 Agent 之间的�
 - **自定义子 Agent**：不继承主 Agent 的 Skills，必须在定义时通过 `skills` 字段显式指定。
 - **Skill 状态完全隔离**：每个 Agent 拥有独立的 Skill 状态空间，一个 Agent 对 Skill 文件的修改不会影响其他 Agent。
 
+> **示意片段**：`web_search` 代表应用自行实现并注册的搜索工具，`/skills/...` 代表项目中的实际 Skill 目录；代码重点是主 Agent 与自定义子 Agent 的 Skills 继承边界。
+
 ```python
 from deepagents import create_deep_agent
 

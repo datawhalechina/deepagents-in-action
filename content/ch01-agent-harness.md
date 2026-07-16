@@ -39,8 +39,10 @@ LangGraph 就是这个底层运行时。它提供了一个基于图（Graph）�
 
 LangChain 就是这样一个框架。**LangChain 1.0 构建在 LangGraph 之上**——它利用 LangGraph 的图执行引擎和状态管理能力，但对外提供了更简洁的 API。你在使用 LangChain 时，通常不需要直接接触 LangGraph 的底层 API：
 
+> **示意片段**：这里只展示 `create_agent()` 的 API 形态；`web_search` 和 `calculator` 代表应用自行实现并注册的工具，不是 LangChain 自动提供的全局函数。
+
 ```python
-from langchain import create_agent
+from langchain.agents import create_agent
 
 agent = create_agent(
     model="gpt-4.1",
