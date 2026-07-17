@@ -132,7 +132,7 @@ LangChain 中间件提供两类执行边界。它们都叫 Hook，但适合解�
 
 **常驻层（始终启用，无论传入什么参数）**：
 - `TodoListMiddleware` — 任务规划，注入 `write_todos` 工具和规划提示词
-- `FilesystemMiddleware` — 注入 6 个文件工具，并执行 `permissions` 权限规则
+- `FilesystemMiddleware` — 注入 7 个文件工具，并执行 `permissions` 权限规则
 - `SummarizationMiddleware` — 上下文自动压缩，触发阈值可配置
 - `PatchToolCallsMiddleware` — 内部工具调用修补（框架内部使用）
 - `AnthropicPromptCachingMiddleware` — 提示词缓存加速（非 Anthropic 模型自动跳过）
@@ -151,6 +151,8 @@ LangChain 中间件提供两类执行边界。它们都叫 Hook，但适合解�
 - 看懂 Deep Agents 内部是怎么拼装出来的
 - 自己按需添加新能力（PII 脱敏、模型降级、调用次数限制……）
 - 在更底层的 LangChain `create_agent()` 上搭建定制化的 Agent
+
+其中 `FilesystemMiddleware` 的路径授权不需要另写自定义中间件；`permissions=` 的规则模型、默认允许语义与适用边界见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
 
 ![揭开引擎盖：create_deep_agent() 内部分为常驻层（TodoList、Filesystem、Summarization、PatchToolCalls、AnthropicCaching）、条件层（SubAgent、Skills、Memory、HumanInTheLoop 等按参数激活）和用户自定义层](../public/imgs/11-framework-middleware-assembly.png)
 
@@ -327,7 +329,7 @@ print(result["messages"][-1].content)
 | 中间件 | 用途 |
 |---|---|
 | TodoListMiddleware | 任务规划与追踪，注入 `write_todos` 工具 |
-| FilesystemMiddleware | 6 个文件工具 + 权限控制 |
+| FilesystemMiddleware | 7 个文件工具 + 权限控制 |
 | SummarizationMiddleware | 对话历史自动总结（触发阈值可配置） |
 | PatchToolCallsMiddleware | 工具调用内部修补（框架内部） |
 | AnthropicPromptCachingMiddleware | 提示词缓存（非 Anthropic 模型自动跳过） |

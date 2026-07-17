@@ -17,9 +17,9 @@ Deep Agents 的解决方案是：**给 Agent 一个文件系统**。
 
 Deep Agents 让 Agent 也能这样工作。它提供了一整套文件操作工具，Agent 可以像人类一样按需读取、结构化存储、搜索定位。
 
-## 六大文件系统工具
+## 内置文件系统工具
 
-Deep Agents 的虚拟文件系统提供了 6 个核心工具：
+Deep Agents 当前提供 7 个内置文件工具。下图展示了最初的六类核心读写与搜索能力，当前版本还加入了 `delete`：
 
 | 工具 | 用途 | 类比 |
 |---|---|---|
@@ -27,6 +27,7 @@ Deep Agents 的虚拟文件系统提供了 6 个核心工具：
 | `read_file` | 读取文件内容，支持偏移量和限制条数；原生支持多模态格式（图片、视频、音频、PDF/PPT） | 翻开某份资料阅读 |
 | `write_file` | 创建新文件 | 写一份新的备忘录 |
 | `edit_file` | 对已有文件做精确字符串替换 | 用红笔修改文档 |
+| `delete` | 删除文件或目录 | 清理不再需要的资料 |
 | `glob` | 按模式匹配查找文件（如 `**/*.py`） | 在文件柜中按标签找 |
 | `grep` | 搜索文件内容，按字面量匹配；支持内容输出和计数 | 全文检索 |
 
@@ -331,6 +332,8 @@ agent = create_deep_agent(
 
 `mode="interrupt"` 需要 Checkpointer，并使用与工具审批相同的 `Command(resume=...)` 恢复协议；具体配置和恢复代码统一放在[第 9 章](../ch09-human-in-the-loop/#文件系统权限中断)。
 
+本节只介绍权限与 Backend 的连接点。完整的规则设计、白名单写法、子 Agent 继承和沙箱边界见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
+
 ### 实现自定义后端
 
 如果内置后端不满足需求（比如要接入 S3 或 Postgres），可以实现 `BackendProtocol` 接口：
@@ -435,7 +438,7 @@ class PolicyWrapper(BackendProtocol):
 本章我们深入了 Deep Agents 的核心——虚拟文件系统：
 
 1. **设计哲学**：让 Agent 像人一样工作——按需读取、结构化存储、搜索定位，而不是把所有信息塞进 prompt
-2. **六大工具**：`ls`、`read_file`、`write_file`、`edit_file`、`glob`、`grep`，覆盖了文件操作的完整生命周期
+2. **七个内置工具**：`ls`、`read_file`、`write_file`、`edit_file`、`delete`、`glob`、`grep`，覆盖了文件操作的完整生命周期
 3. **自动上下文管理**：大结果自动卸载（>20K tokens → 文件 + 引用）、对话历史自动总结（>85% 窗口 → 摘要 + 完整记录保存到文件）
 4. **可插拔后端**：StateBackend（临时）、FilesystemBackend（本地磁盘）、LocalShellBackend（本地 Shell）、StoreBackend（持久化）、CompositeBackend（混合路由）、沙箱后端（安全执行）
 5. **权限控制**：`FilesystemPermission` 声明式权限；`GuardedBackend` 或 `PolicyWrapper` 实现定制策略

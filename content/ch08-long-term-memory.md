@@ -780,6 +780,8 @@ StoreBackend(
 
 每次文件写入都作为 tool call 出现在 LangSmith trace 中。对敏感记忆路径，开启 tracing 审计 Agent 写了什么。
 
+审计回答“发生了什么”，权限回答“是否允许发生”。对于组织策略和共享知识库，应同时拒绝 Agent 写入；完整的只读记忆规则与 CompositeBackend 限制见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
+
 ## 小结
 
 本章我们学习了 Deep Agents 的长期记忆能力：

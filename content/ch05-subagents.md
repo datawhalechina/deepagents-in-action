@@ -89,6 +89,8 @@ agent = create_deep_agent(
 
 关键点：**子 Agent 的 `system_prompt` 不继承主 Agent**——每个子 Agent 应有自己专属的指令。`tools` 默认继承主 Agent 的工具集，但一旦显式指定就会完全替换（不是合并）。**`skills` 也不继承**——主 Agent 的 `skills` 只会传给 general-purpose 子 Agent，其他子 Agent 需要显式配置自己的 `skills` 路径。
 
+`permissions` 同样需要特别小心：省略时继承父规则，显式提供后则整体替换而非叠加。如何为只读审计子 Agent 写出闭合的权限集，见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
+
 ## General-purpose 子 Agent：默认的"万能助手"
 
 即使你不定义任何子 Agent，Deep Agents 也自带一个 **general-purpose 子 Agent**。它是唯一的例外——**继承主 Agent 的 system_prompt、tools、model 和 skills**。

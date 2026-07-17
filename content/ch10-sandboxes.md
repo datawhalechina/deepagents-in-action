@@ -23,6 +23,8 @@
 
 传入沙箱 Backend 后，Deep Agents 会在每次模型调用前检查它是否实现了 `SandboxBackendProtocol`；只有满足该协议，模型才会看到 `execute` 工具。沙箱基类会把其他文件操作构造成沙箱中的脚本执行，因此提供商接入的核心通常就是可靠地实现 `execute()`。
 
+不要把 `FilesystemPermission` 当作沙箱内的命令隔离：它约束内置文件工具，但不约束 `execute`。两层能力如何组合，以及 CompositeBackend 使用沙箱默认路由时为什么只能保护已知路由，见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
+
 ![代码执行的主路径：用户请求经由 Agent 规划，进入代码执行沙箱，通过 execute 产出运行结果并交付文件](../public/imgs/30-flowchart-code-execution.png)
 
 ### `execute()` 的返回值

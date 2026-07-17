@@ -388,6 +388,8 @@ agent = create_deep_agent(
 
 恢复方式和普通工具一致：检查 `result.interrupts[0].value["action_requests"]`，然后用 `Command(resume={"decisions": [...]})` 继续执行。文件系统权限中断会和你传入的 `interrupt_on` 合并，因此一次人工审查可以同时覆盖自定义工具和受保护文件路径。
 
+本章重点是中断后的审查与恢复；如何组合 `allow`、`deny`、`interrupt`，以及为什么权限不能约束自定义工具或沙箱 `execute`，见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
+
 ## 揭开引擎盖：LangGraph 的中断机制
 
 `interrupt_on` 的底层是 LangGraph 的<strong>中断（Interrupt）</strong>原语。当你在工具或图节点中直接调用 `interrupt()` 函数时，可以实现更灵活的审批逻辑：

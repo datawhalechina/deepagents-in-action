@@ -152,31 +152,14 @@
     "published": true,
     "pubDate": "2026-07-10"
   },
-  "ch11-streaming-frontend": {
-    "title": "实时流式输出与前端集成",
+  "ch11-filesystem-permissions": {
+    "title": "文件系统权限 — 用声明式规则控制 Agent 的读写边界",
     "chapter": 11,
-    "section": "实战篇",
+    "section": "进阶篇",
     "order": 13,
-    "description": "实现 Agent 的实时流式输出，并用 React 构建可视化前端。多种 Streaming 模式与自定义事件。",
+    "description": "使用 FilesystemPermission 为内置文件工具配置 allow、deny 与 interrupt 规则，掌握规则顺序、子 Agent 继承、持久化目录保护及沙箱边界。",
     "slides": [],
-    "published": false
-  },
-  "ch12-data-analysis-agent": {
-    "title": "实战项目 — 构建数据分析 Agent",
-    "chapter": 12,
-    "section": "实战篇",
-    "order": 14,
-    "description": "综合运用前面所学，构建一个完整的数据分析 Agent。沙箱后端、子 Agent 协作、LangSmith 追踪。",
-    "slides": [],
-    "published": false
-  },
-  "ch13-cli-deployment": {
-    "title": "Deep Agents CLI 与生产部署",
-    "chapter": 13,
-    "section": "实战篇",
-    "order": 15,
-    "description": "CLI 工具使用指南 + 从开发到生产的部署路径。LangGraph Platform、ACP、模型选择策略。",
-    "slides": [],
-    "published": false
+    "published": true,
+    "pubDate": "2026-07-17"
   }
 }
