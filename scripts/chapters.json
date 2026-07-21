@@ -158,7 +158,9 @@
     "section": "进阶篇",
     "order": 13,
     "description": "使用 FilesystemPermission 为内置文件工具配置 allow、deny 与 interrupt 规则，掌握规则顺序、子 Agent 继承、持久化目录保护及沙箱边界。",
-    "slides": [],
+    "slides": [
+      { "id": "ch11", "title": "Lec 15: 文件系统权限 — 控制 Agent 的读写边界" }
+    ],
     "published": true,
     "pubDate": "2026-07-17"
   }
