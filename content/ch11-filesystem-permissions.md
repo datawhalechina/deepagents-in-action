@@ -452,18 +452,86 @@ backend = GuardedBackend(
 
 这个示例主要用于展示扩展点。单纯的静态路径拒绝优先写成 `FilesystemPermission`，更容易审查规则顺序；当策略需要读取内容、查询外部配额或写入业务审计记录时，再把判断放进 Backend 层。
 
-如果所用 Backend 支持 `delete`，并且应用暴露了删除工具，包装器还要处理 `delete()` 并返回 `DeleteResult`。不要只拦截 `write()` 和 `edit()`，却留下删除旁路。
-
 ### PolicyWrapper：可复用的策略包装器
 
 `PolicyWrapper` 是 Policy Hook 的一种通用实现。它是官方示例中的自定义类，需要由应用自行实现，并不是可以直接从 Deep Agents 导入的内置 Backend。它自己不存储文件，而是实现与内部 Backend 相同的 `BackendProtocol`，并通过 `inner` 字段持有真正负责存储的 Backend。
 
-每次调用会经过四步：
+下面的示例为一组目录前缀增加只读保护：读取类操作直接交给内部 Backend，写入和编辑则先经过 Policy Hook。
 
-1. `PolicyWrapper` 接收文件操作和参数
-2. 包装器执行频率、内容、身份或审计策略
-3. 策略拒绝时，返回带 `error` 的结果对象
-4. 策略允许时，把调用转发给 `inner`，并原样返回结果
+```python
+from deepagents.backends.protocol import (
+    BackendProtocol,
+    EditResult,
+    GlobResult,
+    GrepResult,
+    LsResult,
+    ReadResult,
+    WriteResult,
+)
+
+
+class PolicyWrapper(BackendProtocol):
+    def __init__(
+        self,
+        inner: BackendProtocol,
+        deny_prefixes: list[str] | None = None,
+    ):
+        self.inner = inner
+        self.deny_prefixes = [
+            prefix if prefix.endswith("/") else prefix + "/"
+            for prefix in (deny_prefixes or [])
+        ]
+
+    def _deny(self, path: str) -> bool:
+        return any(path.startswith(prefix) for prefix in self.deny_prefixes)
+
+    def ls(self, path: str) -> LsResult:
+        return self.inner.ls(path)
+
+    def read(
+        self,
+        file_path: str,
+        offset: int = 0,
+        limit: int = 2000,
+    ) -> ReadResult:
+        return self.inner.read(file_path, offset=offset, limit=limit)
+
+    def grep(
+        self,
+        pattern: str,
+        path: str | None = None,
+        glob: str | None = None,
+    ) -> GrepResult:
+        return self.inner.grep(pattern, path, glob)
+
+    def glob(self, pattern: str, path: str | None = None) -> GlobResult:
+        return self.inner.glob(pattern, path)
+
+    def write(self, file_path: str, content: str) -> WriteResult:
+        if self._deny(file_path):
+            return WriteResult(error=f"Writes are not allowed under {file_path}")
+        return self.inner.write(file_path, content)
+
+    def edit(
+        self,
+        file_path: str,
+        old_string: str,
+        new_string: str,
+        replace_all: bool = False,
+    ) -> EditResult:
+        if self._deny(file_path):
+            return EditResult(error=f"Edits are not allowed under {file_path}")
+        return self.inner.edit(file_path, old_string, new_string, replace_all)
+```
+
+这段代码可以从四个层次理解：
+
+1. `__init__()` 保存真正执行文件操作的 `inner` Backend，并统一给受保护目录补上末尾的 `/`，避免把 `/policies-old` 误判为 `/policies` 的子路径。
+2. `_deny()` 是集中式策略判断点。示例只检查路径前缀，实际应用可以在这里加入用户身份、配额、内容扫描或外部审批状态。
+3. `ls()`、`read()`、`grep()`、`glob()` 不改变行为，直接调用 `inner`，说明包装器可以只介入需要管控的操作。
+4. `write()`、`edit()` 先检查策略。拒绝时不调用 `inner`，而是返回对应类型且带有 `error` 的结果；允许时才把原参数转发给内部 Backend。
+
+以 `write()` 为例，一次调用的判断与转发关系如下：
 
 ```text
 PolicyWrapper.write(...)
@@ -472,9 +540,11 @@ PolicyWrapper.write(...)
      -> 允许：inner.write(...)
 ```
 
-`ls()`、`read()`、`glob()`、`grep()` 等无须检查的方法可以直接转发；`write()`、`edit()`、`delete()` 等有副作用的方法先执行策略。由于策略通过组合而不是继承加入，同一个 `PolicyWrapper` 可以复用于 State、Store、Filesystem 等不同 Backend。完整实现见官方文档的 [Generic wrapper](https://docs.langchain.com/oss/python/deepagents/backends#add-policy-hooks) 示例。
+在这个最小示例中，`ls()`、`read()`、`glob()`、`grep()` 直接转发，`write()`、`edit()` 则先执行策略。由于策略通过组合而不是继承加入，同一个 `PolicyWrapper` 可以复用于 State、Store、Filesystem 等不同 Backend。示例来源与更多说明见官方文档的 [Generic wrapper](https://docs.langchain.com/oss/python/deepagents/backends#add-policy-hooks)。
 
 包装器必须保持 Backend 协议的返回类型和路径语义。策略拒绝应返回相应结果对象中的 `error`，让文件工具得到可处理的结构化失败；策略放行时则原样返回内部 Backend 的结果。
+
+这段代码尚未实现 `delete()`。如果所用 Backend 和工具集支持删除，应按同一模式增加 `delete()` 与 `DeleteResult`，否则删除操作可能绕过这项策略。
 
 | 需求 | 推荐机制 |
 |---|---|
