@@ -49,7 +49,7 @@ agent = create_deep_agent(
 | 自定义 LangChain 工具 | 否 | 工具自身校验、`interrupt_on`、Middleware |
 | MCP 文件工具 | 否 | MCP Server 权限、工具审批、进程隔离 |
 | 沙箱或 `LocalShellBackend` 的 `execute` | 否 | 沙箱隔离、命令策略、网络与凭证控制 |
-| Backend 的业务级校验 | 不足以表达 | Backend policy hook 或包装器 |
+| Backend 的业务级校验 | 不足以表达 | Policy Hook 或 `PolicyWrapper` |
 
 因此，“禁止 `write_file` 写入 `/secrets/`”不等于“Agent 无法通过其他工具接触 `/secrets/`”。如果 Agent 还能调用一个自定义上传工具、MCP 文件工具或 Shell，就必须分别约束这些入口。
 
@@ -380,25 +380,25 @@ agent = create_deep_agent(
 
 ## 8. 什么时候升级到自定义策略
 
-声明式权限适合回答“某类操作能否访问某个路径”。如果判断条件超出这两个维度，应使用 Backend policy hook、Backend 包装器或自定义 Middleware。
+声明式权限适合回答“某类操作能否访问某个路径”。如果判断条件超出这两个维度，应使用 Policy Hook、`PolicyWrapper` 或自定义 Middleware。
 
-### Backend policy hook 到底是什么
+### Policy Hook：在 Backend 层执行动态策略
 
-官方文档中的“policy hook”不是一个可以直接传给 `create_deep_agent(policy_hook=...)` 的独立参数。它是一种 **Backend 扩展模式**：在真正的存储 Backend 前加入业务校验，再决定转发调用还是返回错误。
+官方文档中的 **Policy Hook** 不是一个可以直接传给 `create_deep_agent(policy_hook=...)` 的独立参数。它表示一种 **Backend 扩展模式**：在真正的存储 Backend 前执行策略判断，再决定转发调用还是返回错误。
 
 与 `FilesystemPermission` 组合时，内置文件调用按下面的顺序经过两层控制：
 
 ```text
 内置文件工具
   -> FilesystemPermission：先检查 operation 与 path
-  -> GuardedBackend / PolicyWrapper：再执行动态业务策略
+  -> Policy Hook（GuardedBackend / PolicyWrapper）：再执行动态业务策略
   -> 实际存储 Backend
 ```
 
 因此两者不是替代关系：
 
 - `FilesystemPermission` 适合稳定、可枚举、可审查的路径基线
-- Backend policy hook 适合频率、内容、调用身份、租户状态或审计等动态条件
+- Policy Hook 适合频率、内容、调用身份、租户状态或审计等动态条件
 - 没有通过内置文件工具进入 Backend 的自定义工具、MCP 工具和 `execute`，仍需单独控制
 
 ### 两种实现方式
@@ -454,9 +454,25 @@ backend = GuardedBackend(
 
 如果所用 Backend 支持 `delete`，并且应用暴露了删除工具，包装器还要处理 `delete()` 并返回 `DeleteResult`。不要只拦截 `write()` 和 `edit()`，却留下删除旁路。
 
-### 包装器如何复用策略
+### PolicyWrapper：可复用的策略包装器
 
-通用 `PolicyWrapper` 持有一个 `inner: BackendProtocol`：`ls()`、`read()`、`glob()`、`grep()` 等无须检查的方法直接转发；`write()`、`edit()`、`delete()` 等有副作用的方法先执行策略。这样同一个策略可以包住不同的实际 Backend。完整的转发实现见官方文档的 [Generic wrapper](https://docs.langchain.com/oss/python/deepagents/backends#add-policy-hooks) 示例。
+`PolicyWrapper` 是 Policy Hook 的一种通用实现。它是官方示例中的自定义类，需要由应用自行实现，并不是可以直接从 Deep Agents 导入的内置 Backend。它自己不存储文件，而是实现与内部 Backend 相同的 `BackendProtocol`，并通过 `inner` 字段持有真正负责存储的 Backend。
+
+每次调用会经过四步：
+
+1. `PolicyWrapper` 接收文件操作和参数
+2. 包装器执行频率、内容、身份或审计策略
+3. 策略拒绝时，返回带 `error` 的结果对象
+4. 策略允许时，把调用转发给 `inner`，并原样返回结果
+
+```text
+PolicyWrapper.write(...)
+  -> Policy Hook
+     -> 拒绝：WriteResult(error=...)
+     -> 允许：inner.write(...)
+```
+
+`ls()`、`read()`、`glob()`、`grep()` 等无须检查的方法可以直接转发；`write()`、`edit()`、`delete()` 等有副作用的方法先执行策略。由于策略通过组合而不是继承加入，同一个 `PolicyWrapper` 可以复用于 State、Store、Filesystem 等不同 Backend。完整实现见官方文档的 [Generic wrapper](https://docs.langchain.com/oss/python/deepagents/backends#add-policy-hooks) 示例。
 
 包装器必须保持 Backend 协议的返回类型和路径语义。策略拒绝应返回相应结果对象中的 `error`，让文件工具得到可处理的结构化失败；策略放行时则原样返回内部 Backend 的结果。
 
@@ -464,9 +480,9 @@ backend = GuardedBackend(
 |---|---|
 | 拒绝写入 `/policies/**` | `FilesystemPermission` |
 | 写入 `/releases/**` 前人工确认 | `FilesystemPermission(mode="interrupt")` |
-| 每分钟最多写入 20 次 | Backend 包装器（policy hook）/ Middleware |
-| 按文件内容做敏感信息检查 | Backend 包装器 / Middleware |
-| 为每次访问记录业务审计字段 | Backend 包装器（policy hook） |
+| 每分钟最多写入 20 次 | Policy Hook / Middleware |
+| 按文件内容做敏感信息检查 | `PolicyWrapper` / Middleware |
+| 为每次访问记录业务审计字段 | `PolicyWrapper` |
 | 控制自定义工具或 MCP 工具 | 工具自身策略 + `interrupt_on` |
 | 控制 Shell 命令和网络 | 沙箱与执行策略 |
 
@@ -474,7 +490,7 @@ backend = GuardedBackend(
 
 1. 用 `permissions` 表达稳定、可审查的路径基线
 2. 用 `interrupt` 把少量敏感动作交给人
-3. 用 policy hook 处理依赖内容、频率、身份或业务状态的动态判断
+3. 用 Policy Hook 处理依赖内容、频率、身份或业务状态的动态判断
 4. 在所有绕过内置文件工具的入口单独实施控制
 
 ## 9. 上线前如何验证权限策略
@@ -491,7 +507,7 @@ backend = GuardedBackend(
 | 包含受保护后代的目录删除 | 删除不会产生部分结果 |
 | 子 Agent 同一路径访问 | 继承或替换行为符合设计 |
 | `interrupt` 的批准、编辑、拒绝 | 暂停与恢复都使用同一 thread |
-| Backend policy hook 的允许与拒绝分支 | 动态条件不会误拦正常请求，也不能被写入、编辑或删除旁路 |
+| Policy Hook 的允许与拒绝分支 | 动态条件不会误拦正常请求，也不能被写入、编辑或删除旁路 |
 | 自定义工具、MCP、`execute` | 每个旁路都有独立控制 |
 
 尤其要加入一个“没有显式规则的陌生路径”测试。由于默认行为是允许，这个用例最容易暴露伪白名单。
@@ -520,14 +536,14 @@ backend = GuardedBackend(
 - `interrupt` 需要 `deepagents>=0.6.8` 与 checkpointer，并复用 HITL 的暂停、审查和恢复协议
 - 子 Agent 默认继承权限；显式提供 `permissions` 后整体替换父规则
 - CompositeBackend 使用沙箱默认路由时，只能为已知的非沙箱路由配置路径权限
-- Backend policy hook 通过继承或包装 Backend 实现，不是 `create_deep_agent()` 的独立参数
+- Policy Hook 通过继承或包装 Backend 实现，不是 `create_deep_agent()` 的独立参数
 - 路径规则、Backend 动态策略、工具审批与沙箱隔离分别负责不同边界，需要组合使用
 
 ## 官方参考
 
 - [Deep Agents Permissions](https://docs.langchain.com/oss/python/deepagents/permissions)
 - [Deep Agents Backends](https://docs.langchain.com/oss/python/deepagents/backends)
-- [Deep Agents Backends：Add policy hooks](https://docs.langchain.com/oss/python/deepagents/backends#add-policy-hooks)
+- [Deep Agents Backends：Add Policy Hooks](https://docs.langchain.com/oss/python/deepagents/backends#add-policy-hooks)
 - [Deep Agents Human-in-the-Loop](https://docs.langchain.com/oss/python/deepagents/human-in-the-loop)
 - [Deep Agents Subagents](https://docs.langchain.com/oss/python/deepagents/subagents)
 - [Deep Agents Memory](https://docs.langchain.com/oss/python/deepagents/memory)
