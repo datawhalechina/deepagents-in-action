@@ -382,13 +382,91 @@ agent = create_deep_agent(
 
 声明式权限适合回答“某类操作能否访问某个路径”。如果判断条件超出这两个维度，应使用 Backend policy hook、Backend 包装器或自定义 Middleware。
 
+### Backend policy hook 到底是什么
+
+官方文档中的“policy hook”不是一个可以直接传给 `create_deep_agent(policy_hook=...)` 的独立参数。它是一种 **Backend 扩展模式**：在真正的存储 Backend 前加入业务校验，再决定转发调用还是返回错误。
+
+与 `FilesystemPermission` 组合时，内置文件调用按下面的顺序经过两层控制：
+
+```text
+内置文件工具
+  -> FilesystemPermission：先检查 operation 与 path
+  -> GuardedBackend / PolicyWrapper：再执行动态业务策略
+  -> 实际存储 Backend
+```
+
+因此两者不是替代关系：
+
+- `FilesystemPermission` 适合稳定、可枚举、可审查的路径基线
+- Backend policy hook 适合频率、内容、调用身份、租户状态或审计等动态条件
+- 没有通过内置文件工具进入 Backend 的自定义工具、MCP 工具和 `execute`，仍需单独控制
+
+### 两种实现方式
+
+| 方式 | 适用场景 | 主要代价 |
+|---|---|---|
+| 继承具体 Backend | 只使用一种 Backend，并希望复用它的实现 | 策略与具体 Backend 类型绑定 |
+| 包装 `BackendProtocol` | 同一策略需要复用于 State、Store、Filesystem 等不同 Backend | 必须完整转发未拦截的方法 |
+
+官方示例使用 `GuardedBackend` 继承 `FilesystemBackend`。命中策略时，它返回带 `error` 的 `WriteResult` 或 `EditResult`；未命中时才调用父类：
+
+```python
+from deepagents.backends.filesystem import FilesystemBackend
+from deepagents.backends.protocol import EditResult, WriteResult
+
+
+class GuardedBackend(FilesystemBackend):
+    def __init__(self, *, deny_prefixes: list[str], **kwargs):
+        super().__init__(**kwargs)
+        self.deny_prefixes = [
+            prefix if prefix.endswith("/") else prefix + "/"
+            for prefix in deny_prefixes
+        ]
+
+    def _denied(self, path: str) -> bool:
+        return any(path.startswith(prefix) for prefix in self.deny_prefixes)
+
+    def write(self, file_path: str, content: str) -> WriteResult:
+        if self._denied(file_path):
+            return WriteResult(error=f"Writes are not allowed under {file_path}")
+        return super().write(file_path, content)
+
+    def edit(
+        self,
+        file_path: str,
+        old_string: str,
+        new_string: str,
+        replace_all: bool = False,
+    ) -> EditResult:
+        if self._denied(file_path):
+            return EditResult(error=f"Edits are not allowed under {file_path}")
+        return super().edit(file_path, old_string, new_string, replace_all)
+
+
+backend = GuardedBackend(
+    root_dir="/srv/agent-workspace",
+    virtual_mode=True,
+    deny_prefixes=["/policies"],
+)
+```
+
+这个示例主要用于展示扩展点。单纯的静态路径拒绝优先写成 `FilesystemPermission`，更容易审查规则顺序；当策略需要读取内容、查询外部配额或写入业务审计记录时，再把判断放进 Backend 层。
+
+如果所用 Backend 支持 `delete`，并且应用暴露了删除工具，包装器还要处理 `delete()` 并返回 `DeleteResult`。不要只拦截 `write()` 和 `edit()`，却留下删除旁路。
+
+### 包装器如何复用策略
+
+通用 `PolicyWrapper` 持有一个 `inner: BackendProtocol`：`ls()`、`read()`、`glob()`、`grep()` 等无须检查的方法直接转发；`write()`、`edit()`、`delete()` 等有副作用的方法先执行策略。这样同一个策略可以包住不同的实际 Backend。完整的转发实现见官方文档的 [Generic wrapper](https://docs.langchain.com/oss/python/deepagents/backends#add-policy-hooks) 示例。
+
+包装器必须保持 Backend 协议的返回类型和路径语义。策略拒绝应返回相应结果对象中的 `error`，让文件工具得到可处理的结构化失败；策略放行时则原样返回内部 Backend 的结果。
+
 | 需求 | 推荐机制 |
 |---|---|
 | 拒绝写入 `/policies/**` | `FilesystemPermission` |
 | 写入 `/releases/**` 前人工确认 | `FilesystemPermission(mode="interrupt")` |
-| 每分钟最多写入 20 次 | Backend policy hook / Middleware |
+| 每分钟最多写入 20 次 | Backend 包装器（policy hook）/ Middleware |
 | 按文件内容做敏感信息检查 | Backend 包装器 / Middleware |
-| 为每次访问记录业务审计字段 | Backend policy hook |
+| 为每次访问记录业务审计字段 | Backend 包装器（policy hook） |
 | 控制自定义工具或 MCP 工具 | 工具自身策略 + `interrupt_on` |
 | 控制 Shell 命令和网络 | 沙箱与执行策略 |
 
@@ -413,6 +491,7 @@ agent = create_deep_agent(
 | 包含受保护后代的目录删除 | 删除不会产生部分结果 |
 | 子 Agent 同一路径访问 | 继承或替换行为符合设计 |
 | `interrupt` 的批准、编辑、拒绝 | 暂停与恢复都使用同一 thread |
+| Backend policy hook 的允许与拒绝分支 | 动态条件不会误拦正常请求，也不能被写入、编辑或删除旁路 |
 | 自定义工具、MCP、`execute` | 每个旁路都有独立控制 |
 
 尤其要加入一个“没有显式规则的陌生路径”测试。由于默认行为是允许，这个用例最容易暴露伪白名单。
@@ -441,12 +520,14 @@ agent = create_deep_agent(
 - `interrupt` 需要 `deepagents>=0.6.8` 与 checkpointer，并复用 HITL 的暂停、审查和恢复协议
 - 子 Agent 默认继承权限；显式提供 `permissions` 后整体替换父规则
 - CompositeBackend 使用沙箱默认路由时，只能为已知的非沙箱路由配置路径权限
-- 路径规则、动态 policy hook、工具审批与沙箱隔离分别负责不同边界，需要组合使用
+- Backend policy hook 通过继承或包装 Backend 实现，不是 `create_deep_agent()` 的独立参数
+- 路径规则、Backend 动态策略、工具审批与沙箱隔离分别负责不同边界，需要组合使用
 
 ## 官方参考
 
 - [Deep Agents Permissions](https://docs.langchain.com/oss/python/deepagents/permissions)
 - [Deep Agents Backends](https://docs.langchain.com/oss/python/deepagents/backends)
+- [Deep Agents Backends：Add policy hooks](https://docs.langchain.com/oss/python/deepagents/backends#add-policy-hooks)
 - [Deep Agents Human-in-the-Loop](https://docs.langchain.com/oss/python/deepagents/human-in-the-loop)
 - [Deep Agents Subagents](https://docs.langchain.com/oss/python/deepagents/subagents)
 - [Deep Agents Memory](https://docs.langchain.com/oss/python/deepagents/memory)
