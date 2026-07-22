@@ -31,7 +31,7 @@ from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 model = ChatOpenAI(
-    model=os.environ.get("MODEL_NAME", "Pro/zai-org/GLM-5.1"),
+    model=os.environ.get("MODEL_NAME", "zai-org/GLM-5.2"),
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )

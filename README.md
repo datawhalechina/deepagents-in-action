@@ -30,11 +30,11 @@
 > 官方文档：[Deep Agents Overview](https://docs.langchain.com/oss/python/deepagents/overview)
 
 > [!NOTE]
-> **🤖 模型选择**：示例默认通过 [硅基流动](https://cloud.siliconflow.cn/i/Fq9zUwPf) 接入模型。建议用 `MODEL_NAME` 环境变量管理模型名，而非写死在代码里；平台模型会不定期上下线，最新可用模型见 [模型广场](https://cloud.siliconflow.cn/models)。
+> **🤖 模型选择**：示例默认通过 [硅基流动](https://cloud.siliconflow.cn/i/Fq9zUwPf) 接入模型。建议用 `MODEL_NAME` 环境变量管理模型名，而非写死在代码里；平台模型、价格和免费范围会调整，使用前请查看 [模型广场](https://cloud.siliconflow.cn/models)、[价格页](https://siliconflow.cn/pricing)与[更新公告](https://api-docs.siliconflow.cn/docs/release-notes/overview)。
 >
-> - **入门 / 简单任务** — 免费的 `Qwen/Qwen2.5-7B-Instruct` 即可跑通；如果想用更强一点、同时控制成本，`deepseek-ai/DeepSeek-V4-Flash` 也适合作为快速试跑的选择。
-> - **复杂场景**（任务规划、上下文总结、多子 Agent 编排）— 小模型往往**无法稳定跑通**，需改用 SOTA 模型：
->   - `Pro/zai-org/GLM-5.1` — 智谱旗舰，Agent 任务同类最佳
+> - **入门 / 简单任务** — 当前免费版 `Qwen/Qwen2.5-7B-Instruct` 可用于跑通示例；如果想用更强一点、同时控制成本，`deepseek-ai/DeepSeek-V4-Flash` 也适合作为快速试跑的选择。
+> - **复杂场景**（任务规划、上下文总结、多子 Agent 编排）— 小模型往往**无法稳定跑通**，建议改用能力更强、支持工具调用的模型：
+>   - `zai-org/GLM-5.2` — 面向长程 Agent 任务，支持 1M 上下文
 
 ---
 

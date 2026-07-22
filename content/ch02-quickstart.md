@@ -29,7 +29,7 @@ Deep Agents 支持多种模型提供商。你需要至少配置一个模型的 A
 
 - **国内直连**，无需代理
 - **兼容 OpenAI 接口**，接入成本为零
-- **提供免费模型**（10B 以下模型永久免费），非常适合学习和实验
+- **提供多款免费模型**，适合学习和实验；具体范围与限流规则以平台页面为准
 - **模型选择丰富**：Qwen、DeepSeek、GLM 等主流开源模型均可使用
 
 注册 [SiliconFlow 平台](https://cloud.siliconflow.cn/)，在 [API 密钥页面](https://cloud.siliconflow.cn/account/ak) 创建 Key，然后配置环境变量：
@@ -37,12 +37,12 @@ Deep Agents 支持多种模型提供商。你需要至少配置一个模型的 A
 ```bash
 export SILICONFLOW_API_KEY="your-siliconflow-key"
 # 可选：通过环境变量指定模型，方便整体切换，不必逐处修改代码
-export MODEL_NAME="Qwen/Qwen2.5-7B-Instruct"   # 免费、支持 Tools，适合学习
+export MODEL_NAME="Qwen/Qwen2.5-7B-Instruct"   # 当前免费、支持 Tools，适合学习
 ```
 
 > 当然，你也可以使用其他提供商（Anthropic、OpenAI、Google 等），只需配置对应的 API Key 即可。本系列的所有示例代码都以硅基流动为默认配置，但原理完全相同。
 
-> **模型版本维护说明**：本系列示例默认使用免费的 `Qwen/Qwen2.5-7B-Instruct`（轻量、支持工具调用，适合入门学习与简单任务）。**注意：任务规划、上下文总结、多子 Agent 编排等复杂场景，以及叠加了中间件的进阶示例，小模型（如 7B）往往无法稳定跑通完整流程，请使用 SOTA 模型 `Pro/zai-org/GLM-5.1`**——后续 ch04 / ch05 等章节会按场景标注推荐模型。平台模型会不定期上下线，**建议用上面的 `MODEL_NAME` 环境变量管理模型名，而非写死在代码里**——这样模型变更时只需改一处环境变量。最新可用模型见 [模型广场](https://cloud.siliconflow.cn/models)。
+> **模型版本维护说明**：本系列示例默认使用当前免费的 `Qwen/Qwen2.5-7B-Instruct`（轻量、支持工具调用，适合入门学习与简单任务）。任务规划、上下文总结、多子 Agent 编排等复杂场景，以及叠加了中间件的进阶示例，小模型（如 7B）往往无法稳定跑通完整流程，建议改用 `zai-org/GLM-5.2` 等能力更强、支持工具调用的模型。平台模型、价格和免费范围会调整，建议用上面的 `MODEL_NAME` 环境变量管理模型名；使用前请查看 [模型广场](https://cloud.siliconflow.cn/models)、[价格页](https://siliconflow.cn/pricing)与[更新公告](https://api-docs.siliconflow.cn/docs/release-notes/overview)。
 
 ## Hello World：最简单的 Deep Agent
 
@@ -55,7 +55,7 @@ from deepagents import create_deep_agent
 
 # 通过硅基流动接入模型（兼容 OpenAI 接口）
 model = ChatOpenAI(
-    # 默认免费模型，可用 MODEL_NAME 环境变量覆盖（如付费的 Pro/zai-org/GLM-5.1）
+    # 当前免费模型，可用 MODEL_NAME 环境变量覆盖（如付费的 zai-org/GLM-5.2）
     model=os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct"),
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
@@ -196,7 +196,7 @@ print(result["messages"][-1].content)
 
 ### Step 1：安装依赖
 
-我们使用 [Tavily](https://tavily.com/) 作为搜索 API（有免费额度），使用硅基流动作为模型提供商：
+我们使用 [Tavily](https://docs.tavily.com/documentation/api-credits) 作为搜索 API（当前免费计划每月包含 1,000 Credits），使用硅基流动作为模型提供商：
 
 ```bash
 pip install deepagents langchain-openai tavily-python
@@ -248,7 +248,7 @@ def internet_search(
 from langchain_openai import ChatOpenAI
 from deepagents import create_deep_agent
 
-# 使用硅基流动接入模型（默认免费的 Qwen2.5-7B 即可跑通，实际项目推荐 GLM-5.1）
+# 使用硅基流动接入模型（当前免费的 Qwen2.5-7B 即可跑通，复杂任务可改用 GLM-5.2）
 model = ChatOpenAI(
     model=os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct"),  # 可用 MODEL_NAME 覆盖
     api_key=os.environ["SILICONFLOW_API_KEY"],
@@ -307,7 +307,7 @@ Deep Agents 支持任何实现了工具调用（Tool Calling）的 LangChain Cha
 
 硅基流动同时支持这两种接口，这意味着你可以用 `ChatOpenAI` 或 `ChatAnthropic` 来接入同一个平台上的模型。
 
-![两种大模型标准接口对比：OpenAI 兼容接口（/chat/completions，行业最广泛）和 Anthropic 兼容接口（/messages），硅基流动同时兼容两种，支持 GLM-5、Kimi-K2.5、Qwen3.5、DeepSeek-V3.2 等模型](../public/imgs/06-comparison-api-interfaces.png)
+![两种大模型标准接口对比：OpenAI 兼容接口（/chat/completions，行业最广泛）和 Anthropic 兼容接口（/messages），硅基流动同时兼容两种，可接入 GLM、Kimi、Qwen、DeepSeek 等模型](../public/imgs/06-comparison-api-interfaces.png)
 
 ### 方式一：OpenAI 兼容接口（推荐）
 
@@ -316,7 +316,7 @@ Deep Agents 支持任何实现了工具调用（Tool Calling）的 LangChain Cha
 ```python
 from langchain_openai import ChatOpenAI
 
-# 硅基流动（免费模型，适合学习）
+# 硅基流动（当前免费模型，适合学习）
 model = ChatOpenAI(
     model="Qwen/Qwen2.5-7B-Instruct",
     api_key=os.environ["SILICONFLOW_API_KEY"],
@@ -324,9 +324,9 @@ model = ChatOpenAI(
 )
 agent = create_deep_agent(model=model)
 
-# 硅基流动（推荐模型，效果更好）
+# 硅基流动（复杂任务推荐模型）
 model = ChatOpenAI(
-    model="Pro/zai-org/GLM-5.1",
+    model="zai-org/GLM-5.2",
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )
@@ -343,7 +343,7 @@ agent = create_deep_agent(model=model)
 from langchain_anthropic import ChatAnthropic
 
 model = ChatAnthropic(
-    model="Pro/zai-org/GLM-5.1",
+    model="zai-org/GLM-5.2",
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn",
 )
@@ -364,28 +364,28 @@ agent = create_deep_agent(model="openai:gpt-4.1")
 
 ### 推荐模型
 
-**硅基流动平台模型（国内首选）：**
+**[硅基流动平台模型](https://www.siliconflow.cn/models)：**
 
 以下模型均支持工具调用（Tools），可直接用于 Deep Agents：
 
-**免费模型（适合学习和实验）：**
+**当前免费模型（适合学习和实验）：**
 
 | 模型 | 参数量 | 特点 |
 |---|---|---|
-| `Qwen/Qwen2.5-7B-Instruct` | 7B | 中文理解优秀，支持 Tools，轻量快速，**免费** |
+| `Qwen/Qwen2.5-7B-Instruct` | 7B | 中文理解优秀，支持 Tools，轻量快速；当前免费版有固定 [Rate Limits](https://docs.siliconflow.cn/cn/userguide/rate-limits/rate-limit-and-upgradation) |
 
 **推荐模型（适合实际使用）：**
 
 | 模型 | 参数量 | 特点 |
 |---|---|---|
-| `nex-agi/Nex-N2-Pro` | — | 🔥 **限免**：能动性思考模型，自适应推理深度，编码/搜索/工具任务开源 SOTA，可与 Claude Code、Cursor 等即插即用——**限免期间是复杂任务的首选** |
-| `Pro/zai-org/GLM-5.1` | 744B (MoE, 40B 激活) | 智谱最新旗舰，Agent 任务同类最佳，支持推理模式 |
-| `Pro/moonshotai/Kimi-K2.6` | 1T (MoE, 32B 激活) | Kimi 最新旗舰，原生多模态智能体模型，256K 上下文 |
-| `Pro/deepseek-ai/DeepSeek-V4-Pro` | 671B (MoE) | 推理和 Agent 能力顶级 |
-| `Qwen/Qwen3.6-27B` | 27B | Qwen 最新系列，支持思考模式和视觉理解 |
-| `Qwen/Qwen3.5-122B-A10B` | 122B (MoE, 10B 激活) | 旗舰级 MoE，仅 10B 激活参数，性价比极高 |
+| `zai-org/GLM-5.2` | 753B | 面向长程 Agent 任务，支持工具调用和 1M 上下文 |
+| `moonshotai/Kimi-K2.7-Code` | 1T (MoE, 32B 激活) | 面向长程代码任务，支持多步工具调用、视觉输入和 256K 上下文 |
+| `deepseek-ai/DeepSeek-V4-Pro` | 1.6T (MoE, 49B 激活) | 支持工具调用、三种推理强度和 1M 上下文 |
+| `nex-agi/Nex-N2-Pro` | 397B | 已结束免费体验；当前输入 ¥1.75/M Tokens、输出 ¥7/M Tokens、缓存命中 ¥0.175/M Tokens |
+| `Qwen/Qwen3.6-35B-A3B` | 35B (MoE, 3B 激活) | 支持思考/非思考模式、工具调用、视觉输入和 256K 上下文 |
+| `deepseek-ai/DeepSeek-V4-Flash` | 284B (MoE, 13B 激活) | 支持工具调用和 1M 上下文，适合控制试跑成本 |
 
-> 本系列示例代码默认使用免费的 `Qwen/Qwen2.5-7B-Instruct` 以降低入门门槛，它足以跑通本章的简单示例。但任务规划、多 Agent 编排等复杂场景小模型往往无法稳定完成，需改用 SOTA 模型——其中 `nex-agi/Nex-N2-Pro` **当前限免**，是复杂任务的首选，也可用 GLM-5.1、Kimi-K2.6 或 Qwen3.6 系列。建议用 `MODEL_NAME` 环境变量管理模型名，避免写死在代码中；完整模型列表见 [模型广场](https://cloud.siliconflow.cn/models)。
+> **状态更新（2026-07-22）**：`nex-agi/Nex-N2-Pro` 的免费体验已结束，平台自 2026-06-26 起按量收费。本系列仍用当前免费的 `Qwen/Qwen2.5-7B-Instruct` 降低入门门槛；任务规划、多 Agent 编排等复杂场景可改用 `zai-org/GLM-5.2`、`moonshotai/Kimi-K2.7-Code` 等能力更强的模型。价格和可用性可能继续变化，请以[价格页](https://siliconflow.cn/pricing)与[更新公告](https://api-docs.siliconflow.cn/docs/release-notes/overview)为准。
 
 ## 调试与追踪：LangSmith
 
@@ -423,9 +423,9 @@ from langchain_openai import ChatOpenAI
 from tavily import TavilyClient
 from deepagents import create_deep_agent
 
-# 1. 配置模型（通过硅基流动接入，默认免费模型即可跑通）
+# 1. 配置模型（通过硅基流动接入，当前免费模型即可跑通）
 model = ChatOpenAI(
-    model=os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct"),  # 实际项目推荐 "Pro/zai-org/GLM-5.1"
+    model=os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct"),  # 复杂任务可改用 "zai-org/GLM-5.2"
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )
@@ -481,7 +481,7 @@ print(result["messages"][-1].content)
 本章我们完成了从零到一的实践：
 
 1. **环境搭建**：`pip install deepagents langchain-openai` + 配置硅基流动 API Key
-2. **模型接入**：通过 `ChatOpenAI` + `base_url` 接入硅基流动，国内直连、免费模型可用
+2. **模型接入**：通过 `ChatOpenAI` + `base_url` 接入硅基流动，国内直连；平台当前提供免费模型
 3. **核心 API**：`create_deep_agent(model, tools, system_prompt)` 创建 Agent，`agent.invoke()` 运行
 4. **自定义工具**：Python 函数 + 类型标注 + docstring = 一个工具，Agent 自动理解
 5. **自动化能力**：你只传入一个工具，Agent 自动获得文件系统、任务规划、子 Agent 等完整能力

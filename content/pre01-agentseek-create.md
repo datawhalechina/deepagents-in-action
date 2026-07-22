@@ -189,7 +189,7 @@ OPENAI_API_KEY=<your-openai-api-key>
 
 ```bash
 AGENTSEEK_MODEL_PROVIDER=anthropic
-AGENTSEEK_MODEL=claude-3-5-sonnet-latest
+AGENTSEEK_MODEL=claude-sonnet-4-6
 ANTHROPIC_API_KEY=<your-anthropic-api-key>
 ```
 

@@ -214,7 +214,7 @@ OPENAI_API_KEY=sk-...
 LANGSMITH_API_KEY=lsv2-...
 # 或者改用硅基流动：
 # SILICONFLOW_API_KEY=your-siliconflow-key
-# MODEL_NAME=Pro/zai-org/GLM-5.1
+# MODEL_NAME=zai-org/GLM-5.2
 ```
 
 把这两行保存到 `.env`：
@@ -228,7 +228,7 @@ LANGSMITH_API_KEY=lsv2-...
 
 ```dotenv
 SILICONFLOW_API_KEY=your-siliconflow-key
-MODEL_NAME=Pro/zai-org/GLM-5.1
+MODEL_NAME=zai-org/GLM-5.2
 ```
 
 ### 第 3 步：编写 `langgraph.json`
@@ -338,7 +338,7 @@ import os
 from langchain_openai import ChatOpenAI
 
 model = ChatOpenAI(
-    model=os.environ.get("MODEL_NAME", "Pro/zai-org/GLM-5.1"),
+    model=os.environ.get("MODEL_NAME", "zai-org/GLM-5.2"),
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )

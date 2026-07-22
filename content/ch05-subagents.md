@@ -139,7 +139,7 @@ agent = create_deep_agent(
 
 ```python
 agent = create_deep_agent(
-    model=model,  # 主 Agent 用 GLM-4-9B
+    model=model,  # 主 Agent 复用应用的默认模型
     tools=[internet_search],
     subagents=[
         {
@@ -148,7 +148,7 @@ agent = create_deep_agent(
             "system_prompt": "你是一个通用助手。",
             "tools": [internet_search],
             "model": ChatOpenAI(  # 子 Agent 用更强的模型
-                model="Pro/zai-org/GLM-5.1",
+                model="zai-org/GLM-5.2",
                 api_key=os.environ["SILICONFLOW_API_KEY"],
                 base_url="https://api.siliconflow.cn/v1",
             ),
@@ -209,8 +209,8 @@ from langchain_openai import ChatOpenAI
 from deepagents import create_deep_agent
 
 model = ChatOpenAI(
-    # 主 Agent 负责协调多个子 Agent，属于复杂编排场景，需要 SOTA 模型才能稳定完成
-    model="Pro/zai-org/GLM-5.1",
+    # 主 Agent 负责协调多个子 Agent，建议使用能力较强、支持工具调用的模型
+    model="zai-org/GLM-5.2",
     api_key=os.environ["SILICONFLOW_API_KEY"],
     base_url="https://api.siliconflow.cn/v1",
 )
@@ -359,7 +359,7 @@ subagents = [
         "description": "执行需要深入推理的复杂分析任务",
         "tools": [internet_search, statistical_analysis],
         "model": ChatOpenAI(  # 强推理模型
-            model="Pro/zai-org/GLM-5.1",
+            model="zai-org/GLM-5.2",
             api_key=os.environ["SILICONFLOW_API_KEY"],
             base_url="https://api.siliconflow.cn/v1",
         ),
