@@ -86,6 +86,7 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
 | 第 9 章 | [Human-in-the-Loop — 构建安全的人机协作流程](https://datawhalechina.github.io/deepagents-in-action/chapters/ch09-human-in-the-loop/) |
 | 第 10 章 | [沙箱执行 — 让 Agent 安全地运行代码](https://datawhalechina.github.io/deepagents-in-action/chapters/ch10-sandboxes/) |
 | 第 11 章 | [文件系统权限 — 用声明式规则控制 Agent 的读写边界](https://datawhalechina.github.io/deepagents-in-action/chapters/ch11-filesystem-permissions/) |
+| 第 12 章 | [MCP — 用标准协议扩展 Deep Agents 工具生态](https://datawhalechina.github.io/deepagents-in-action/chapters/ch12-mcp/) |
 
 后续课程内容将根据 Deep Agents 的官方能力演进持续更新。
 

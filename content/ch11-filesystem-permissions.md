@@ -51,7 +51,7 @@ agent = create_deep_agent(
 | 沙箱或 `LocalShellBackend` 的 `execute` | 否 | 沙箱隔离、命令策略、网络与凭证控制 |
 | Backend 的业务级校验 | 不足以表达 | Policy Hook 或 `PolicyWrapper` |
 
-因此，“禁止 `write_file` 写入 `/secrets/`”不等于“Agent 无法通过其他工具接触 `/secrets/`”。如果 Agent 还能调用一个自定义上传工具、MCP 文件工具或 Shell，就必须分别约束这些入口。
+因此，“禁止 `write_file` 写入 `/secrets/`”不等于“Agent 无法通过其他工具接触 `/secrets/`”。如果 Agent 还能调用一个自定义上传工具、MCP 文件工具或 Shell，就必须分别约束这些入口。MCP 工具的连接、加载与安全边界见[第 12 章：MCP](../ch12-mcp/)。
 
 ## 2. 一条规则的三个字段
 

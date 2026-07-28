@@ -163,5 +163,17 @@
     ],
     "published": true,
     "pubDate": "2026-07-17"
+  },
+  "ch12-mcp": {
+    "title": "MCP — 用标准协议扩展 Deep Agents 工具生态",
+    "chapter": 12,
+    "section": "进阶篇",
+    "order": 14,
+    "description": "使用 Model Context Protocol 为 Deep Agents 接入外部工具，掌握本地与远程连接、异步工具加载、会话生命周期及安全边界。",
+    "slides": [
+      { "id": "ch12", "title": "Lec 16: MCP — 用标准协议扩展工具生态" }
+    ],
+    "published": true,
+    "pubDate": "2026-07-27"
   }
 }
