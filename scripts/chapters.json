@@ -171,7 +171,7 @@
     "order": 14,
     "description": "使用 Model Context Protocol 为 Deep Agents 接入外部工具，掌握本地与远程连接、异步工具加载、会话生命周期及安全边界。",
     "slides": [
-      { "id": "ch12", "title": "Lec 16: MCP — 用标准协议扩展工具生态" }
+      { "id": "ch12", "title": "Lec 16: MCP — 用标准协议扩展工具生态", "bilibili": "https://www.bilibili.com/video/BV1jW3b6zE8c/", "xhs": "http://xhslink.cn/o/49Ht9owtIcg" }
     ],
     "published": true,
     "pubDate": "2026-07-27"
