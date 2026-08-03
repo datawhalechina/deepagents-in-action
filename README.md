@@ -26,7 +26,7 @@
 
 > [!WARNING]
 > 本课程讲授的 Deep Agents 版本为 **≥ 0.5**。
-> 部分进阶功能有更高最低版本要求，章节正文会单独标注；例如 `FilesystemPermission` 基础权限需要 `deepagents>=0.5.2`，`FilesystemBackend` 的 `virtual_mode` 参数需要 `deepagents>=0.5.0`，`interrupt` 权限模式需要 `deepagents>=0.6.8`。
+> 部分进阶功能有更高最低版本要求，章节正文会单独标注；例如 `FilesystemPermission` 基础权限需要 `deepagents>=0.5.2`，`FilesystemBackend` 的 `virtual_mode` 参数需要 `deepagents>=0.5.0`，`interrupt` 权限模式需要 `deepagents>=0.6.8`。`RubricMiddleware` 仍为 Beta，需要 `deepagents>=0.6.5`，第 13 章以 `deepagents==0.7.1` 验证版本化行为。
 > 官方文档：[Deep Agents Overview](https://docs.langchain.com/oss/python/deepagents/overview)
 
 > [!NOTE]
@@ -87,6 +87,7 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
 | 第 10 章 | [沙箱执行 — 让 Agent 安全地运行代码](https://datawhalechina.github.io/deepagents-in-action/chapters/ch10-sandboxes/) |
 | 第 11 章 | [文件系统权限 — 用声明式规则控制 Agent 的读写边界](https://datawhalechina.github.io/deepagents-in-action/chapters/ch11-filesystem-permissions/) |
 | 第 12 章 | [MCP — 用标准协议扩展 Deep Agents 工具生态](https://datawhalechina.github.io/deepagents-in-action/chapters/ch12-mcp/) |
+| 第 13 章 | [Grading Rubrics（评分量规）— 让 Agent 按验收标准自我迭代](https://datawhalechina.github.io/deepagents-in-action/chapters/ch13-grading-rubrics/) |
 
 后续课程内容将根据 Deep Agents 的官方能力演进持续更新。
 
