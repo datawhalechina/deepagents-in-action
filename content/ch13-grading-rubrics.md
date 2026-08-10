@@ -1,24 +1,61 @@
-# 第 13 章：Grading Rubrics（评分量规） — 让 Agent 按验收标准自我迭代
+# 第 13 章：评分量规 — 让 Agent 按验收标准自我迭代
 
-> Agent 停止生成，只能说明这一轮工作结束了，不能证明结果已经满足要求。本章让 Deep Agent 实现 `find_duplicates(values)`：先用测试复现一个容易漏掉的错误，再接入 RubricMiddleware（评分量规中间件），让评分模型把失败证据反馈给工作模型，直到结果通过验收或达到迭代上限。
+> 一个 Agent 可以返回完整代码、停止调用工具，甚至自信地解释“任务已经完成”，结果却仍在边界输入上失败。问题不在于它没有生成结果，而在于系统缺少一条独立、可取证、能把具体差距送回生成环节的验收链路。本章先从这种“看似完成”出发，再搭建一条失败后能够修订、只有明确通过才会放行的运行时闭环。
 
-本章完成一条可以分层验证的评分链路：
+## 1. 为什么需要运行时验收
 
-1. 把任务要求写成可判定的 Rubric
-2. 不使用模型密钥，先验证 Evidence Tool（证据工具）
-3. 创建 `RubricMiddleware` 并挂载到 Deep Agent
-4. 观察评分失败时怎样反馈差距并触发修订
-5. 读取每轮评审结论，只在 `satisfied` 时接收结果
+假设你让 Agent 实现 `find_duplicates(values)`。一个使用 `set` 记录已见元素的版本，可以通过最常见的整数输入：
 
-本章按 `deepagents==0.7.1` 核对，`RubricMiddleware` 最低需要 `deepagents>=0.6.5`，目前仍是 Beta API。示例中的模型调用需要有效的 Provider（模型服务商）凭据；测试工具本身可以在没有模型密钥的情况下运行。
+```text
+find_duplicates([1, 2, 2, 3, 1]) -> [2, 1]
+```
 
-以下代码片段按出现顺序共享同一个 Python 运行上下文，后文会直接复用前面定义的模型、任务、工具和 Middleware。案例用于展示装配与验证过程，不额外提供独立代码工程。
+但任务还要求支持列表等不可哈希值。相同实现遇到下面的输入时，会直接失败：
 
-## 1. 为什么 Agent 停止还不算完成
+```text
+find_duplicates([[1], [1]]) -> TypeError: unhashable type: 'list'
+```
 
-普通 Agent 循环在模型不再调用工具时结束。这个停止条件回答的是“模型是否还想继续”，不是“结果是否符合业务要求”。代码可能能运行，却遗漏边界输入；报告可能结构完整，却没有引用可靠证据。
+Agent 已经生成了完整函数，也没有继续调用工具。从生成循环看，这一轮确实结束了；从任务要求看，它却遗漏了明确的边界条件，仍然不能交付。
 
-`RubricMiddleware` 在 Working Model（工作模型）自然停止之后启动一次独立评审。Grader Model（评分模型）依据 Rubric、当前对话和工具证据形成 Verdict（评审结论）：通过则结束，需要修改则把差距反馈给工作模型。
+这类问题不只出现在代码任务中。报告可能具备标题和结论，却缺少必需章节；数据分析可能给出图表，却引用了错误时间范围；配置修改可能语法正确，却没有通过测试。
+
+| 常见做法或现象 | 它实际说明什么 | 仍然存在的风险 |
+|---|---|---|
+| 模型不再调用工具 | 当前生成循环自然停止 | 不能证明全部要求都已满足 |
+| 让模型检查自己的答案 | 模型又做了一次语言判断 | 生成与评审可能共享同一盲点 |
+| 失败后笼统地“再试一次” | 获得另一份候选结果 | 新一轮不知道具体哪项失败、证据是什么 |
+| 应用拿到了最终消息 | 对话中存在一个候选答案 | 达到上限或评审异常时也可能留下消息 |
+
+因此，“生成结束”是一个运行事件，“通过验收”才是业务结论。只要应用把两者混为一谈，就可能把看似完整、实际未达标的结果交给下游。
+
+### Prompt（提示词）、自检和普通重试还缺少什么
+
+把要求写进 Prompt 很重要，但 Prompt 主要约束生成方向，不能自动证明结果已经满足要求。让模型自检或重试可以提高命中率，也没有形成独立的验收结论。
+
+| 机制 | 能解决什么 | 还缺少什么 |
+|---|---|---|
+| Prompt（提示词） | 提前声明任务要求和输出形式 | 没有逐项证据，也没有独立放行结论 |
+| Self-Check（自检） | 发现部分明显遗漏 | 生成与评审仍可能共享相同判断偏差 |
+| Retry（重试） | 重新采样一份候选结果 | 不知道上一轮失败标准和可执行差距 |
+| Offline Evaluation（离线评测） | 批量衡量版本、模型和 Prompt 的长期质量 | 不能在当前请求中把反馈送回 Agent 修订 |
+| Runtime Acceptance（运行时验收） | 在当前运行中取证、评审并决定修订或结束 | 需要额外的标准、评分角色和状态控制 |
+
+一条可靠的运行时验收链路至少需要五种能力：
+
+1. 用明确标准描述“怎样才算完成”
+2. 由独立角色评审候选结果，而不是让生成者直接自我放行
+3. 对可确定的事实取得测试、Schema（结构定义）、文件或其他工具证据
+4. 把未通过的 Criterion（标准项）和 Gap（差距说明）送回生成环节
+5. 设置迭代预算，并在没有明确通过时采用 Fail-Closed（失败关闭）规则
+
+这五项能力共同解决一个问题：让 Agent 不只是“再生成一次”，而是依据本轮证据修正具体差距，并让应用拿到可执行的最终结论。
+
+## 2. Rubric Middleware（评分量规中间件）如何形成验收闭环
+
+Grading Rubrics（评分量规）把“完成”的定义写成一组可检查标准。LLM-as-a-Judge（模型即裁判）由承担独立评审角色的模型，依据明确标准评审候选输出；它可以与工作模型相同，也可以不同。在离线评测中，这种模式通常用于批量打分，在运行时则可以直接驱动当前任务修订。
+
+`RubricMiddleware`（评分量规中间件）把这套模式接到 Deep Agent 的自然停止点之后。Working Model（工作模型）先生成候选结果，Grader Model（评分模型）再依据 Rubric、当前对话和工具证据形成 Verdict（评审结论）。
 
 ### 四个角色各自负责什么
 
@@ -29,29 +66,41 @@
 | Grader Model | 检查标准、调用工具并形成结论 | 不能替代确定性测试 |
 | Evidence Tool | 执行测试并返回结构化事实 | 不直接放行结果 |
 
-四个角色通过 Middleware（中间件）接成一条运行链路：
-
-```text
-用户任务 + Rubric
-        |
-        v
-Working Model 生成候选答案
-        |
-        v
-Grader Model 读取标准并调用 Evidence Tool
-        |
-        +--> satisfied ----------------------> 结束并通过
-        |
-        +--> needs_revision --> 反馈差距 --> Working Model 修订
-        |
-        +--> 其他终止状态 ------------------> 结束但不通过
-```
-
 ![评分量规的角色与证据边界：工作模型生成候选答案，评分量规定义验收标准，运行记录提供上下文，证据工具提供可检查事实，评分模型综合形成评审结论；证据从文本判断、结构化产物到实际执行逐级增强](../public/imgs/40-framework-rubric-roles-evidence.png)
+
+官方文档使用 Mermaid 描述这条主流程。下面的状态机图保留相同逻辑，并进一步区分“循环停止”和“结果通过”：
+
+![RubricMiddleware 运行状态机：工作模型自然停止后进入评分模型；只有 needs_revision 会携带差距说明返回工作模型，satisfied 通过验收门，max_iterations_reached、failed 与 grader_error 都会终止但不代表验收成功](../public/imgs/41-flowchart-rubric-runtime-state-machine.png)
+
+图中的 Agent 和 Model 表示不同层次。Working Agent（工作智能体）是由工作模型、工具和 Middleware 组成的 Deep Agent 运行体；Grader Agent（评分智能体）是 `RubricMiddleware` 管理的评审子智能体，由评分模型和取证工具组成。后文讲模型配置时使用 Working Model 与 Grader Model，讲完整执行单元时才使用 Agent。
+
+整条链路按以下顺序运行：
+
+1. 调用方传入用户任务和非空 Rubric，明确本次运行的验收标准。
+2. Working Model 完成当前一轮并自然停止。此时只有候选结果，还没有验收结论。
+3. Grader Model 读取 Rubric 与运行记录，并在需要时调用 Evidence Tool（证据工具）取得事实。
+4. 结论为 `needs_revision` 时，Middleware 把未通过标准和 Gap 注入对话，Working Model 获得新的生成机会。
+5. 修订后应使证据与当前候选对应：若测试或其他事实依赖候选内容，评分工具应重新运行，或提供能证明已有证据仍对应当前版本的依据。
+6. 只有 `satisfied` 表示当前证据支持全部标准，应用才可以放行。
+7. `max_iterations_reached`、`failed` 和 `grader_error` 都会停止循环，但都不代表验收成功。
 
 这里有一条容易混淆的边界：传给 `RubricMiddleware(tools=[...])` 的工具只供评分模型取证，不会自动成为工作模型的工具。工作模型需要使用的工具，仍要通过 `create_deep_agent(tools=[...])` 提供。
 
-## 2. 准备运行环境
+## 3. 准备案例、环境与 Rubric
+
+后续实战始终使用同一个 `find_duplicates` 案例，把前面的总体流程逐段落到代码中。本章会完成一条可以分层验证的评分链路：
+
+1. 把任务要求写成可判定的 Rubric
+2. 不使用模型密钥，先验证 Evidence Tool
+3. 创建 `RubricMiddleware` 并挂载到 Deep Agent
+4. 观察评分失败时怎样反馈差距并触发修订
+5. 读取每轮评审结论，只在 `satisfied` 时接收结果
+
+本章按 `deepagents==0.7.1` 核对，`RubricMiddleware` 最低需要 `deepagents>=0.6.5`，目前仍是 Beta API（测试阶段接口）。示例中的模型调用需要有效的 Provider（模型服务商）凭据；测试工具本身可以在没有模型密钥的情况下运行。
+
+以下代码片段按出现顺序共享同一个 Python 运行上下文，后文会直接复用前面定义的模型、任务、工具和 Middleware。案例用于展示装配与验证过程，不额外提供独立代码工程。
+
+### 准备环境与模型
 
 在现有 Python 项目中安装 Deep Agents 和所选模型的 LangChain 集成。下面以 OpenAI 集成为例：
 
@@ -85,11 +134,11 @@ export OPENAI_API_KEY="<your-api-key>"
 
 ### 为什么要保留两个变量
 
-工作模型面向任务本身，评分模型面向验收标准。分开变量以后，可以分别调整模型、System Prompt 和成本预算，也更容易在 Trace 中区分“生成失败”与“评分失败”。
+工作模型面向任务本身，评分模型面向验收标准。分开变量以后，可以分别调整模型、System Prompt（系统提示词）和成本预算，也更容易在 Trace（追踪记录）中区分“生成失败”与“评分失败”。
 
 不过，使用两个模型不等于获得了正确性保证。能够由测试、Schema 或静态检查确定的事实，仍应交给工具验证。
 
-## 3. 写清楚怎样才算通过
+### 先统一任务语义
 
 本章任务只有一个函数，但验收条件并不简单：
 
@@ -140,7 +189,7 @@ rubric = """
 
 Rubric 不宜逐字复述任务，也不要把编码风格、性能、兼容性和安全性挤进一句话。标准越宽泛，评分模型越难指出能够直接执行的修改意见。
 
-## 4. 把测试封装成 Evidence Tool
+## 4. 构建并验证 Evidence Tool
 
 为了先看清 Middleware 的取证链路，下面使用一个教学版 `run_test_suite`。它接收候选源码，加载 `find_duplicates`，再运行四组行为测试；既检查返回值，也检查函数有没有修改输入。
 
@@ -238,7 +287,7 @@ print(run_test_suite.invoke({"code": bad_candidate}))
 
 > 本例使用 `exec` 是为了缩短教学代码。它会在当前 Python 进程执行候选源码，不是 Sandbox（沙箱）。生产系统必须把不可信代码放入受限进程或隔离沙箱，并限制文件、网络、CPU、内存和执行时间。
 
-## 5. 创建并挂载 `RubricMiddleware`
+## 5. 创建、挂载并运行 `RubricMiddleware`
 
 测试工具可靠以后，再连接评分模型。先用 Callback（回调）保存每轮 `RubricEvaluation`，后面会根据最后一轮结果决定是否接收答案。
 
@@ -249,12 +298,15 @@ from deepagents.middleware.rubric import RubricEvaluation
 
 
 evaluations: list[RubricEvaluation] = []
+evaluations_by_run: dict[str, list[RubricEvaluation]] = {}
 
 
 def record_evaluation(evaluation: RubricEvaluation) -> None:
+    run_id = evaluation["grading_run_id"]
     evaluations.append(evaluation)
+    evaluations_by_run.setdefault(run_id, []).append(evaluation)
     print(
-        f"iteration {evaluation['iteration']}: "
+        f"run {run_id[:8]} iteration {evaluation['iteration']}: "
         f"{evaluation['result']} — {evaluation['explanation']}"
     )
     for criterion in evaluation["criteria"]:
@@ -262,7 +314,7 @@ def record_evaluation(evaluation: RubricEvaluation) -> None:
             print(f"  gap: {criterion['name']} — {criterion.get('gap', '')}")
 ```
 
-`evaluation["criteria"]` 保存逐条标准的通过状态。失败项中的 `gap` 会说明现状与目标之间的差距，也是下一轮修订最有价值的输入。
+注册到 `on_evaluation` 后，这个函数会在每次评分结束时收到一个 `RubricEvaluation`。这里同时保留顺序列表和按 `grading_run_id` 分组的字典：前者便于截取本次教学调用，后者用于看清一次评分尝试包含了哪些迭代。第 6 节会继续解释各字段与并发边界。
 
 ### 配置评分模型与证据工具
 
@@ -316,7 +368,7 @@ agent = create_deep_agent(
 
 创建 `RubricMiddleware` 实例还不够，必须通过 `middleware=[rubric_middleware]` 挂载。`InMemorySaver` 让同一 `thread_id` 的 Rubric、消息和评分状态可以在运行过程中延续。
 
-## 6. 运行并观察评分循环
+### 传入任务与 Rubric
 
 调用时要同时传入 `messages` 和非空 `rubric`。Rubric 属于调用状态，不是 `create_deep_agent()` 的固定构造参数，因此同一个 Agent 可以处理不同任务和验收标准。
 
@@ -341,9 +393,9 @@ run_evaluations = evaluations[evaluation_start:]
 如果第一轮候选使用 `set`，Callback 会打印类似日志：
 
 ```text title="代表性输出"
-iteration 0: needs_revision — One required case is failing.
+run 7b2d18fa iteration 0: needs_revision — One required case is failing.
   gap: Unhashable values are supported — test_unhashable raised TypeError.
-iteration 1: satisfied — All criteria have current passing test evidence.
+run 7b2d18fa iteration 1: satisfied — All criteria have current passing test evidence.
 ```
 
 评分模型先调用 `run_test_suite`，再根据 `test_unhashable` 的异常返回 `needs_revision`。Middleware 把失败标准和 `gap` 写回对话，工作模型随即获得一次新的生成机会。
@@ -403,27 +455,51 @@ print(run_test_suite.invoke({"code": good_candidate}))
 {'ok': True, 'failures': []}
 ```
 
-真实模型不一定先犯这个错误，也可能第一轮就通过。案例的重点不是强制产生两轮，而是确认失败时存在一条完整路径：证据能定位问题，反馈能进入对话，工作模型能针对同一问题修订。
+真实模型不一定先犯这个错误，也可能第一轮就通过。案例的重点不是强制产生两轮，而是跑通第 2 节状态机中的修订路径：证据定位问题，`needs_revision` 把具体差距送回对话，工作模型针对同一标准修订；在本例中，评分模型会重新调用测试工具，为最新候选取得新证据。
 
-![RubricMiddleware 运行状态机：工作模型自然停止后进入评分模型；只有 needs_revision 会携带差距说明返回工作模型，satisfied 通过验收门，max_iterations_reached、failed 与 grader_error 都会终止但不代表验收成功](../public/imgs/41-flowchart-rubric-runtime-state-machine.png)
+## 6. 用 `on_evaluation` 观察评审并建立验收门
 
-## 7. 只在 `satisfied` 时接收结果
+`on_evaluation` 是 `RubricMiddleware` 的观察入口。无论使用 `invoke()`、`stream()` 还是 `stream_events()`，每次 Grader Pass（评分轮次）形成结论后，Middleware 都会调用它；随后才根据本轮结果决定返回工作模型修订，还是结束本次运行。
 
-`invoke()` 返回最终消息，只能证明工作模型生成了候选答案。评分达到上限、Rubric 无法评估或评分模型出错时，候选答案仍可能保留在 `result["messages"]` 中。
+这意味着 Callback 看到的是“评分方在这一轮得出了什么结论”，而不是“整个 Agent 运行最终处于什么状态”。它适合记录日志、生成指标和保存评测样本，不负责改变控制流。
 
-五种结论的处理方式如下：
+### 读懂 `RubricEvaluation`
 
-| 结论 | 含义 | 是否继续修订 | 是否接收 |
-|---|---|---:|---:|
-| `satisfied` | 当前证据支持全部标准 | 否 | 是 |
-| `needs_revision` | 至少一项未通过，且还有预算 | 是 | 否 |
-| `max_iterations_reached` | 仍需修改，但已达到上限 | 否 | 否 |
-| `failed` | 标准矛盾、格式错误或无法评估 | 否 | 否 |
-| `grader_error` | 评分调用链发生异常 | 否 | 否 |
+Callback 每次接收一个 `RubricEvaluation` 字典，包含以下字段：
+
+| 字段 | 含义 | 使用方式 |
+|---|---|---|
+| `grading_run_id` | 一次 Rubric 评分尝试的标识 | 把同一次尝试中的多轮评审归为一组 |
+| `iteration` | 当前评分轮次，从 `0` 开始 | 观察首轮通过率、修订轮数与成本 |
+| `result` | 本轮 Grader Verdict | 判断本轮是通过、需修订、失败还是评分异常 |
+| `explanation` | 评分模型对本轮结论的整体说明 | 写入日志或 Trace，帮助理解评分原因 |
+| `criteria` | 每条标准的通过状态 | 从失败项的 `gap` 提取可执行修订方向 |
+
+同一个 `grading_run_id` 会贯穿一次 Rubric 尝试中的所有迭代。调用方换用新的 Rubric，或者一次运行已经终止后再次用同一 Rubric 发起调用，都会开始新的评分尝试。它与 `thread_id` 不是同一个概念：前者标识一次评分尝试，后者标识 Checkpointer 延续的会话状态。
+
+`criteria` 中通过项通常包含 `name` 和 `passed=true`；未通过项还会提供 `gap`。因此，不要只统计 `result`，还应保存逐项结果，才能回答“哪条标准最常失败”和“修订是否真正缩小了差距”。
+
+### 区分本轮结论与整个运行状态
+
+`RubricEvaluation["result"]` 只记录评分模型本轮返回的结论，`max_iterations_reached` 则是 Middleware 在预算耗尽后设置的运行终态。两者不能混成同一个字段。
+
+| 名称 | 所属层次 | 后续行为 | 是否接收 |
+|---|---|---|---:|
+| `satisfied` | 本轮评分结论 | 结束运行 | 是 |
+| `needs_revision` | 本轮评分结论 | 有预算时继续修订；无预算时结束 | 否 |
+| `failed` | 本轮评分结论 | Rubric 无法可靠评估，结束运行 | 否 |
+| `grader_error` | 本轮评分结论 | 评分调用链异常，结束运行 | 否 |
+| `max_iterations_reached` | Middleware 运行终态 | 预算耗尽，不再修订 | 否 |
+
+例如第三轮仍返回 `needs_revision`，而 `max_iterations=3` 已经用完时，Callback 收到的仍是 `result="needs_revision"`。Middleware 随后以 `max_iterations_reached` 结束运行，但不会回头改写已经交给 Callback 的评审记录。
+
+这个差异不会破坏失败关闭规则：最后一轮不是 `satisfied`，应用就拒绝结果。如果业务必须精确区分“仍需修订”与“已经耗尽预算”，需要为当前 Deep Agents 版本建立显式状态映射和回归测试；不要直接把 `_rubric_status`、`_rubric_iterations` 或 `_rubric_evaluations` 等私有字段固化成长期业务 API。
 
 ### 建立失败关闭的验收门
 
-本例从 Callback 记录中读取最后一轮结论：
+`invoke()` 返回最终消息，只能证明工作模型生成了候选答案。评分达到上限、Rubric 无法评估或评分模型出错时，候选答案仍可能保留在 `result["messages"]` 中。
+
+本例从当前调用新增的 Callback 记录中读取最后一轮结论：
 
 ```python
 final_evaluation = run_evaluations[-1] if run_evaluations else None
@@ -446,17 +522,23 @@ print("accepted:", accepted)
 accepted = bool(result["messages"])
 ```
 
-### Callback 用于观察，不负责改写结论
+### Callback 的错误与并发边界
 
-`on_evaluation` 在本轮结论形成后执行，适合写日志、指标或应用状态。普通 Callback 异常会被记录并抑制，不能依靠 `raise` 终止评分循环，也不应让它承担权限控制。
+`on_evaluation` 不是控制钩子。Callback 抛出的普通异常会被记录并抑制，评分循环继续运行；因此，不能依靠 `raise` 阻止 Agent，也不应把权限检查、额度扣减或业务放行放进 Callback。
 
-生产应用可以把最后结论持久化为自己的公开字段。不要把 `_rubric_status`、`_rubric_iterations` 或 `_rubric_evaluations` 等私有状态当作稳定业务 API。
+本章的 `evaluations` 列表只用于截取一次同步教学调用。并发应用不能让多个请求共享没有归属信息的全局列表，而应按 `grading_run_id` 保存评审记录，再关联应用自己的运行标识或 `thread_id`。持久化层还应对 `(grading_run_id, iteration)` 建立幂等约束，避免重试写入重复记录。
 
-本例的列表只适合单线程教学。并发运行时必须按 Run 或 `thread_id` 关联评审记录，不能让多个请求共享一个没有归属信息的全局列表。
+三个观察与控制入口的职责如下：
 
-`deepagents==0.7.1` 在达到上限时，会把本轮结果归一为 `max_iterations_reached`。旧文档或其他版本可能记录不同细节，但放行规则不需要改变：只有 `satisfied` 表示通过。
+| 入口 | 触发时机 | 主要数据 | 应承担的职责 |
+|---|---|---|---|
+| `on_evaluation` | 每轮评分结论形成后 | 完整 `RubricEvaluation` | 日志、指标、评测数据集和审计记录 |
+| `stream.custom` | 评分开始前与结束后 | 生命周期事件、轮次和结论 | 实时界面与进度提示 |
+| 应用验收门 | 整次调用返回后 | 应用保存的最后评审结论 | 只有 `satisfied` 时放行结果 |
 
-## 8. 进阶：显示评分进度并延续任务
+生产应用可以把最后结论持久化为自己的公开字段，但要保留原始 `grading_run_id`、`iteration` 和逐项标准结果，方便后续追踪。Callback 和事件流帮助你看见发生了什么，最终接不接受结果仍由应用验收门决定。
+
+## 7. 事件流、状态延续与排错
 
 Callback 适合记录已完成的评审。如果界面还需要显示“第几轮评分正在开始”，可以订阅 Event Streaming（事件流）中的 Rubric 事件。
 
@@ -501,7 +583,7 @@ Checkpointer（检查点持久化器）通过 `thread_id` 保存运行状态。�
 
 ![一次评分运行的四个观察面：Callback 用于日志与指标，Event Streaming 用于实时界面，Checkpoint 保存验收状态与评审历史，Trace 用于诊断；同一 thread_id 延续任务状态，不同运行标识区分评分尝试](../public/imgs/42-framework-rubric-observation-surfaces.png)
 
-## 9. 按调用链排查问题
+### 沿调用链排查问题
 
 遇到“没有评分”或“一直修订”时，不要先增加迭代次数。沿着任务、工具、评分和验收四个位置检查，更容易定位原因。
 
@@ -525,7 +607,7 @@ Checkpointer（检查点持久化器）通过 `thread_id` 保存运行状态。�
 
 迭代上限控制成本和延迟，无法补救矛盾标准、错误测试或不可执行反馈。只有在每轮都能取得新证据、工作模型也确实在修订时，增加上限才可能有价值。
 
-## 10. 补齐生产环境的安全与评测边界
+## 8. 生产环境的安全与评测边界
 
 Rubric 循环改善的是当前一次运行，不是对系统正确性的完整证明。正式使用前，还要为代码执行、工具副作用、成本和离线质量补上独立控制。
 
@@ -568,14 +650,14 @@ Rubric 只能判断候选结果是否符合标准，不能替代第 9 章的 Hum
 ## 本章小结
 
 - Agent 自然停止只表示生成结束，不能作为业务验收条件。
+- Prompt、自检和普通重试可以改善生成，但不能替代独立评审、工具证据和明确的放行结论。
 - `RubricMiddleware` 在工作模型停止后启动评分，并根据结论决定结束或修订。
 - Rubric 要把完成条件拆成可判定、可取证、可修订的标准。
-- Evidence Tool 应返回结构化事实，并在接入模型前单独验证。
-- `RubricMiddleware(tools=[...])` 中的工具只供评分模型使用。
+- Evidence Tool 应返回结构化事实并先独立验证；`RubricMiddleware(tools=[...])` 中的工具只供评分模型使用。
 - 调用时必须传入非空 `rubric`，才能启动新的评分循环。
 - 只有 `needs_revision` 会触发下一轮；只有 `satisfied` 代表验收通过。
 - 最终消息存在不等于通过，应用应采用失败关闭的放行规则。
-- Callback、事件流和 Checkpointer 分别服务于记录、实时进度和状态延续。
+- `on_evaluation` 记录每轮 `RubricEvaluation`，Callback 结论不等于整个运行终态；事件流和 Checkpointer 分别服务于实时进度与状态延续。
 - Rubric 不能替代沙箱、权限控制、人工审批和离线评测。
 
 ## 官方参考
