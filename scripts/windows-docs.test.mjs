@@ -37,6 +37,8 @@ test('pre02 documents LangSmith CLI and dotenv steps for both shells', async () 
     'Get-Command langsmith -ErrorAction SilentlyContinue',
     'https://cli.langsmith.com/install.sh',
     'https://cli.langsmith.com/install.ps1',
+    'set -a',
+    'source .env',
     'Get-Content .env | ForEach-Object',
     'Set-Item -Path "Env:$($matches[1])" -Value $value',
     '不要使用 `uv tool install langsmith`',
