@@ -8,6 +8,7 @@
   "scripts": {
     "assets:check": "node scripts/validate-assets.mjs",
     "assets:test": "node --test scripts/content-images.test.mjs",
+    "docs:test": "node --test scripts/windows-docs.test.mjs",
     "assets:optimize": "bash scripts/optimize-assets.sh",
     "predev": "node scripts/prep-content.mjs",
     "dev": "astro dev",

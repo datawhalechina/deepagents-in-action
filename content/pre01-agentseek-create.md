@@ -28,13 +28,32 @@ AgentSeek 是一个面向 AI 应用开发的模板与生命周期工具。你通
 | uv | 当前稳定版 | 安装 CLI 和 Python 依赖 |
 | Node.js、npm | 当前 LTS 版本 | 运行 React 前端 |
 
-安装 `uv`：
+### Windows 学员：优先使用 WSL2
+
+本课程命令以 Bash 环境为主。Windows 10 2004+ 或 Windows 11 学员推荐使用 WSL2 + Ubuntu，这样可以直接执行后续的 macOS / Linux / WSL2 命令。请在**管理员 PowerShell** 中安装：
+
+```powershell
+wsl --install
+```
+
+安装完成后重启 Windows，首次打开 Ubuntu 时按提示创建 Linux 用户名和密码。再在 PowerShell 中确认发行版使用 WSL 2，并进入 Ubuntu：
+
+```powershell
+wsl -l -v
+wsl -d Ubuntu
+```
+
+如果 `wsl -l -v` 显示版本为 1，请参考 [Microsoft WSL 安装文档](https://learn.microsoft.com/windows/wsl/install) 升级到 WSL 2。使用 WSL2 的 Linux 工具时，建议把项目放在 `~/projects/` 等 Linux 文件系统目录，不要放在 `/mnt/c/` 下；也不要混用 Windows 与 WSL 中的 Python、uv、Node.js、npm 或 Git。详见 [Microsoft WSL 开发环境指南](https://learn.microsoft.com/windows/wsl/setup/environment)。
+
+如果设备策略、管理员权限或虚拟化条件不允许安装 WSL2，可以留在原生 Windows PowerShell 中，并使用本文标出的 PowerShell 命令。
+
+macOS / Linux / WSL2 安装 `uv`：
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Windows PowerShell：
+原生 Windows PowerShell 安装 `uv`：
 
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
@@ -45,6 +64,20 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```bash
 uv tool install agentseek
 ```
+
+原生 Windows PowerShell 如果提示 uv 的工具目录不在 PATH，运行：
+
+```powershell
+uv tool update-shell
+```
+
+然后关闭并重新打开 PowerShell，再执行后面的版本检查。如果只想让当前会话立即生效，可以临时加入 uv 返回的工具目录：
+
+```powershell
+$env:Path = "$(uv tool dir --bin);$env:Path"
+```
+
+临时写法不会永久修改 PATH。`uv tool update-shell` 的行为以 [uv 官方 CLI 文档](https://docs.astral.sh/uv/reference/cli/) 为准。
 
 如果你已经安装过当前包，可以升级：
 
@@ -377,9 +410,21 @@ git config --global --unset http.proxy
 
 如果 Python 依赖下载较慢，可以临时为单次同步指定团队批准的 PyPI 镜像。下面的阿里云地址在 2026 年 7 月 15 日验证可用：
 
+macOS / Linux / WSL2：
+
 ```bash
 UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple agentseek task sync
 ```
+
+原生 Windows PowerShell（建议在新开的临时终端中运行）：
+
+```powershell
+$env:UV_INDEX_URL = "https://mirrors.aliyun.com/pypi/simple"
+agentseek task sync
+Remove-Item Env:UV_INDEX_URL -ErrorAction SilentlyContinue
+```
+
+如果设置前当前终端已经有 `UV_INDEX_URL`，不要执行最后的删除命令；请在同步后恢复原值，或直接关闭专门为本次同步打开的终端。
 
 这只改变 `sync` 任务的 Python 包来源，不会解决 GitHub、SiliconFlow 或 Tavily 的连接问题。npm registry 同理；镜像服务会变化，请在使用前重新验证来源和可用性。
 
