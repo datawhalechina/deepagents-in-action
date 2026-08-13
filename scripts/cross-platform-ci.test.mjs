@@ -9,6 +9,10 @@ const workflowPath = fileURLToPath(
 const workflow = existsSync(workflowPath)
   ? readFileSync(workflowPath, 'utf8')
   : '';
+const contributingPath = fileURLToPath(
+  new URL('../CONTRIBUTING.md', import.meta.url),
+);
+const contributing = readFileSync(contributingPath, 'utf8');
 
 test('cross-platform installation workflow is manual-only', () => {
   assert.match(workflow, /^on:\n\s+workflow_dispatch:\s*$/m);
@@ -51,5 +55,17 @@ test('every platform installs and validates the course site', () => {
     'npm run build',
   ]) {
     assert.match(workflow, new RegExp(expected.replaceAll('.', '\\.')));
+  }
+});
+
+test('maintainers are told how and when to run cross-platform installation checks', () => {
+  for (const expected of [
+    'Cross-platform installation',
+    'workflow_dispatch',
+    '默认分支',
+    'WSL2',
+    'ubuntu-latest',
+  ]) {
+    assert.match(contributing, new RegExp(expected));
   }
 });

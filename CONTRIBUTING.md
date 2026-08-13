@@ -123,6 +123,22 @@ docs: 改善第 X 章 <简要说明>
 
 ---
 
+## 跨平台安装验证
+
+维护者可以在 GitHub Actions 中手动运行 `Cross-platform installation` 工作流。它只响应 `workflow_dispatch`，不会随 push、Pull Request 或定时任务自动运行。
+
+GitHub 要求手动工作流文件已经存在于默认分支。因此，首次引入该工作流的 PR 合并后，维护者才能从 Actions 页面选择要验证的分支或 ref 并运行它。
+
+工作流的三个矩阵项分别覆盖：
+
+- `ubuntu-latest`：验证与 Windows 学员推荐的 WSL2 环境等价的 Linux 路径；
+- `macos-latest`：验证 macOS 原生路径；
+- `windows-latest`：验证 Windows PowerShell 5.1 原生路径。
+
+每个平台都会从外部服务下载 uv、LangSmith CLI 和 npm 依赖。即使待测 ref 没有变化，上游发布服务或网络故障也可能导致对应平台失败；重试前请先查看失败步骤与安装器输出。
+
+---
+
 ## 提问与讨论
 
 - **课程内容问题**：请在 GitHub Issues 中提问，或在对应 B 站视频评论区留言
