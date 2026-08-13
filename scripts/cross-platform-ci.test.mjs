@@ -15,9 +15,9 @@ const contributingPath = fileURLToPath(
 const contributing = readFileSync(contributingPath, 'utf8');
 
 test('cross-platform installation workflow is manual-only', () => {
-  assert.match(workflow, /^on:\n\s+workflow_dispatch:\s*$/m);
-  assert.doesNotMatch(workflow, /^\s+(push|pull_request|schedule):/m);
+  assert.match(workflow, /^on:\n  workflow_dispatch:\n\npermissions:/m);
   assert.match(workflow, /contents: read/);
+  assert.match(workflow, /persist-credentials: false/);
 });
 
 test('workflow keeps all three platform runs independent', () => {
@@ -42,6 +42,7 @@ test('workflow installs and verifies the official uv and LangSmith CLIs', () => 
   ]) {
     assert.match(workflow, new RegExp(expected.replaceAll('.', '\\.')));
   }
+  assert.match(workflow, /AppData\\Local\\Programs\\langsmith\\bin/);
 });
 
 test('every platform installs and validates the course site', () => {
