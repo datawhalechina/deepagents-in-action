@@ -1,0 +1,90 @@
+name: Cross-platform installation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-installation:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Ubuntu (WSL2 equivalent)
+          - os: macos-latest
+            label: macOS
+          - os: windows-latest
+            label: Windows PowerShell 5.1
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install uv on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install uv on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+      - name: Install LangSmith CLI on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl -fsSL https://cli.langsmith.com/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install LangSmith CLI on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          irm https://cli.langsmith.com/install.ps1 | iex
+          "$HOME\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify CLI installations on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          uv --version
+          uvx --version
+          langsmith --version
+
+      - name: Verify CLI installations on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          uv --version
+          uvx --version
+          langsmith --version
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.12.0'
+          cache: npm
+
+      - name: Install site dependencies
+        run: npm ci
+
+      - name: Test CI contract
+        run: npm run ci:test
+
+      - name: Test Windows documentation
+        run: npm run docs:test
+
+      - name: Test asset helpers
+        run: npm run assets:test
+
+      - name: Validate assets
+        run: npm run assets:check
+
+      - name: Build site
+        run: npm run build
