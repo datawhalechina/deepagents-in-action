@@ -26,7 +26,6 @@ test('homepage registers and renders the preview section', () => {
   assert.match(headingSource, /仍处于 Beta 或快速演进阶段的 Deep Agents 能力/);
 });
 
-test('preview chapter cards carry a text status badge', () => {
-  assert.match(cardSource, /section === '前沿预览'/);
-  assert.match(cardSource, /预览特性/);
+test('preview chapter cards do not repeat the section status', () => {
+  assert.doesNotMatch(cardSource, /预览特性/);
 });
