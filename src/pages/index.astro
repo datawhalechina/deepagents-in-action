@@ -5,13 +5,14 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import ChapterCard from '../components/ChapterCard.astro';
 import SectionHeading from '../components/SectionHeading.astro';
+import PreviewSectionHeading from '../components/PreviewSectionHeading.astro';
 import ChapterRail from '../components/ChapterRail.astro';
 import '../styles/global.css';
 
 const allChapters = await getCollection('chapters');
 const sorted = allChapters.sort((a, b) => a.data.order - b.data.order);
 
-const sections = ['准备篇', '认知篇', '核心篇', '进阶篇', '实战篇'] as const;
+const sections = ['准备篇', '认知篇', '核心篇', '进阶篇', '前沿预览', '实战篇'] as const;
 const grouped = sections.map(section => ({
   section,
   chapters: sorted.filter(ch => ch.data.section === section),
@@ -181,6 +182,8 @@ try {
                 </div>
               </div>
             </div>
+          ) : section === '前沿预览' ? (
+            <PreviewSectionHeading />
           ) : (
             <SectionHeading title={section} />
           )}

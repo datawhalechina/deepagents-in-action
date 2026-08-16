@@ -179,7 +179,7 @@
   "ch13-grading-rubrics": {
     "title": "Grading Rubrics（评分量规） — 让 Agent 按验收标准自我迭代",
     "chapter": 13,
-    "section": "进阶篇",
+    "section": "前沿预览",
     "order": 15,
     "description": "使用评分量规和大语言模型评审声明验收标准，通过证据工具、迭代反馈、实时事件与检查点状态理解 Agent 的自我修订闭环。",
     "slides": [

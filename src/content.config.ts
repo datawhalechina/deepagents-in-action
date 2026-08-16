@@ -7,7 +7,7 @@ const chapters = defineCollection({
   schema: z.object({
     title: z.string(),
     chapter: z.number(),
-    section: z.enum(['认知篇', '核心篇', '准备篇', '进阶篇', '实战篇']),
+    section: z.enum(['认知篇', '核心篇', '准备篇', '进阶篇', '前沿预览', '实战篇']),
     order: z.number(),
     description: z.string(),
     slides: z.array(z.object({

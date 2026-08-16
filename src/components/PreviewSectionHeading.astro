@@ -1,0 +1,127 @@
+<section class="preview-heading" aria-labelledby="preview-heading-title">
+  <div class="preview-heading__marker" aria-hidden="true">
+    <span class="preview-heading__dot"></span>
+    PREVIEW · BETA
+  </div>
+  <div class="preview-heading__copy">
+    <h2 id="preview-heading-title">前沿预览</h2>
+    <p class="preview-heading__lead">仍处于 Beta 或快速演进阶段的 Deep Agents 能力</p>
+    <p class="preview-heading__note">这些功能的接口、状态和默认行为可能随版本调整。学习时请以章节标注的版本为准，并先在隔离环境中验证。</p>
+  </div>
+</section>
+
+<style>
+  .preview-heading {
+    position: relative;
+    display: grid;
+    grid-template-columns: 10.5rem minmax(0, 1fr);
+    gap: 2rem;
+    align-items: center;
+    margin-top: 4rem;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    overflow: hidden;
+    border: 1px solid var(--color-gold-pale);
+    border-radius: 12px;
+    background:
+      linear-gradient(105deg, rgba(184, 134, 11, 0.09), transparent 58%),
+      var(--color-paper-warm);
+  }
+
+  .preview-heading::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--color-gold) 0,
+      var(--color-gold) 18px,
+      transparent 18px,
+      transparent 27px
+    );
+    opacity: 0.48;
+  }
+
+  .preview-heading__marker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: fit-content;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid rgba(184, 134, 11, 0.34);
+    border-radius: 6px;
+    color: var(--color-gold);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+  }
+
+  .preview-heading__dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    flex: none;
+    border-radius: 50%;
+    background: var(--color-gold);
+    box-shadow: 0 0 0 4px rgba(184, 134, 11, 0.11);
+  }
+
+  .preview-heading__copy {
+    min-width: 0;
+  }
+
+  .preview-heading h2 {
+    margin: 0;
+    color: var(--color-ink);
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .preview-heading__lead {
+    margin: 0.45rem 0 0;
+    color: var(--color-ink);
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  .preview-heading__note {
+    max-width: 48rem;
+    margin: 0.55rem 0 0;
+    color: var(--color-ink-muted);
+    font-size: 0.82rem;
+    line-height: 1.7;
+  }
+
+  :global([data-theme="dark"]) .preview-heading {
+    background:
+      linear-gradient(105deg, rgba(201, 162, 39, 0.09), transparent 58%),
+      var(--color-paper-warm);
+    border-color: rgba(201, 162, 39, 0.22);
+  }
+
+  :global([data-theme="dark"]) .preview-heading__marker {
+    border-color: rgba(201, 162, 39, 0.36);
+  }
+
+  @media (max-width: 640px) {
+    .preview-heading {
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      margin-top: 3rem;
+      padding: 1.5rem;
+    }
+
+    .preview-heading h2 {
+      font-size: 1.25rem;
+    }
+
+    .preview-heading__lead {
+      font-size: 0.9rem;
+    }
+  }
+</style>

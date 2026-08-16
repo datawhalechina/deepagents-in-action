@@ -19,6 +19,7 @@ interface Props {
 const { id, title, chapter, section, description, published, slides } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const isExtra = section === '准备篇';
+const isPreview = section === '前沿预览';
 const preMatch = isExtra && id.match(/^pre(\d+)/);
 const chapterLabel = isExtra ? (preMatch ? preMatch[1] : 'EX') : String(chapter).padStart(2, '0');
 ---
@@ -27,6 +28,11 @@ const chapterLabel = isExtra ? (preMatch ? preMatch[1] : 'EX') : String(chapter)
   <div class="relative p-6 rounded-lg border border-gold-pale/80 bg-paper-warm hover:border-gold-light hover:shadow-md transition-all group overflow-hidden">
     <div class={`chapter-num ${isExtra ? 'chapter-num--extra' : ''}`}>{chapterLabel}</div>
     <a href={`${base}/chapters/${id}/`} class="relative block">
+      {isPreview && (
+        <span class="inline-flex mb-3 rounded border border-gold/30 bg-gold-pale/45 px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.12em] text-gold">
+          预览特性
+        </span>
+      )}
       <h3 class="text-lg font-bold font-sans leading-snug mb-2 group-hover:text-gold transition-colors">
         {title}
       </h3>
