@@ -183,7 +183,7 @@
     "order": 15,
     "description": "使用评分量规和大语言模型评审声明验收标准，通过证据工具、迭代反馈、实时事件与检查点状态理解 Agent 的自我修订闭环。",
     "slides": [
-      { "id": "ch13", "title": "Lec 17: Grading Rubrics — 让 Agent 按验收标准自我迭代" }
+      { "id": "ch13", "title": "Lec 17: Grading Rubrics — 让 Agent 按验收标准自我迭代", "bilibili": "https://www.bilibili.com/video/BV1t8bR6GEeU/", "xhs": "https://xhslink.cn/o/1JLNjLjjvpn" }
     ],
     "published": true,
     "pubDate": "2026-08-02"

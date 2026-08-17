@@ -15,6 +15,15 @@ test('Chapter 13 starts the preview-feature section', () => {
   assert.equal(manifest['ch13-grading-rubrics'].section, '前沿预览');
 });
 
+test('Chapter 13 publishes its video resource links', () => {
+  assert.deepEqual(manifest['ch13-grading-rubrics'].slides[0], {
+    id: 'ch13',
+    title: 'Lec 17: Grading Rubrics — 让 Agent 按验收标准自我迭代',
+    bilibili: 'https://www.bilibili.com/video/BV1t8bR6GEeU/',
+    xhs: 'https://xhslink.cn/o/1JLNjLjjvpn',
+  });
+});
+
 test('content schema accepts the preview-feature section', () => {
   assert.match(contentConfigSource, /'前沿预览'/);
 });
