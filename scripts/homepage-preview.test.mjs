@@ -48,6 +48,22 @@ test('Chapter 14 keeps recommended v3 projections separate from v2 protocol stre
   assert.match(streamingChapterSource, /stream\.subagents/);
   assert.match(streamingChapterSource, /stream\.tool_calls/);
   assert.match(streamingChapterSource, /stream\.interleave/);
+  for (const field of [
+    'name',
+    'path',
+    'status',
+    'messages',
+    'tool_calls',
+    'values',
+    'subagents',
+    'output',
+    'tool_name',
+    'output_deltas',
+    'completed',
+    'error',
+  ]) {
+    assert.match(streamingChapterSource, new RegExp(`\\| \\\`${field}\\\` \\|`));
+  }
   assert.match(streamingChapterSource, /stream_mode=\["updates", "messages", "custom"\]/);
   assert.match(streamingChapterSource, /subgraphs=True/);
   assert.match(streamingChapterSource, /version="v2"/);
