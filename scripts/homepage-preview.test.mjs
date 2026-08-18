@@ -8,10 +8,18 @@ const manifest = JSON.parse(
 const indexSource = await readFile(new URL('../src/pages/index.astro', import.meta.url), 'utf8');
 const cardSource = await readFile(new URL('../src/components/ChapterCard.astro', import.meta.url), 'utf8');
 const contentConfigSource = await readFile(new URL('../src/content.config.ts', import.meta.url), 'utf8');
+const chapterLayoutSource = await readFile(
+  new URL('../src/layouts/ChapterLayout.astro', import.meta.url),
+  'utf8',
+);
 const headingSource = await readFile(new URL('../src/components/PreviewSectionHeading.astro', import.meta.url), 'utf8')
   .catch(() => '');
 const chapterExperimentSource = await readFile(
   new URL('../src/data/chapter-experiments.mjs', import.meta.url),
+  'utf8',
+);
+const streamingChapterSource = await readFile(
+  new URL('../content/ch14-streaming.md', import.meta.url),
   'utf8',
 );
 
@@ -26,6 +34,23 @@ test('Chapter 13 publishes its video resource links', () => {
     bilibili: 'https://www.bilibili.com/video/BV1t8bR6GEeU/',
     xhs: 'https://xhslink.cn/o/1JLNjLjjvpn',
   });
+});
+
+test('Chapter 14 is an advanced chapter without invented slide resources', () => {
+  assert.equal(manifest['ch14-streaming'].section, '进阶篇');
+  assert.deepEqual(manifest['ch14-streaming'].slides, []);
+  assert.match(chapterLayoutSource, /bilibili \|\| xhs \|\| slides\.some/);
+  assert.match(cardSource, /slides && slides\.length > 0 && \(/);
+});
+
+test('Chapter 14 keeps recommended v3 projections separate from v2 protocol streaming', () => {
+  assert.match(streamingChapterSource, /stream_events\(input, version="v3"\)/);
+  assert.match(streamingChapterSource, /stream\.subagents/);
+  assert.match(streamingChapterSource, /stream\.tool_calls/);
+  assert.match(streamingChapterSource, /stream\.interleave/);
+  assert.match(streamingChapterSource, /stream_mode=\["updates", "messages", "custom"\]/);
+  assert.match(streamingChapterSource, /subgraphs=True/);
+  assert.match(streamingChapterSource, /version="v2"/);
 });
 
 test('content schema accepts the preview-feature section', () => {
@@ -63,11 +88,12 @@ test('every published numbered chapter maps to exactly one current template comm
     .sort();
 
   assert.deepEqual(Object.keys(chapterExperiments).sort(), publishedNumberedChapters);
-  assert.equal(new Set(Object.keys(chapterExperiments)).size, 13);
+  assert.equal(new Set(Object.keys(chapterExperiments)).size, 14);
   for (const experiment of Object.values(chapterExperiments)) {
     assert.match(experiment.command, /^agentseek create \S+ --checkout main --no-input$/);
     assert.match(experiment.source, /^https:\/\/github\.com\/agentseek-ai\/agentseek-templates\/tree\/main\/templates\//);
   }
   assert.match(chapterExperimentSource, /deepagents\/content-builder/);
   assert.match(chapterExperimentSource, /langchain\/rubric/);
+  assert.match(chapterExperimentSource, /ch14-streaming/);
 });

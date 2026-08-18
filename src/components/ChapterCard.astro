@@ -38,8 +38,9 @@ const chapterLabel = isExtra ? (preMatch ? preMatch[1] : 'EX') : String(chapter)
       </h3>
       <p class="text-sm text-ink-muted leading-relaxed">{description}</p>
     </a>
-    <div class="relative mt-4 pt-3 border-t border-gold-pale/40 space-y-2">
-      {slides && slides.length > 0 && slides.map((slide) => (
+    {slides && slides.length > 0 && (
+      <div class="relative mt-4 pt-3 border-t border-gold-pale/40 space-y-2">
+      {slides.map((slide) => (
         <div class="flex items-center gap-2">
           <span class="text-xs text-ink-muted/60 font-mono truncate flex-1 min-w-0">{slide.title}</span>
           <div class="flex items-center gap-1.5 shrink-0">
@@ -74,7 +75,8 @@ const chapterLabel = isExtra ? (preMatch ? preMatch[1] : 'EX') : String(chapter)
           </div>
         </div>
       ))}
-    </div>
+      </div>
+    )}
     {experiment && (
       <div class="chapter-experiment">
         <div class="chapter-experiment__main">

@@ -68,7 +68,9 @@ const hasXhs = !!xhs || slides.some(s => s.xhs);
       <PdfDownload slides={slides} />
     )}
 
-    <SocialLinks bilibili={bilibili} xhs={xhs} slides={slides} hideXhs={isExtra && !hasXhs} />
+    {(bilibili || xhs || slides.some(s => s.bilibili || s.xhs)) && (
+      <SocialLinks bilibili={bilibili} xhs={xhs} slides={slides} hideXhs={isExtra && !hasXhs} />
+    )}
 
     <ChapterNav prev={prev} next={next} />
   </article>

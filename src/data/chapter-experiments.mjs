@@ -61,4 +61,8 @@ export const chapterExperiments = {
     'langchain/rubric',
     '先运行无需模型密钥的 Guided Demo，再观察 Evidence 与 Acceptance Gate。',
   ),
+  'ch14-streaming': experiment(
+    'deepagents/research',
+    '用现成研究子 Agent 观察主 Agent、researcher、工具调用和最终输出的实时事件。',
+  ),
 };
