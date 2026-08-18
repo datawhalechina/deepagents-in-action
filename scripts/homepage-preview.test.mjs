@@ -44,7 +44,7 @@ test('Chapter 14 is an advanced chapter without invented slide resources', () =>
 });
 
 test('Chapter 14 keeps recommended v3 projections separate from v2 protocol streaming', () => {
-  assert.match(streamingChapterSource, /stream_events\(input, version="v3"\)/);
+  assert.match(streamingChapterSource, /stream_events\(request, version="v3"\)/);
   assert.match(streamingChapterSource, /stream\.subagents/);
   assert.match(streamingChapterSource, /stream\.tool_calls/);
   assert.match(streamingChapterSource, /stream\.interleave/);

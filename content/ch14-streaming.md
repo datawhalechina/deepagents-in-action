@@ -1,31 +1,39 @@
 # 第 14 章：Streaming — 实时观察主 Agent、子 Agent 与工具调用
 
-> `invoke()` 只告诉你运行到了哪里；Streaming 让你看到它是怎样走到这里的。本章用一个强制委派研究任务的 Deep Agent，分别观察 coordinator、researcher、工具调用和最终输出，并把产品级的 Event Streaming v3 与底层 LangGraph v2 协议放在各自清晰的位置。
+> 研究助手已经跑了两分钟。后台日志显示它调用了搜索工具，也确实启动了 `researcher`；浏览器里的用户却只看到一个转圈图标。等到最终答案出现时，用户不知道它是在工作，还是已经卡住了。
 
-本章的代码以 Deep Agents v0.6 引入的 Typed Projection API 为主线。对于新应用，优先从 `agent.stream_events(..., version="v3")` 开始；它为消息、工具调用、子 Agent 和最终状态提供独立投影。`agent.stream(..., version="v2")` 仍然有价值，但它更接近底层图执行协议，适合调试 namespace、custom updates 或迁移已有 LangGraph 代码。
+模型仍然可能给出一份好答案。真正让用户不安的是，应用把两分钟的运行过程压扁成了一个最终值。本章沿着这个故障改造“黑盒研究助手”：先看见委派，再看见子 Agent 的消息和工具调用，随后修复事件顺序，最后处理旧代码里的底层协议。
 
-## 1. 为什么最终结果不够
+示例以 Deep Agents v0.6 引入的 Typed Projection API 为主线。新应用优先使用 `agent.stream_events(..., version="v3")`；`agent.stream(..., version="v2")` 放在后半章，专门解释 LangGraph 的协议格式、namespace 和 custom updates。两者解决的问题不同，代码也不要混在同一个循环里。
 
-最小的 Agent 调用通常是：
+## 1. 一次“看起来卡住”的研究请求
+
+先看这个应用的原始调用。它没有错，甚至很适合脚本：
 
 ```python
 result = agent.invoke({"messages": [{"role": "user", "content": prompt}]})
 print(result["messages"][-1].content)
 ```
 
-它适合一次性脚本，却隐藏了几个对真实应用很重要的问题：
+对应到页面，运行期间只有这样一条状态：
 
-- coordinator 是否真的委派了任务，还是自己回答了；
-- 哪个子 Agent 正在运行，何时完成，是否失败或被中断；
-- 工具调用正在等待、增量参数是否还没结束、工具结果是否报错；
-- 主 Agent 与子 Agent 的文本为什么交错，页面应该把它放到哪张卡片；
-- 最终答案之前是否已经发生了多轮工具调用或上下文压缩。
+```text title="改造前的页面"
+用户：研究近期的 Agent Streaming 模式
+系统：正在生成……
+```
 
-Streaming 是运行时的观察面。它把“等待一个最终值”改成“消费一组随运行产生的事件”，但它本身不等于并行执行，也不会自动提供持久化、重放、取消或背压。那些能力仍需要应用和运行时单独设计。
+问题出在产品体验。`invoke()` 只有在整个运行结束后才返回，所以页面无法回答这些最基本的问题：
 
-## 2. 先固定一个可观察的案例
+- coordinator 有没有真的把任务交给 `researcher`？
+- 子 Agent 是正在搜索，还是已经失败？
+- 工具参数还在生成，还是工具已经返回错误？
+- 最终答案出现前，究竟发生了哪些中间步骤？
 
-本章后面的片段都围绕同一个 coordinator。系统提示词要求它把研究请求交给 `researcher`，这样我们可以稳定地看到子 Agent 生命周期，而不是依赖模型偶然选择 `task` 工具。
+我们先不急着设计漂亮的进度条。第一步只做一件事：把当前运行中“谁在工作”显示出来。
+
+## 2. 先让案例稳定复现
+
+如果完全依赖模型自由发挥，模型有时会直接回答问题，不调用 `task`，Streaming 页面也就没有稳定的子 Agent 可以展示。为了排查显示链路，我们先把研究请求固定委派给 `researcher`。
 
 ```python
 import os
@@ -59,58 +67,50 @@ agent = create_deep_agent(
     ],
 )
 
-input = {
+request = {
     "messages": [
         {"role": "user", "content": "Research recent Agent streaming patterns"}
     ]
 }
 ```
 
-如果模板或模型供应商使用不同的环境变量，只需替换模型初始化；后续 Streaming 代码不依赖具体供应商。为了让案例具有可观察的工具事件，模板中的搜索工具和模型都必须支持工具调用。
+运行到这里，我们已经有了一个可观察的树：顶层是 coordinator，下面是一次 `researcher` 委派，研究过程中还可能出现工具调用。模板中的搜索工具和模型必须支持 Tool Calling，否则后面只能看到 Agent 状态，看不到工具事件。
 
-## 3. Streaming 的层级模型
+## 3. 第一个修复：先显示“研究助手已启动”
 
-把一次运行拆成四层，可以先决定页面如何呈现，再决定消费哪个投影：
+### 3.1 不要先从 graph node 猜产品状态
 
-| 层级 | 看到的对象 | 适合呈现 |
-| --- | --- | --- |
-| Coordinator | 顶层 Agent 的消息、工具调用和最终状态 | 主对话、总体进度 |
-| Subagent | 一次 `task` 委派对应的子 Agent handle | 子任务卡片、状态和摘要 |
-| Tool call | 某一层 Agent 发起的工具、参数增量和结果 | 工具状态、参数预览、错误 |
-| Output | 一层 Agent 的最终状态或完成信号 | 收起详情、更新最终答案 |
+最底层的 LangGraph 会产生很多节点名称，例如 `model_request`、`tools`。它们对调试有用，却不适合作为产品界面。用户关心的是“研究助手”，不是某个内部节点。
 
-v3 的 `stream.subagents` 是面向产品的委派视图：它暴露配置中的子 Agent 名称、路径和生命周期，隐藏了内部 graph node。`stream.subgraphs` 则是底层图执行结构，namespace 里可能出现 `tools:<id>` 和更深的节点路径。用户界面优先使用 `subagents`；只有需要调试协议或兼容旧代码时，才直接处理 namespace。
-
-Projection 是惰性的。创建 `stream` 后，访问某个子 Agent 的 `.messages` 或 `.tool_calls` 才会订阅对应的流；只需要生命周期时，读取 `.status` 和 `.output` 就够了。这使得简单的 UI 不必为每一个内部事件付出成本。
-
-## 4. 推荐主线：Event Streaming v3
-
-### 4.1 先观察子 Agent 生命周期
-
-`stream_events()` 返回一个带有 Typed Projection 的流对象。下面的循环只打开子 Agent 视图，并在它结束时读取最终输出：
+Deep Agents 为委派提供了更直接的视图：`stream.subagents`。它的每一个 handle 对应一次 `task` 委派，并带有用户真正需要的名称、路径和生命周期状态。
 
 ```python
-stream = agent.stream_events(input, version="v3")
+stream = agent.stream_events(request, version="v3")
 
 for subagent in stream.subagents:
-    print(subagent.name, subagent.path, subagent.status)
+    print(f"[{subagent.name}] {subagent.status}")
+    print("path:", subagent.path)
 
     try:
-        output = subagent.output
-        print(f"[{subagent.name}] completed")
-        print(output)
+        print("output:", subagent.output)
     except Exception as exc:
-        print(f"[{subagent.name}] failed: {exc}")
+        print(f"failed: {exc}")
 ```
 
-`name` 来自 coordinator 调用 `task` 时选择的 `subagent_type`，在本例中是 `researcher`。`path` 是该委派在 Agent 树中的 namespace 路径；`status` 可以是 `started`、`completed`、`failed` 或 `interrupted` 等生命周期状态。不要把一次 `status` 打印当成最终验收门：生产系统仍应记录错误、超时和取消原因。
+现在页面至少可以在卡片上写出：`researcher · started`。如果运行成功，`output` 是子 Agent 的最终状态；如果它失败或被中断，读取最终输出时可能抛出异常，这个异常应成为卡片上的错误，而不是被吞掉。
 
-### 4.2 观察 coordinator 和 researcher 的消息
+### 3.2 Projection 是按需打开的
 
-顶层的 `stream.messages` 只属于 coordinator；每个子 Agent handle 的 `subagent.messages` 才属于该子 Agent：
+刚才我们只关心“启动、结束、失败”，所以没有订阅子 Agent 的全部消息。v3 的 projection 是惰性的：访问 `subagent.messages` 或 `subagent.tool_calls` 时，才打开对应的细流。
+
+这对生产页面很实用。只展示状态和耗时时，不需要消费每一条消息和工具增量；需要详细过程的界面，再打开相应 projection。没有必要为每个内部事件都建立一份 UI 状态。
+
+## 4. 第二个修复：让用户知道它在查什么
+
+状态卡片解决了“是不是卡住”的问题，但用户很快会追问：“它到底在做什么？”现在把 coordinator 和 researcher 的消息都接出来。
 
 ```python
-stream = agent.stream_events(input, version="v3")
+stream = agent.stream_events(request, version="v3")
 
 for message in stream.messages:
     print("[coordinator]", message.text)
@@ -120,14 +120,27 @@ for subagent in stream.subagents:
         print(f"[{subagent.name}]", message.text)
 ```
 
-这段代码适合离线检查，但不适合实时页面：先完整消费 coordinator，再消费 subagents，会把已经发生的交错事件按层级重新排列。下一节会处理并发消费。
+这段代码能帮助我们确认上下文隔离是否真的发生：coordinator 负责下达任务和汇总，researcher 在自己的上下文中完成研究。主 Agent 不需要接收每一次搜索结果，只需要接收子 Agent 最后的摘要。
 
-### 4.3 观察工具调用和增量输出
+但这段代码还不能直接放进实时页面。它先把 coordinator 的 iterator 消费完，再去消费 `subagents`。如果 researcher 在后台已经输出了很多内容，页面看到的顺序就会被重新排列：主 Agent 的话全部出现在前面，子 Agent 的话全部出现在后面。
 
-工具调用也按 Agent 层级隔离。顶层工具走 `stream.tool_calls`，researcher 的工具走 `subagent.tool_calls`：
+第一次接入后，页面可能会变成这样：
+
+```text title="能够看到内容，但顺序失真"
+[coordinator] 正在委派研究任务
+[coordinator] 这是最终总结……
+[researcher] 正在比较不同的 Streaming 接口
+[researcher] 已找到相关资料……
+```
+
+researcher 明明先完成研究，却被排在最终总结之后。第 6 节会修复这个顺序问题；在那之前，还要把卡片里缺失的工具活动补上。
+
+## 5. 第三个修复：工具调用也要能被看见
+
+研究卡片里只有文字仍然不够。用户看到“正在研究”，却不知道它是在等网络、调用搜索，还是工具已经报错。工具调用也按 Agent 层级提供 projection：
 
 ```python
-stream = agent.stream_events(input, version="v3")
+stream = agent.stream_events(request, version="v3")
 
 for call in stream.tool_calls:
     print("[coordinator tool]", call.tool_name, call.input)
@@ -146,14 +159,21 @@ for subagent in stream.subagents:
             print("\nerror:", call.error)
 ```
 
-这里需要区分三种状态：参数或输出仍在增量到达、调用已经完成、调用已经完成但带有错误。UI 可以把前两种分别映射成“运行中”和“已完成”，错误则保留在对应的工具卡片，不要静默当成空结果。
+这里有三个容易混淆的时刻：参数或工具输出还在增量到达；调用已经完成；调用完成但带有错误。页面可以把它们映射成“运行中”“已完成”和“失败”，不要把错误调用渲染成一行空白结果。
 
-### 4.4 递归观察嵌套子 Agent
+到这一步，用户看到的不再是一张只会闪烁的卡片：
 
-子 Agent 也拥有 `.messages`、`.tool_calls`、`.subagents` 和 `.output` 等投影。因此可以递归进入更深的委派：
+```text title="补上工具状态后"
+researcher · running
+  search · running   query="Deep Agents event streaming"
+  search · completed 5 results
+  正在整理 v3 projection 与 v2 protocol 的差异……
+```
+
+如果研究 Agent 还会委派下一层 Agent，投影可以继续向下递归：
 
 ```python
-stream = agent.stream_events(input, version="v3")
+stream = agent.stream_events(request, version="v3")
 
 for subagent in stream.subagents:
     print(f"subagent {subagent.name}: {subagent.status}")
@@ -167,20 +187,20 @@ for subagent in stream.subagents:
         print(f"nested subagent {nested.name}: {nested.status}")
 ```
 
-递归消费时给每个节点保存稳定的 `path`，不要只使用 `name` 作为唯一键。两个同名子 Agent 可能来自不同的委派分支，页面状态应该按路径区分。
+递归时要用 `path` 作为 UI 的唯一键。同名 `researcher` 可能来自不同委派分支，单独用 `name` 会把两张卡片的状态写到一起。
 
-## 5. 让实时 UI 保留交错顺序
+## 6. 顺序乱了：两种方式修复实时消费
 
-### 5.1 异步：并发消费各个投影
+### 6.1 异步服务：并发消费
 
-coordinator 和 subagent 的输出可能交错到达。异步应用用 `astream_events` 和 `asyncio.gather` 同时消费：
+回到刚才的页面 bug。coordinator 和 researcher 的事件会交错到达，实时 UI 不能把两个 iterator 排队处理。异步服务应同时消费它们：
 
 ```python
 import asyncio
 
 
 async def stream_live():
-    stream = await agent.astream_events(input, version="v3")
+    stream = await agent.astream_events(request, version="v3")
 
     async def consume_coordinator():
         async for message in stream.messages:
@@ -197,14 +217,14 @@ async def stream_live():
 asyncio.run(stream_live())
 ```
 
-真实前端通常不会直接 `print`，而是把事件转换为带有 `source`, `path`, `kind`, `status` 和 `delta` 的内部消息，再通过 WebSocket 或 SSE 推送。并发消费解决的是“不要阻塞某一层”，并不自动给事件加上跨投影的全局顺序。
+`asyncio.gather` 解决的是阻塞问题：一个投影等待网络时，另一个仍然可以把事件送到页面。它不承诺所有投影之间都有一个可以直接比较的全局顺序；如果要审计“哪个 token 先到”，还需要更底层的事件。
 
-### 5.2 同步：使用 `interleave`
+### 6.2 同步程序：使用 `interleave`
 
-同步服务或命令行程序可以使用 `stream.interleave(...)` 在一个循环中合并投影：
+如果当前是同步命令行程序，不必为了展示进度重写成异步。v3 提供了 `interleave`：
 
 ```python
-stream = agent.stream_events(input, version="v3")
+stream = agent.stream_events(request, version="v3")
 
 for name, item in stream.interleave("messages", "subagents"):
     if name == "messages":
@@ -214,14 +234,16 @@ for name, item in stream.interleave("messages", "subagents"):
             print(f"[{item.name}]", message.text)
 ```
 
-`interleave` 适合快速构建同步展示；如果页面要求“每一个 token 的精确到达顺序”，应继续读取 raw protocol events，并用 `namespace` 路由。不要假设先创建的 projection 就先产出，也不要依次消费多个无限期运行的 projection。
+它适合快速做一个同步展示。如果要递归合并工具调用和嵌套子 Agent，仍然建议在应用层写一个事件 adapter，而不是让每个组件都理解 iterator 的细节。
 
-## 6. 需要精确顺序时读取 raw events
+## 7. 页面开始工作后，才需要精确顺序
 
-v3 的投影 API 为产品语义做了分组。如果必须保留 coordinator 和所有嵌套子 Agent 的精确事件顺序，可以遍历原始协议事件：
+大多数产品只需要“主对话”“researcher 卡片”和“工具行”三个区域。它们有了自己的来源和路径，页面就能正确更新。只有在调试丢事件、重放运行或做审计时，才值得保留所有层级的精确到达顺序。
+
+这时可以读取 v3 的 raw protocol events：
 
 ```python
-stream = agent.stream_events(input, version="v3")
+stream = agent.stream_events(request, version="v3")
 
 for event in stream:
     if event.get("method") != "messages":
@@ -243,44 +265,25 @@ for event in stream:
     print(f"[{source}] {block['text']}", end="", flush=True)
 ```
 
-raw event 的字段是协议层数据，不应在业务代码里到处散落字符串判断。建议集中写一个 adapter：它负责校验事件版本、提取 `namespace`、转换为应用内部事件；页面和业务逻辑只消费内部事件。协议升级时只改 adapter 和测试。
+raw event 的字段属于协议层。建议集中写一个 adapter，负责校验版本、读取 `namespace`、分配序号，再转换成应用自己的事件格式；页面只消费转换后的对象。这样协议升级时只改 adapter 和测试，不必逐个修改组件。
 
-## 7. v3 与传统 v2：两种视角，不要混写
+## 8. 旧代码为什么还在处理 `type/ns/data`
 
-### 7.1 v3：面向应用的 typed projections
-
-v3 的核心是“按语义订阅”：
-
-```python
-stream = agent.stream_events(input, version="v3")
-
-for message in stream.messages:
-    ...
-
-for subagent in stream.subagents:
-    for call in subagent.tool_calls:
-        ...
-```
-
-你不需要在一个 `chunk` 字典里判断类型，也不需要自己从内部节点名称推断哪个对象是产品意义上的子 Agent。新应用的默认选择应是 v3，再按界面需要打开 `.messages`、`.tool_calls`、`.values`、`.subagents` 或 `.output`。
-
-### 7.2 v2：统一的 `StreamPart` 协议
-
-已有 LangGraph 代码、协议调试和 custom updates 仍可能直接使用 v2：
+团队接手一个已有 LangGraph 服务时，常会看到这样的循环：
 
 ```python
 for chunk in agent.stream(
-    input,
+    request,
     stream_mode=["updates", "messages", "custom"],
     subgraphs=True,
     version="v2",
 ):
-    print(chunk["type"])  # updates / messages / custom
-    print(chunk["ns"])    # () 或子图 namespace
-    print(chunk["data"])   # 当前 mode 的 payload
+    print(chunk["type"])
+    print(chunk["ns"])
+    print(chunk["data"])
 ```
 
-每个 chunk 都有 `type`、`ns`、`data` 三个关键字段。`ns=()` 通常表示主 Agent；非空 namespace 表示子图或更深的节点。例如：
+这段循环直接消费底层图执行协议，不使用 v3 的 typed projections。v2 的每个 `StreamPart` 都有 `type`、`ns`、`data`：
 
 ```text
 ()                              -> main agent
@@ -288,15 +291,11 @@ for chunk in agent.stream(
 ("tools:abc123", "model:xyz")  -> 子 Agent 内部模型节点
 ```
 
-不要把 v2 的 `chunk["data"]` 当成 v3 的 `message.text`，也不要把 v3 的 `subagent.name` 误当成 v2 namespace。两者的抽象层级不同：v3 关注委派和投影，v2 关注图执行路径。
-
-### 7.3 `stream_mode`、`subgraphs=True` 与 custom updates
-
-`stream_mode` 决定 v2 事件的 payload 类型：`updates` 适合节点状态变化，`messages` 适合 token 和工具消息，`custom` 适合应用自定义进度。`subgraphs=True` 才会把子图事件带到同一条流中：
+`stream_mode` 决定 `data` 的形状：`updates` 适合看节点状态变化，`messages` 适合 token 和工具消息，`custom` 适合应用自定义进度。`subgraphs=True` 才会让子图事件出现在同一条流里：
 
 ```python
 for chunk in agent.stream(
-    input,
+    request,
     stream_mode="updates",
     subgraphs=True,
     version="v2",
@@ -308,7 +307,11 @@ for chunk in agent.stream(
     print(f"[{source}]", chunk["data"])
 ```
 
-自定义进度信号属于应用协议，不要让 UI 依赖某个内部 graph node 的名字。若工具需要发出业务进度，可以在工具内部调用 `get_stream_writer()`：
+这套格式适合两类场景：已有应用迁移时不想一次重写事件路由；调试时必须知道某条更新来自哪一个图节点。新页面仍建议用 v3 的 `subagents`，因为它直接表达“委派给哪个产品角色”，不用让 UI 猜 namespace。
+
+## 9. 需要自定义进度时，先定义自己的事件
+
+研究工具可能还想报告“已找到 3 个来源”“正在合并摘要”。这类信息不是内部 node 状态，应该由工具显式发出：
 
 ```python
 from langchain.tools import tool
@@ -325,23 +328,23 @@ def analyze_data(topic: str) -> str:
     return f"Analysis complete: {topic}"
 ```
 
-随后在 v2 的 `custom` 分支中消费 `chunk["data"]`。如果应用已经采用 v3，应把这类自定义信号通过一个集中 adapter 映射成内部 `progress` 事件，而不是在组件中混合两种协议。
+在 v2 中，这些信号从 `custom` 分支的 `chunk["data"]` 读取；如果应用已经采用 v3，就在 adapter 里把它们转为统一的 `progress` 事件。不要让前端组件一半读取 v3 对象、一半判断 v2 的字符串字段。
 
-## 8. 从事件到页面：一个简单的映射
+## 10. 从“能看到”到“能交付”
 
-一个足够清晰的前端事件模型可以是：
+到这里，页面终于能把一次研究请求说清楚：
 
 ```text
-coordinator message  -> 主对话消息流
-subagent started     -> 新建 researcher 卡片，状态 running
-subagent message     -> 写入对应 path 的子 Agent 卡片
-tool call            -> 卡片内的工具行，显示参数增量和结果
-subagent completed   -> researcher 卡片折叠，保留摘要和耗时
-final output         -> 主对话的最终答案区域
-error/interrupted    -> 对应层级显示可恢复的错误状态
+coordinator message  -> 主对话
+subagent started     -> researcher 卡片进入 running
+subagent message     -> 写入 researcher 卡片
+tool call            -> 卡片里的工具行，显示参数和结果
+subagent completed   -> 卡片收起，保留摘要和状态
+final output         -> 主对话里的最终答案
+error/interrupted    -> 对应层级的错误或中断提示
 ```
 
-实际实现时至少保留以下字段：
+建议把所有投影先转换成一个小而稳定的内部事件：
 
 ```python
 {
@@ -354,56 +357,43 @@ error/interrupted    -> 对应层级显示可恢复的错误状态
 }
 ```
 
-`path` 是跨层级路由的稳定依据，`name` 只是用户可读标签。页面应允许用户展开子 Agent 和工具详情，但默认把主对话与最终输出放在最显眼的位置，避免把内部 graph 节点变成用户必须理解的概念。
+页面不需要知道 `model_request` 这种内部节点名，但必须保留 `path`。它是跨层级路由的依据；`name` 只是用户看到的标签。
 
-## 9. 常见误区与生产边界
+### 四个生产问题
 
-### 误区一：把 Streaming 当成并行执行
+页面上线前还要补四个运行边界：
 
-Streaming 只报告运行中的事件。一个串行 Agent 也可以有流式输出；多个子 Agent 是否并行，取决于编排方式和运行时。要观察并发，结合子 Agent 的开始时间、结束时间和运行路径，而不是只看页面上消息出现的先后。
+1. Streaming 不等于并行。是否并行取决于编排方式，不能从“事件交错”反推执行模型。
+2. 客户端断开后怎么办？长任务需要明确选择超时、取消，还是转入后台继续执行。
+3. 慢客户端怎么办？服务端要限制队列大小，或丢弃能够重建的增量，不能无限积压。
+4. 刷新页面后还能不能看见刚才的过程？如果需要重放，就把标准化事件写入 Trace、数据库或对象存储；内存 iterator 不是持久化日志。
 
-### 误区二：依次阻塞消费多个 projection
+工具错误、子 Agent 失败和中断状态都要原样保留。只有把失败也做成事件，用户才知道“研究没有完成”和“页面没有刷新”是两回事。
 
-先把 `stream.messages` 消费完，再打开 `stream.subagents`，会让实时 UI 失去交错顺序；同步使用 `interleave`，异步使用 `gather`。长任务还应设置超时，并在客户端断开时决定是否取消后端运行。
+## 11. 一次最小实验：把研究模板从黑盒改成可观察
 
-### 误区三：把 graph node 当成产品概念
+在 AgentSeek 的 `deepagents/research` 模板中完成下面这条改造链：
 
-`model_request`、`tools` 等节点对调试很有用，却不一定适合直接展示。用户需要的是“研究助手正在查资料”，而不是某个内部节点名称。v3 的 `subagents` 正是为了提供更稳定的产品语义。
+1. 升级本地 AgentSeek，并用 `agentseek create deepagents/research --checkout main` 拉取最新模板。
+2. 先运行模板自带的研究流程，确认 `researcher` 能被调用。先不要改页面，记录一次 `invoke()` 的最终结果。
+3. 将后端调用改成 `stream_events(..., version="v3")`，先只显示 `researcher` 的 `started/completed/failed`。
+4. 给主对话和 `researcher` 卡片分别接入 `.messages`，确认两边的上下文边界。
+5. 在子 Agent 卡片中加入 `.tool_calls`，展示工具名、参数增量、完成状态和错误。
+6. 用 `asyncio.gather` 或 `stream.interleave` 修复主对话和研究卡片的交错顺序。
+7. 最后增加一个仅供开发者使用的协议调试开关，用 v2 的 `type/ns/data` 查看同一运行的底层事件。
 
-### 误区四：把到达顺序当成业务顺序
-
-网络、模型服务和子 Agent 调度都会影响事件到达时间。需要可审计的顺序时保存 raw event 的序号、时间戳和 namespace；不要用最终消息文本反推发生过什么。
-
-### 误区五：忘记错误、取消和背压
-
-页面不能只处理文本 delta。工具错误、子 Agent 失败、运行中断、客户端离线和慢消费者都必须有明确策略：记录、重试、取消、降级或提示用户。Streaming 层不替你决定这些策略。
-
-### 误区六：把流式日志当成持久化记录
-
-如果需要刷新页面后继续查看，应该把标准化后的事件写入 Trace、数据库或对象存储，并使用 `run_id` 做关联。内存中的 iterator 消费完就结束，不能当作重放机制。
-
-## 10. 一次最小实验
-
-在 AgentSeek 的 `deepagents/research` 模板中完成下面的改造：
-
-1. 升级模板和本地 AgentSeek 后，先运行模板自带研究流程，确认 `researcher` 可以被调用。
-2. 在后端把一次 `invoke()` 改为 `stream_events(..., version="v3")`。
-3. 给主对话增加 coordinator 消息流，给侧栏增加 `researcher` 子 Agent 卡片。
-4. 在卡片中显示工具调用的 `tool_name`、参数增量、完成状态和错误。
-5. 用 `asyncio.gather` 或 `stream.interleave` 保留两个投影的实时更新。
-6. 最后增加一个“协议调试”开关，用 v2 的 `type/ns/data` 查看同一运行的底层事件。
-
-实验验收不看某一段固定输出，而看四个事实是否能被观察到：确实发生了委派、子 Agent 有独立状态、工具调用没有被吞掉、最终答案仍由 coordinator 汇总。模型输出会变化，这是 Streaming 应用必须面对的正常情况。
+验收不看某一段固定文本，因为模型输出会变化。只检查四件事：请求确实委派给了 `researcher`，子 Agent 有独立状态，工具调用没有被吞掉，最终答案仍由 coordinator 汇总。
 
 ## 本章小结
 
-- `invoke()` 适合拿最终状态，Streaming 适合观察运行过程。
-- 新应用优先使用 `stream_events(..., version="v3")` 的 typed projections。
-- `stream.subagents` 是面向产品的 Deep Agents 委派视图；`subgraphs` 和 namespace 是底层图协议。
-- 访问 `.messages`、`.tool_calls` 等 projection 才会订阅对应流；只看生命周期时不必打开全部细节。
-- coordinator 与 subagent 要并发消费；精确全局顺序则读取 raw events 并检查 namespace。
-- v2 的 `stream_mode`、`subgraphs=True` 和 `custom` 适合协议调试与迁移，不要和 v3 返回值混写。
-- Streaming 不自动解决持久化、重放、取消、超时和背压，生产应用需要补上这些边界。
+这次改造从一个具体故障开始：最终答案能返回，但用户看不见中间过程。解决它的顺序也很重要：
+
+- 用 `stream.subagents` 先显示产品层的委派状态；
+- 按需打开 `.messages`、`.tool_calls`、`.subagents` 和 `.output`；
+- 用异步并发消费或 `interleave` 保留实时更新；
+- 只有需要审计时，才读取 raw events 和 namespace；
+- 新应用默认使用 v3，v2 留给底层调试、custom updates 和迁移；
+- Streaming 不负责持久化、取消、超时和背压，生产边界要由应用补齐。
 
 ## 官方参考
 
