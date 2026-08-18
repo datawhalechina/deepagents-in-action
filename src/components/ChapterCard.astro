@@ -14,9 +14,15 @@ interface Props {
   description: string;
   published: boolean;
   slides?: Slide[];
+  experiment?: {
+    template: string;
+    note: string;
+    command: string;
+    source: string;
+  };
 }
 
-const { id, title, chapter, section, description, published, slides } = Astro.props;
+const { id, title, chapter, section, description, published, slides, experiment } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const isExtra = section === '准备篇';
 const preMatch = isExtra && id.match(/^pre(\d+)/);
@@ -69,6 +75,23 @@ const chapterLabel = isExtra ? (preMatch ? preMatch[1] : 'EX') : String(chapter)
         </div>
       ))}
     </div>
+    {experiment && (
+      <div class="chapter-experiment">
+        <div class="chapter-experiment__main">
+          <span class="chapter-experiment__label">本章实验</span>
+          <a href={experiment.source} target="_blank" rel="noopener" class="chapter-experiment__template">
+            {experiment.template} <span aria-hidden="true">↗</span>
+          </a>
+          <button type="button" data-copy={experiment.command} aria-label={`复制第 ${chapter} 章 AgentSeek 模板创建命令`}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 7V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M5 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" />
+            </svg>
+            <span data-copy-label>复制 AgentSeek 创建命令</span>
+          </button>
+        </div>
+        <p>{experiment.note}</p>
+      </div>
+    )}
   </div>
 ) : (
   <div class="relative p-6 rounded-lg border border-gold-pale/30 bg-paper-warm/50 overflow-hidden">
@@ -81,6 +104,69 @@ const chapterLabel = isExtra ? (preMatch ? preMatch[1] : 'EX') : String(chapter)
 )}
 
 <style>
+  .chapter-experiment {
+    margin-top: 1rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-gold) 16%, transparent);
+  }
+
+  .chapter-experiment__main {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+  }
+
+  .chapter-experiment__label {
+    flex: 0 0 auto;
+    color: var(--color-ink-muted);
+    font: 600 0.66rem/1 var(--font-sans);
+  }
+
+  .chapter-experiment__template {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-ink);
+    font: 600 0.65rem/1.2 var(--font-mono);
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chapter-experiment__template:hover { color: var(--color-gold); }
+
+  .chapter-experiment p {
+    margin: 0.4rem 0 0;
+    color: var(--color-ink-muted);
+    font-size: 0.68rem;
+    line-height: 1.5;
+  }
+
+  .chapter-experiment button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex: 0 0 auto;
+    margin-left: auto;
+    padding: 0.32rem 0.46rem;
+    border: 1px solid var(--color-gold-pale);
+    border-radius: 5px;
+    color: var(--color-ink-muted);
+    background: transparent;
+    cursor: pointer;
+    font: 500 0.62rem/1 var(--font-sans);
+  }
+
+  .chapter-experiment button:hover {
+    color: var(--color-gold);
+    border-color: var(--color-gold);
+    background: color-mix(in srgb, var(--color-gold) 5%, transparent);
+  }
+
+  .chapter-experiment button:focus-visible,
+  .chapter-experiment a:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+  .chapter-experiment svg { width: 0.75rem; height: 0.75rem; }
+
   /* 暗色模式：B站按钮 */
   :global([data-theme="dark"]) a[href*="bilibili"]:not([href*="xhs"]) {
     background: rgba(56, 189, 248, 0.15);

@@ -61,33 +61,155 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
 - [AgentSeek 生命周期工作流](https://datawhalechina.github.io/deepagents-in-action/chapters/pre01-agentseek-create/)：创建 DeepAgents 模板，检查环境并启动前后端
 - [`npx skills` 安装开发技能](https://datawhalechina.github.io/deepagents-in-action/chapters/pre02-agentseek-skills/)：为 AI 编码助手加载 LangChain 工程经验
 
+### 按章节开始实验
+
+每个章节卡片都标出了最合适的 AgentSeek 模板和适配理由；README 也按同样的章节顺序列出，读到哪一章就从哪一行开始实验。第 6、8、9、11 章需要在模板基础上按正文补充本章能力，具体步骤以章节内容为准。
+
+先升级 AgentSeek，并确认 `main` 分支当前有哪些模板：
+
+```bash
+uv tool install --upgrade agentseek
+agentseek create --list-templates --checkout main
+```
+
+进入生成目录后，所有模板遵循同一套生命周期入口：
+
+```bash
+cd <生成的项目目录>
+agentseek info
+agentseek task --list
+
+# 按 task --list 的输出完成依赖安装，并按项目 README 配置 .env
+agentseek doctor
+agentseek dev
+```
+
+`--checkout main` 用于获取最新批次模板，适合跟课实验；如果需要冻结作业环境，请将 `main` 换成记录下来的完整提交 SHA。
+
 ### 认知篇
 
-| 章节 | 标题 |
-|------|------|
-| 第 1 章 | [从 Agent Framework 到 Agent Harness — Deep Agents 的诞生逻辑](https://datawhalechina.github.io/deepagents-in-action/chapters/ch01-agent-harness/) |
-| 第 2 章 | [快速上手 — 5 分钟构建你的第一个 Deep Agent](https://datawhalechina.github.io/deepagents-in-action/chapters/ch02-quickstart/) |
+#### 第 1 章：[从 Agent Framework 到 Agent Harness — Deep Agents 的诞生逻辑](https://datawhalechina.github.io/deepagents-in-action/chapters/ch01-agent-harness/)
+
+- 模板：[`deepagents/default`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/default)
+- 实验：从最小 `create_deep_agent` 项目识别 Runtime、Framework 与 Harness 的边界。
+
+```bash
+agentseek create deepagents/default --checkout main --no-input
+```
+
+#### 第 2 章：[快速上手 — 5 分钟构建你的第一个 Deep Agent](https://datawhalechina.github.io/deepagents-in-action/chapters/ch02-quickstart/)
+
+- 模板：[`deepagents/default`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/default)
+- 实验：修改系统提示词和自定义工具，跑通第一个可工作的 Deep Agent。
+
+```bash
+agentseek create deepagents/default --checkout main --no-input
+```
 
 ### 核心篇
 
-| 章节 | 标题 |
-|------|------|
-| 第 3 章 | [虚拟文件系统 — Deep Agents 的 Context Engineering 核心](https://datawhalechina.github.io/deepagents-in-action/chapters/ch03-virtual-filesystem/) |
-| 第 4 章 | [任务规划与分解 — 让 Agent 学会拆解复杂任务](https://datawhalechina.github.io/deepagents-in-action/chapters/ch04-task-planning/) |
-| 第 5 章 | [子 Agent 与上下文隔离 — 让 Agent 学会委派](https://datawhalechina.github.io/deepagents-in-action/chapters/ch05-subagents/) |
-| 第 6 章 | [异步子 Agent — 让主 Agent 同时驱动多个子任务](https://datawhalechina.github.io/deepagents-in-action/chapters/ch06-async-subagents/) |
+#### 第 3 章：[虚拟文件系统 — Deep Agents 的 Context Engineering 核心](https://datawhalechina.github.io/deepagents-in-action/chapters/ch03-virtual-filesystem/)
+
+- 模板：[`deepagents/content-builder`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/content-builder)
+- 实验：利用现成 `FilesystemBackend` 观察内容、中间结果和 Skills 如何落盘。
+
+```bash
+agentseek create deepagents/content-builder --checkout main --no-input
+```
+
+#### 第 4 章：[任务规划与分解 — 让 Agent 学会拆解复杂任务](https://datawhalechina.github.io/deepagents-in-action/chapters/ch04-task-planning/)
+
+- 模板：[`deepagents/research`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/research)
+- 实验：通过 Todo 面板观察 `write_todos` 的计划生成与状态变化。
+
+```bash
+agentseek create deepagents/research --checkout main --no-input
+```
+
+#### 第 5 章：[子 Agent 与上下文隔离 — 让 Agent 学会委派](https://datawhalechina.github.io/deepagents-in-action/chapters/ch05-subagents/)
+
+- 模板：[`deepagents/research`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/research)
+- 实验：观察主 Agent 将搜索委派给 research-agent，并比较两侧上下文。
+
+```bash
+agentseek create deepagents/research --checkout main --no-input
+```
+
+#### 第 6 章：[异步子 Agent — 让主 Agent 同时驱动多个子任务](https://datawhalechina.github.io/deepagents-in-action/chapters/ch06-async-subagents/)
+
+- 模板：[`deepagents/research`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/research)
+- 实验：从同步研究应用开始，按本章将 researcher 拆成独立 graph 并接入 `AsyncSubAgent`。
+
+```bash
+agentseek create deepagents/research --checkout main --no-input
+```
 
 ### 进阶篇
 
-| 章节 | 标题 |
-|------|------|
-| 第 7 章 | [Skills — 可复用的 Agent 能力包](https://datawhalechina.github.io/deepagents-in-action/chapters/ch07-skills/) |
-| 第 8 章 | [长期记忆 — 让 Agent 拥有跨对话的记忆](https://datawhalechina.github.io/deepagents-in-action/chapters/ch08-long-term-memory/) |
-| 第 9 章 | [Human-in-the-Loop — 构建安全的人机协作流程](https://datawhalechina.github.io/deepagents-in-action/chapters/ch09-human-in-the-loop/) |
-| 第 10 章 | [沙箱执行 — 让 Agent 安全地运行代码](https://datawhalechina.github.io/deepagents-in-action/chapters/ch10-sandboxes/) |
-| 第 11 章 | [文件系统权限 — 用声明式规则控制 Agent 的读写边界](https://datawhalechina.github.io/deepagents-in-action/chapters/ch11-filesystem-permissions/) |
-| 第 12 章 | [MCP — 用标准协议扩展 Deep Agents 工具生态](https://datawhalechina.github.io/deepagents-in-action/chapters/ch12-mcp/) |
-| 第 13 章 | [Grading Rubrics（评分量规）— 让 Agent 按验收标准自我迭代](https://datawhalechina.github.io/deepagents-in-action/chapters/ch13-grading-rubrics/) |
+#### 第 7 章：[Skills — 可复用的 Agent 能力包](https://datawhalechina.github.io/deepagents-in-action/chapters/ch07-skills/)
+
+- 模板：[`deepagents/content-builder`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/content-builder)
+- 实验：使用内置 blog-post 与 social-media Skills 观察匹配和渐进式加载。
+
+```bash
+agentseek create deepagents/content-builder --checkout main --no-input
+```
+
+#### 第 8 章：[长期记忆 — 让 Agent 拥有跨对话的记忆](https://datawhalechina.github.io/deepagents-in-action/chapters/ch08-long-term-memory/)
+
+- 模板：[`deepagents/content-builder`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/content-builder)
+- 实验：从内容应用开始，按本章加入 `CompositeBackend`、`StoreBackend` 和运行时 namespace。
+
+```bash
+agentseek create deepagents/content-builder --checkout main --no-input
+```
+
+#### 第 9 章：[Human-in-the-Loop — 构建安全的人机协作流程](https://datawhalechina.github.io/deepagents-in-action/chapters/ch09-human-in-the-loop/)
+
+- 模板：[`deepagents/mcp`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/mcp)
+- 实验：从 MCP 应用开始，按本章为有副作用的工具配置 `interrupt_on`。
+
+```bash
+agentseek create deepagents/mcp --checkout main --no-input
+```
+
+#### 第 10 章：[沙箱执行 — 让 Agent 安全地运行代码](https://datawhalechina.github.io/deepagents-in-action/chapters/ch10-sandboxes/)
+
+- 模板：[`deepagents/sandbox`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/sandbox)
+- 实验：选择 Daytona 或 LangSmith Sandbox，观察隔离执行、文件读写与清理。
+
+```bash
+agentseek create deepagents/sandbox --checkout main --no-input
+```
+
+#### 第 11 章：[文件系统权限 — 用声明式规则控制 Agent 的读写边界](https://datawhalechina.github.io/deepagents-in-action/chapters/ch11-filesystem-permissions/)
+
+- 模板：[`deepagents/content-builder`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/content-builder)
+- 实验：从真实内容目录开始，按本章加入 `FilesystemPermission` 并划分访问边界。
+
+```bash
+agentseek create deepagents/content-builder --checkout main --no-input
+```
+
+#### 第 12 章：[MCP — 用标准协议扩展 Deep Agents 工具生态](https://datawhalechina.github.io/deepagents-in-action/chapters/ch12-mcp/)
+
+- 模板：[`deepagents/mcp`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/mcp)
+- 实验：验证 stdio/HTTP Server、工具发现、稳定前缀与名称冲突。
+
+```bash
+agentseek create deepagents/mcp --checkout main --no-input
+```
+
+### 前沿预览
+
+#### 第 13 章：[Grading Rubrics（评分量规）— 让 Agent 按验收标准自我迭代](https://datawhalechina.github.io/deepagents-in-action/chapters/ch13-grading-rubrics/)
+
+- 模板：[`langchain/rubric`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/langchain/rubric)
+- 实验：先运行无需模型密钥的 Guided Demo，再观察 Evidence 与 Acceptance Gate。
+
+```bash
+agentseek create langchain/rubric --checkout main --no-input
+```
 
 后续课程内容将根据 Deep Agents 的官方能力演进持续更新。
 

@@ -7,6 +7,7 @@ import ChapterCard from '../components/ChapterCard.astro';
 import SectionHeading from '../components/SectionHeading.astro';
 import PreviewSectionHeading from '../components/PreviewSectionHeading.astro';
 import ChapterRail from '../components/ChapterRail.astro';
+import { chapterExperiments } from '../data/chapter-experiments.mjs';
 import '../styles/global.css';
 
 const allChapters = await getCollection('chapters');
@@ -198,6 +199,7 @@ try {
                 description={ch.data.description}
                 published={ch.data.published}
                 slides={ch.data.slides}
+                experiment={chapterExperiments[ch.id]}
                 bilibili={ch.data.bilibili}
                 xhs={ch.data.xhs}
               />
@@ -254,10 +256,16 @@ try {
     btn.addEventListener('click', () => {
       const text = (btn as HTMLElement).dataset.copy!;
       navigator.clipboard.writeText(text).then(() => {
-        const svg = btn.querySelector('svg')!;
-        const orig = svg.innerHTML;
-        svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
-        setTimeout(() => { svg.innerHTML = orig; }, 1500);
+        const svg = btn.querySelector('svg');
+        const label = btn.querySelector<HTMLElement>('[data-copy-label]');
+        const originalSvg = svg?.innerHTML;
+        const originalLabel = label?.textContent;
+        if (svg) svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
+        if (label) label.textContent = '已复制';
+        setTimeout(() => {
+          if (svg && originalSvg) svg.innerHTML = originalSvg;
+          if (label && originalLabel) label.textContent = originalLabel;
+        }, 1500);
       });
     });
   });

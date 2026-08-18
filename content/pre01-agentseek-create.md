@@ -2,7 +2,7 @@
 
 > 完成本章后，你会得到一个可运行的 DeepAgents 研究应用。AgentSeek 会负责检查环境、安装项目依赖并启动前后端。
 >
-> 本文命令于 2026-07-15 验证。AgentSeek 和模板会继续更新；如果任务名称与本文不同，以 `agentseek task --list` 的输出为准。
+> 本文命令于 2026-08-18 使用 AgentSeek `0.1.2` 验证。AgentSeek 和模板会继续更新；如果任务名称与本文不同，以 `agentseek task --list` 的输出为准。
 
 ## AgentSeek 管理什么
 
@@ -62,7 +62,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 安装 AgentSeek：
 
 ```bash
-uv tool install agentseek
+uv tool install --upgrade agentseek
 ```
 
 原生 Windows PowerShell 如果提示 uv 的工具目录不在 PATH，运行：
@@ -79,19 +79,6 @@ $env:Path = "$(uv tool dir --bin);$env:Path"
 
 临时写法不会永久修改 PATH。`uv tool update-shell` 的行为以 [uv 官方 CLI 文档](https://docs.astral.sh/uv/reference/cli/) 为准。
 
-如果你已经安装过当前包，可以升级：
-
-```bash
-uv tool upgrade agentseek
-```
-
-如果终端仍显示 `agentseek-cli 0.0.x`，先移除旧包，再安装当前包：
-
-```bash
-uv tool uninstall agentseek-cli
-uv tool install agentseek
-```
-
 确认命令已经可用：
 
 ```bash
@@ -99,23 +86,25 @@ agentseek version
 agentseek --help
 ```
 
-你应该在帮助信息中看到 `create`、`info`、`task`、`doctor` 和 `dev`。
+你应该在帮助信息中看到 `create`、`info`、`task`、`doctor` 和 `dev`。本文验证时版本输出为 `AGENTSEEK v0.1.2`；以后版本号可能不同。
 
 ## 2. 选择并创建模板
 
 查看当前 CLI 识别的模板：
 
 ```bash
-agentseek create --list-templates
+agentseek create --list-templates --checkout main
 ```
 
-模板列表会随 AgentSeek 更新。本课程使用 `deepagents/research`，它包含 DeepAgents 研究 Agent、Tavily 搜索和 React 前端。
+这会列出模板仓库 `main` 分支当前注册的模板；不加 `--checkout main` 时，列表来自当前 AgentSeek 版本锁定的目录，可能不会立即包含最新批次。本课程使用 `deepagents/research`，它包含 DeepAgents 研究 Agent、Tavily 搜索和 React 前端。
 
-创建项目并使用模板默认值：
+创建项目并从模板仓库的 `main` 分支获取最新批次模板：
 
 ```bash
-agentseek create deepagents/research --no-input
+agentseek create deepagents/research --checkout main --no-input
 ```
+
+`--checkout main` 让 AgentSeek 在创建时读取模板仓库当前的 `main` 分支，而不是只使用 CLI 内置的锁定目录。它适合跟随最新模板学习；模板更新后，生成项目的文件和依赖也可能变化。如果你需要课程作业完全复现某一次结果，再把 `main` 换成当时记录的完整提交 SHA。
 
 进入生成目录：
 
@@ -338,10 +327,10 @@ Research what LangGraph 1.0 added vs 0.x. Cite sources.
 如果终端出现 `Could not resolve host`、`Connection timed out` 或 `Failed to connect`，通常应先排查网络，而不是直接判断 AgentSeek CLI 异常。
 
 ```bash
-git ls-remote https://github.com/ob-labs/agentseek.git
+git ls-remote https://github.com/agentseek-ai/agentseek-templates.git
 ```
 
-如果连接失败，请先修复当前终端的网络或代理配置。当前 AgentSeek 仍会把远程模板仓库缓存到 `~/.cookiecutters/agentseek`；不要为了绕过连接问题直接删除或覆盖这个目录，否则可能丢失可用缓存，或长期使用一个没有更新的旧模板。
+如果连接失败，请先修复当前终端的网络或代理配置。AgentSeek 会把远程模板目录缓存到 Cookiecutter 用户目录；不要为了绕过连接问题直接删除或覆盖缓存，否则可能丢失可用缓存，或长期使用一个没有更新的旧模板。
 
 ### 为当前终端设置代理
 
@@ -430,13 +419,13 @@ Remove-Item Env:UV_INDEX_URL -ErrorAction SilentlyContinue
 
 ### 使用已经下载的模板仓库
 
-如果你在另一台能访问 GitHub 的机器上下载了 ZIP 或克隆了 AgentSeek 仓库，可以把完整目录复制到当前机器，再直接指定模板的绝对路径：
+如果你在另一台能访问 GitHub 的机器上下载了 ZIP 或克隆了 AgentSeek Templates 仓库，可以把完整目录复制到当前机器，再直接指定模板的绝对路径：
 
 ```bash
-agentseek create /absolute/path/to/agentseek/templates/deepagents/research --no-input
+agentseek create /absolute/path/to/agentseek-templates/templates/deepagents/research --no-input
 ```
 
-这条路径不会修改共享的 Cookiecutter 缓存，也不需要固定分支或 commit。当前 CLI 仍能读取 `~/.cookiecutters/agentseek`，但直接使用本地模板路径更容易看清版本，也不会覆盖其他项目正在使用的缓存。
+这条路径不会修改共享的远程模板缓存，也不需要固定分支或 commit。直接使用本地模板路径适合网络受限、但已经通过其他方式取得模板仓库的情况。
 
 本次复核中，公共加速服务 `ghproxy.net` 的 `git ls-remote` 仍能返回当前 HEAD，但完整浅克隆超过一分钟后断开。因此本章不把公共加速服务作为推荐命令；如果团队有审核过的 GitHub 镜像，可以用它下载完整仓库，再使用上面的本地路径创建项目。
 
@@ -451,4 +440,4 @@ agentseek create /absolute/path/to/agentseek/templates/deepagents/research --no-
 
 下一章将为编码助手安装 `langchain-dev-guide` 和 `langsmith-trace`，帮助你继续修改和调试这个项目。
 
-参考来源：[AgentSeek 快速开始](https://github.com/ob-labs/agentseek/blob/main/docs/get-started/index.zh.md)、[CLI 参考](https://github.com/ob-labs/agentseek/blob/main/docs/reference/cli.zh.md)、[deepagents/research 模板](https://github.com/ob-labs/agentseek/tree/main/templates/deepagents/research)、[SiliconFlow OpenAI 兼容配置](https://docs.siliconflow.cn/cn/usercases/use-siliconcloud-in-KiloCode)、[LangSmith Tracing Quickstart](https://docs.langchain.com/langsmith/observability-quickstart)。
+参考来源：[AgentSeek 快速开始](https://github.com/ob-labs/agentseek/blob/main/docs/get-started/index.zh.md)、[CLI 参考](https://github.com/ob-labs/agentseek/blob/main/docs/reference/cli.zh.md)、[AgentSeek Templates](https://github.com/agentseek-ai/agentseek-templates)、[deepagents/research 模板](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/research)、[SiliconFlow OpenAI 兼容配置](https://docs.siliconflow.cn/cn/usercases/use-siliconcloud-in-KiloCode)、[LangSmith Tracing Quickstart](https://docs.langchain.com/langsmith/observability-quickstart)。
