@@ -29,6 +29,8 @@ print(result["messages"][-1].content)
 - 工具参数还在生成，还是工具已经返回错误？
 - 最终答案出现前，究竟发生了哪些中间步骤？
 
+![同一个研究请求在 invoke 与 Streaming 中的体验对比：invoke 只显示运行中和最终答案，Streaming 则逐步展开 coordinator、researcher、搜索工具和消息状态](../public/imgs/44-comparison-invoke-vs-streaming.png)
+
 我们先不急着设计漂亮的进度条。第一步只做一件事：把当前运行中“谁在工作”显示出来。
 
 ## 2. 先让案例稳定复现
@@ -142,6 +144,8 @@ for subagent in stream.subagents:
 | `stream.values` | 顶层运行的状态值 |
 | `stream.subagents` | coordinator 发起的委派 |
 | `stream.output` | 顶层运行的最终输出 |
+
+![v3 Typed Projection 的层级与作用域：顶层 stream 提供 messages、tool_calls、values、subagents 和 output；subagent handle 保存 name、path、status，并按需打开自己的同类 projections](../public/imgs/45-framework-typed-projections.png)
 
 这里最容易犯的错是范围混淆。`stream.messages` 不会替你合并所有子 Agent 的消息；`subagent.messages` 也不会包含 coordinator 的最终总结。它们是两条独立 projection。
 
@@ -345,6 +349,8 @@ for name, item in stream.interleave("messages", "subagents"):
 
 它适合快速做一个同步展示。如果要递归合并工具调用和嵌套子 Agent，仍然建议在应用层写一个事件 adapter，而不是让每个组件都理解 iterator 的细节。
 
+![coordinator 与 researcher 的事件会交错到达：串行消费把两个来源分组后造成顺序失真，并发消费使用 asyncio.gather 或 interleave 将事件按到达过程送入页面事件流](../public/imgs/46-sequence-concurrent-streaming.png)
+
 ## 7. 页面开始工作后，才需要精确顺序
 
 大多数产品只需要“主对话”“researcher 卡片”和“工具行”三个区域。它们有了自己的来源和路径，页面就能正确更新。只有在调试丢事件、重放运行或做审计时，才值得保留所有层级的精确到达顺序。
@@ -415,6 +421,8 @@ for chunk in agent.stream(
 | `type` | 字符串 | 当前 chunk 属于 `updates`、`messages` 或 `custom` 哪一种模式 |
 | `ns` | tuple/list-like namespace | 空值通常是主 Agent；非空值表示子图或内部节点路径 |
 | `data` | 随 `type` 变化 | `updates` 常是节点状态字典，`messages` 常是消息与 metadata，`custom` 是工具写入的自定义 payload |
+
+![v3 与 v2 Streaming 的观察层级对比：v3 Typed Projection 面向产品角色提供 message、subagent 和 tool_call 字段；v2 StreamPart 面向图执行提供 type、ns、data；两者通过应用事件 Adapter 转换为统一页面事件](../public/imgs/47-comparison-v3-v2-streaming.png)
 
 ```text
 ()                              -> main agent
