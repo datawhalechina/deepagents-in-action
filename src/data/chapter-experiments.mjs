@@ -62,7 +62,7 @@ export const chapterExperiments = {
     '先运行无需模型密钥的 Guided Demo，再观察 Evidence 与 Acceptance Gate。',
   ),
   'ch14-streaming': experiment(
-    'deepagents/research',
-    '用现成研究子 Agent 观察主 Agent、researcher、工具调用和最终输出的实时事件。',
+    'deepagents/streaming',
+    '直接运行 Event Streaming v3 模板，观察主 Agent、子 Agent、工具生命周期、状态快照、最终输出和 raw protocol。',
   ),
 };

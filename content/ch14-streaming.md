@@ -99,7 +99,7 @@ for subagent in stream.subagents:
         print(f"failed: {exc}")
 ```
 
-现在页面至少可以在卡片上写出：`researcher · started`。如果运行成功，`output` 是子 Agent 的最终状态；如果它失败或被中断，读取最终输出时可能抛出异常，这个异常应成为卡片上的错误，而不是被吞掉。
+现在页面至少可以在卡片上写出：`researcher · running`。如果运行成功，`output` 是子 Agent 的最终状态；如果它失败或被中断，读取最终输出时可能抛出异常，这个异常应成为卡片上的错误，而不是被吞掉。
 
 ### 3.2 拆解 `subagent` handle
 
@@ -109,7 +109,7 @@ for subagent in stream.subagents:
 | --- | --- | --- | --- |
 | `name` | coordinator 调用 `task` 时选择的 `subagent_type` | handle 出现时 | 显示 `researcher` 等角色名称；不作为唯一键 |
 | `path` | 这次委派在 Agent 树中的 namespace 路径 | handle 出现时 | 作为卡片路由键，区分多个同名子 Agent |
-| `status` | `started`、`completed`、`failed`、`interrupted` 等生命周期状态 | 收到 handle 及其后续状态时 | 更新状态徽标；终态仍要结合 `output` 或异常判断 |
+| `status` | `running`、`completed`、`failed`、`interrupted` 等生命周期状态 | 收到 handle 及其后续状态时 | 更新状态徽标；终态仍要结合 `output` 或异常判断 |
 | `messages` | 该子 Agent 发出的消息 projection | 需要文本过程时 | 写入当前 `path` 对应的消息列表 |
 | `tool_calls` | 该子 Agent 发起的工具调用 projection | 需要工具细节时 | 在当前卡片下建立工具行 |
 | `values` | 该子 Agent 的状态值 projection | 需要状态快照时 | 调试或状态面板使用，不等同于文本消息 |
@@ -122,7 +122,7 @@ for subagent in stream.subagents:
 
 | 状态 | 表示什么 | 应用动作 |
 | --- | --- | --- |
-| `started` | 委派已经被发现并开始运行 | 创建或更新卡片为 running |
+| `running` | 委派已经被发现并正在运行 | 创建或更新卡片为 running |
 | `completed` | 子 Agent 已结束且可读取最终输出 | 读取 `output`，保存结果并结束计时 |
 | `failed` | 子 Agent 以错误结束 | 保存异常，卡片进入 failed |
 | `interrupted` | 运行在中断点暂停 | 保留现有状态，等待恢复或取消 |
@@ -158,7 +158,7 @@ for value in stream.values:
     print("state snapshot:", value)
 ```
 
-不要把每个 `value` 当成一个可直接追加的增量。它更像“这一时刻的状态快照”，前端若要保存，应按 `run_id` 和时间序号覆盖或采样，而不是无限拼接。
+不要把每个 `value` 当成一个可直接追加的增量。它更像“这一时刻的状态快照”：页面只需要当前状态时，按 Agent 路径覆盖最新快照即可；需要持久化和重放时，再使用 raw protocol event 的 `seq` 排序。`timestamp` 适合展示时间，不保证严格顺序。
 
 ## 4. 第二个修复：让用户知道它在查什么
 
@@ -185,18 +185,19 @@ Typed Projection 已经把底层 content-block 事件整理成 message handle。
 
 同步和异步写法的差别不是语法装饰。异步 handle 的文本可能仍在到达，读取时需要 `await`。如果要保留逐个 `text-delta` 的精确顺序，不应从 `message.text` 反推，而要使用第 7 节的 raw events。
 
-消息对象解决的是“显示什么”；消息属于谁由你消费的 projection 决定。建议在进入内部事件模型时补上来源字段：
+消息对象解决的是“显示什么”；消息属于谁由你消费的 projection 决定。这里要区分框架对象与应用对象：官方 message handle 没有 `source` 或 `kind` 字段，[`deepagents/streaming` 模板的 `event_adapter.py`](https://github.com/agentseek-ai/agentseek-templates/blob/main/templates/deepagents/streaming/%7B%7Bcookiecutter.project_slug%7D%7D/src/%7B%7Bcookiecutter.project_slug%7D%7D/event_adapter.py) 才把它转换成下面的 SSE 事件：
 
 ```python
 {
-    "source": "coordinator",
-    "path": (),
     "kind": "message",
+    "source": "coordinator",
+    "path": [],
     "text": message.text,
+    "final": False,
 }
 ```
 
-子 Agent 消息则把 `source` 改为 `subagent`，并保存 `subagent.path`。不要只把文本字符串推给前端，否则两个来源交错时无法还原卡片归属。
+其中 `kind` 是模板 adapter 写入的事件判别字段，`source` 是模板路由根据当前消费的 projection 显式传入的标签；两者都不是 Deep Agents 或 LangGraph 自动附带的协议字段。子 Agent 消息使用 `source="subagent"` 并把 `subagent.path` 写入 `path`。不要只把文本字符串推给前端，否则两个来源交错时无法还原卡片归属。
 
 这段代码能帮助我们确认上下文隔离是否真的发生：coordinator 负责下达任务和汇总，researcher 在自己的上下文中完成研究。主 Agent 不需要接收每一次搜索结果，只需要接收子 Agent 最后的摘要。
 
@@ -321,7 +322,7 @@ async def stream_live():
 asyncio.run(stream_live())
 ```
 
-`asyncio.gather` 解决的是阻塞问题：一个投影等待网络时，另一个仍然可以把事件送到页面。它不承诺所有投影之间都有一个可以直接比较的全局顺序；如果要审计“哪个 token 先到”，还需要更底层的事件。
+`asyncio.gather` 解决的是阻塞问题：一个投影等待网络时，另一个仍然可以把事件送到页面。它本身不会返回一个已合并、带全局序号的 iterator；如果要审计“哪个 token 先到”，还需要读取 raw protocol event 的 `seq`。
 
 ### 6.2 同步程序：使用 `interleave`
 
@@ -338,7 +339,7 @@ for name, item in stream.interleave("messages", "subagents"):
             print(f"[{item.name}]", message.text)
 ```
 
-`interleave` 每次返回 `(name, item)`。`name` 是你传入的 projection 名，决定 `item` 的类型：
+`interleave` 会把显式选择的 projections 按严格到达顺序合并，每次返回 `(name, item)`。`name` 是你传入的 projection 名，决定 `item` 的类型：
 
 | `name` | `item` | 下一步 |
 | --- | --- | --- |
@@ -361,11 +362,17 @@ for name, item in stream.interleave("messages", "subagents"):
 stream = agent.stream_events(request, version="v3")
 
 for event in stream:
+    if not isinstance(event, dict):
+        continue
     if event.get("method") != "messages":
         continue
 
-    params = event["params"]
-    payload = params["data"][0]
+    params = event.get("params") or {}
+    data = params.get("data")
+    if not isinstance(data, (list, tuple)) or not data:
+        continue
+
+    payload = data[0]
     if not isinstance(payload, dict):
         continue
     if payload.get("event") != "content-block-delta":
@@ -377,26 +384,27 @@ for event in stream:
 
     namespace = params["namespace"]
     source = "subagent" if namespace else "coordinator"
-    print(f"[{source}] {block['text']}", end="", flush=True)
+    print(f"#{event['seq']} [{source}] {block['text']}", end="", flush=True)
 ```
 
-raw event 的字段属于协议层。建议集中写一个 adapter，负责校验版本、读取 `namespace`、分配序号，再转换成应用自己的事件格式；页面只消费转换后的对象。这样协议升级时只改 adapter 和测试，不必逐个修改组件。
+raw event 的字段属于协议层。上例中的 `source` 只是根据 `namespace` 计算出的本地显示标签，并不是 raw event 自带字段。建议集中写一个 adapter，负责校验版本、读取 `seq` 与 `namespace`，再转换成应用自己的事件格式；页面只消费转换后的对象。这样协议升级时只改 adapter 和测试，不必逐个修改组件。
 
 ### 7.1 raw event 的字段
 
 上面的过滤器只取了文本增量，实际 adapter 至少应该理解这些字段：
 
-| 路径 | 含义 | 处理建议 |
+| 路径 | 官方形状 | 含义与处理建议 |
 | --- | --- | --- |
-| `event["method"]` | 协议事件的方法，例如 `messages` | 先按方法分派，再读取对应 payload |
-| `event["params"]` | 事件参数包 | 当作协议对象校验，不要假定所有方法字段相同 |
-| `params["namespace"]` | 产生事件的图层级路径 | 空值表示 coordinator；非空值用于子图路由 |
-| `params["data"]` | 当前方法的数据数组 | 先检查长度和类型，再取 `data[0]` |
-| `data[0]["event"]` | content-block 事件类型 | `content-block-delta` 才表示增量块 |
-| `data[0]["delta"]` | 增量块内容 | 再检查 `delta["type"]`，例如 `text-delta` |
-| `delta["text"]` | 本次文本增量 | 追加到对应 `namespace` 的缓冲区 |
+| `event["seq"]` | `int` | 同一次运行内严格递增；排序和查漏使用它，而不是时间戳 |
+| `event["method"]` | `str` | 协议方法，例如 `messages`；先按方法分派，再读取 payload |
+| `event["params"]` | `ProtocolEventParams` | 事件参数包；先校验对象形状 |
+| `params["namespace"]` | `list[str]` | 产生事件的图层级路径；空列表表示根层，非空列表用于子图路由 |
+| `params["timestamp"]` | `int` | 事件时间；可用于展示，但时钟可能漂移，不用于严格排序 |
+| `params["data"]` | `Any` | 数据形状由 `method` 决定；只有确认是 `messages` 后，才能按 content-block 结构解析 |
+| `data[0]["event"]` | `str` | 在本节 `messages` 示例中，`content-block-delta` 表示增量块 |
+| `data[0]["delta"]` | `dict` | 在本节示例中继续检查 `delta["type"] == "text-delta"` 后读取文本 |
 
-`namespace` 不是子 Agent 的显示名。v3 的 `subagent.name` 来自 `subagent_type`，raw event 的 namespace 是执行路径，可能包含 `tools:<id>` 和内部节点。前端 adapter 可以同时保存两者：`display_name` 用于界面，`path` 用于路由和审计。
+`namespace` 不是子 Agent 的显示名。v3 的 `subagent.name` 来自 `subagent_type`，raw event 的 namespace 是执行路径，每一段采用 `<name>:<runtime_id>` 形式。前端 adapter 可以同时保存两者：`name` 用于界面，`path` 或 `namespace` 用于路由和审计。
 
 ## 8. 旧代码为什么还在处理 `type/ns/data`
 
@@ -504,7 +512,7 @@ def analyze_data(topic: str) -> str:
     return f"Analysis complete: {topic}"
 ```
 
-在 v2 中，这些信号从 `custom` 分支的 `chunk["data"]` 读取；如果应用已经采用 v3，就在 adapter 里把它们转为统一的 `progress` 事件。不要让前端组件一半读取 v3 对象、一半判断 v2 的字符串字段。
+在 v2 中，这些信号从 `custom` 分支的 `chunk["data"]` 读取；如果应用已经采用 v3，可以按自己的业务 schema 扩展 adapter。当前 `deepagents/streaming` 模板没有定义 `kind="progress"`，不要把示例里的 `progress` payload 误认为模板或框架的固定事件。也不要让前端组件一半读取 v3 对象、一半判断 v2 的字符串字段。
 
 本例的 custom payload 是应用自己定义的，不是框架固定字段：
 
@@ -530,33 +538,35 @@ final output         -> 主对话里的最终答案
 error/interrupted    -> 对应层级的错误或中断提示
 ```
 
-建议把所有投影先转换成一个小而稳定的内部事件：
+现在不需要再凭空设计一套内部 schema。专用的 [`deepagents/streaming` 应用模板](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/streaming) 已经在 `event_adapter.py` 中把 typed projections 转换成前端消费的 SSE 事件：
 
-```python
-{
-    "run_id": "...",
-    "source": "coordinator" | "subagent",
-    "path": ("tools:...",),
-    "kind": "message" | "tool_call" | "progress" | "output",
-    "status": "running" | "completed" | "failed" | "interrupted",
-    "delta": "...",
-}
-```
+| 模板 helper | `kind` | 主要字段 | 框架数据来源 |
+| --- | --- | --- | --- |
+| `message_event` | `message` | `source`、`path`、`text`、`final` | coordinator 或 subagent 的 `messages` projection |
+| `subagent_event` | `subagent` | `phase`、`name`、`path`、`status` | `subagent.name/path/status` |
+| `tool_event` | `tool_call` | `phase`、`source`、`path`、`tool_name`、`input`、`delta`、`output`、`error` | `tool_calls` 及 `output_deltas` |
+| `values_event` | `values` | `snapshot` | `values` projection |
+| `output_event` | `output` | `phase`、`output`、`error` | 顶层 `output` projection 或读取异常 |
+| `raw_event` | `raw` | `sequence`、`method`、`namespace`、`data` | raw protocol 的 `seq/method/params` |
 
-这些内部字段也要有明确来源：
+`raw_event` 将官方 `seq` 重命名为 `sequence`，并保留 `method`、`params.namespace` 与 `params.data`；当前模板没有把 `params.timestamp` 转发给浏览器。
 
-| 内部字段 | 来自哪里 | 用途 |
+这些字段分属三层，不能混为“框架返回字段”：
+
+| 字段 | 精确来源 | 用途 |
 | --- | --- | --- |
-| `run_id` | 应用或运行时为本次请求分配 | 关联持久化事件、Trace 和重放 |
-| `source` | 当前消费的是父级还是 subagent projection | 决定写入主对话还是子卡片 |
-| `path` | `subagent.path` 或 raw `namespace` | 唯一路由到执行分支 |
-| `kind` | adapter 根据 projection 或 method 归一化 | 让前端按消息、工具、进度、输出分派 |
-| `status` | subagent 或 tool-call 生命周期映射 | 控制 running/completed/failed/interrupted 状态 |
-| `delta` | message、tool output 或 custom payload | 承载增量内容；其 schema 随 `kind` 校验 |
+| `kind` | 模板 `event_adapter.py` 中每个 helper 写入的字面量 | 让前端分派应用事件；不是 Deep Agents 或 LangGraph 字段 |
+| `source` | 模板 `routes.py` 在消费 coordinator 或 subagent projection 时显式传入 | 决定写入主对话还是子卡片；不是 raw protocol 字段 |
+| `path` | coordinator 使用 `[]`，子 Agent 使用官方 `subagent.path` | 路由 message、tool 和 subagent 卡片 |
+| `phase` | 模板路由根据消费步骤写入 `started/delta/completed/failed/in_progress` | 表达模板事件处理阶段；不要与官方 `subagent.status` 混用 |
+| `status` | 官方 `subagent.status`，由模板原样转为字符串 | 表达 `running/completed/failed/interrupted` 等委派生命周期 |
+| `delta` | 官方 tool-call handle 的 `output_deltas` | 只出现在模板的 `tool_call` 事件中，不是所有事件的通用 payload |
+| `sequence` | raw protocol 顶层 `seq`，由模板重命名 | 保留同一次运行内的严格事件顺序 |
+| `namespace` | raw protocol 的 `params.namespace` | 调试 raw 事件的执行路径；模板没有把它冒充 `subagent.path` |
 
-`run_id` 不在本章展示的 subagent 字段表中自动出现，所以示例把它标为“应用或运行时分配”，不能把省略号替换成 `subagent.name`。`path` 才负责区分执行分支，两者职责不同。
+这里没有 `run_id`。三份官方 Event Streaming 文档没有把它定义成 projection 字段或 `ProtocolEvent` 字段，专用模板也没有发出它。模板请求只有可选的 `thread_id`：浏览器用它保持后续请求的会话连续性，后端把它传给 checkpointer；它不是单条流事件的 ID，也不能改名成 `run_id` 后声称来自框架。
 
-页面不需要知道 `model_request` 这种内部节点名，但必须保留 `path`。它是跨层级路由的依据；`name` 只是用户看到的标签。
+页面不需要知道 `model_request` 这种内部节点名，但要保留模板事件里的 `path`，以及 raw 事件里的 `namespace`。前者负责产品卡片路由，后者负责协议调试；`name` 只是用户看到的标签。
 
 ### 四个生产问题
 
@@ -569,19 +579,33 @@ error/interrupted    -> 对应层级的错误或中断提示
 
 工具错误、子 Agent 失败和中断状态都要原样保留。只有把失败也做成事件，用户才知道“研究没有完成”和“页面没有刷新”是两回事。
 
-## 11. 一次最小实验：把研究模板从黑盒改成可观察
+## 11. 一次最小实验：运行专用 Streaming 应用
 
-在 AgentSeek 的 `deepagents/research` 模板中完成下面这条改造链：
+[`agentseek-templates` PR #20](https://github.com/agentseek-ai/agentseek-templates/pull/20) 已经提供完整的 `deepagents/streaming` 模板，不需要再从 `deepagents/research` 手工改造：
 
-1. 升级本地 AgentSeek，并用 `agentseek create deepagents/research --checkout main` 拉取最新模板。
-2. 先运行模板自带的研究流程，确认 `researcher` 能被调用。先不要改页面，记录一次 `invoke()` 的最终结果。
-3. 将后端调用改成 `stream_events(..., version="v3")`，先只显示 `researcher` 的 `started/completed/failed`。
-4. 给主对话和 `researcher` 卡片分别接入 `.messages`，确认两边的上下文边界。
-5. 在子 Agent 卡片中加入 `.tool_calls`，展示工具名、参数增量、完成状态和错误。
-6. 用 `asyncio.gather` 或 `stream.interleave` 修复主对话和研究卡片的交错顺序。
-7. 最后增加一个仅供开发者使用的协议调试开关，用 v2 的 `type/ns/data` 查看同一运行的底层事件。
+```bash
+agentseek create deepagents/streaming --checkout main --no-input
+cd deepagents_streaming
+agentseek task --list
+```
 
-验收不看某一段固定文本，因为模型输出会变化。只检查四件事：请求确实委派给了 `researcher`，子 Agent 有独立状态，工具调用没有被吞掉，最终答案仍由 coordinator 汇总。
+按生成项目 README 配置 `.env`，再执行 `task --list` 展示的依赖安装任务。完成后运行：
+
+```bash
+agentseek doctor
+agentseek dev
+```
+
+这个模板直接包含 coordinator、固定委派的 `researcher`、本地工具、Event Streaming v3 后端、自定义 SSE route 和时间线前端。页面会同时展示 coordinator/subagent messages、subagent lifecycle、tool input/deltas/output、state snapshots、final output 和 raw protocol events。
+
+实验时输入一个普通问题，然后对照两个文件核验来源：
+
+1. 在 `routes.py` 中找到 `run.messages`、`run.subagents`、`run.tool_calls`、`run.values`、`run.output` 和 raw `run` 的并发消费。
+2. 在 `event_adapter.py` 中找到 `message_event`、`subagent_event`、`tool_event`、`values_event`、`output_event` 和 `raw_event`。
+3. 比较 raw 事件的 `seq/method/params.namespace/params.timestamp/params.data` 与浏览器事件的 `sequence/kind/source/path/phase`，确认哪些来自协议、哪些由应用适配器生成。
+4. 连续提问两次，确认浏览器复用 `thread_id`；重启开发后端后，当前模板的内存会话会重新开始。
+
+验收不看某一段固定文本，因为模型输出会变化。只检查五件事：请求确实委派给了 `researcher`，子 Agent 有独立状态，工具调用没有被吞掉，raw 事件保留 `seq`，最终答案仍由 coordinator 汇总。
 
 ## 本章小结
 
@@ -592,11 +616,13 @@ error/interrupted    -> 对应层级的错误或中断提示
 - 用异步并发消费或 `interleave` 保留实时更新；
 - 只有需要审计时，才读取 raw events 和 namespace；
 - 新应用默认使用 v3，v2 留给底层调试、custom updates 和迁移；
+- `kind/source/phase` 属于模板应用协议，`seq/method/params` 才属于 raw protocol；
 - Streaming 不负责持久化、取消、超时和背压，生产边界要由应用补齐。
 
 ## 官方参考
 
 - [Deep Agents Event Streaming](https://docs.langchain.com/oss/python/deepagents/event-streaming)
-- [Deep Agents Streaming](https://docs.langchain.com/oss/python/deepagents/streaming)
 - [LangChain Event Streaming](https://docs.langchain.com/oss/python/langchain/event-streaming)
-- [LangGraph Event Streaming](https://docs.langchain.com/oss/python/langgraph/streaming)
+- [LangGraph Event Streaming](https://docs.langchain.com/oss/python/langgraph/event-streaming)
+- [AgentSeek `deepagents/streaming` 模板](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/streaming)
+- [AgentSeek Templates PR #20](https://github.com/agentseek-ai/agentseek-templates/pull/20)

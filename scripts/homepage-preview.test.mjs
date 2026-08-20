@@ -69,6 +69,17 @@ test('Chapter 14 keeps recommended v3 projections separate from v2 protocol stre
   assert.match(streamingChapterSource, /version="v2"/);
 });
 
+test('Chapter 14 points readers to the dedicated streaming template', async () => {
+  const { chapterExperiments } = await import('../src/data/chapter-experiments.mjs');
+
+  assert.deepEqual(chapterExperiments['ch14-streaming'], {
+    template: 'deepagents/streaming',
+    note: '直接运行 Event Streaming v3 模板，观察主 Agent、子 Agent、工具生命周期、状态快照、最终输出和 raw protocol。',
+    command: 'agentseek create deepagents/streaming --checkout main --no-input',
+    source: 'https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/streaming',
+  });
+});
+
 test('content schema accepts the preview-feature section', () => {
   assert.match(contentConfigSource, /'前沿预览'/);
 });
