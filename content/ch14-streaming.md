@@ -99,7 +99,7 @@ for subagent in stream.subagents:
         print(f"failed: {exc}")
 ```
 
-现在页面至少可以在卡片上写出：`researcher · running`。如果运行成功，`output` 是子 Agent 的最终状态；如果它失败或被中断，读取最终输出时可能抛出异常，这个异常应成为卡片上的错误，而不是被吞掉。
+handle 刚出现时，官方 `status` 是 `started`；页面可以把它渲染成 `researcher · running`。如果运行成功，`output` 是子 Agent 的最终状态；如果它失败或被中断，读取最终输出时可能抛出异常，这个异常应成为卡片上的错误，而不是被吞掉。
 
 ### 3.2 拆解 `subagent` handle
 
@@ -108,28 +108,61 @@ for subagent in stream.subagents:
 | 字段或 projection | 含义 | 读取时机 | 页面怎么用 |
 | --- | --- | --- | --- |
 | `name` | coordinator 调用 `task` 时选择的 `subagent_type` | handle 出现时 | 显示 `researcher` 等角色名称；不作为唯一键 |
-| `path` | 这次委派在 Agent 树中的 namespace 路径 | handle 出现时 | 作为卡片路由键，区分多个同名子 Agent |
-| `status` | `running`、`completed`、`failed`、`interrupted` 等生命周期状态 | 收到 handle 及其后续状态时 | 更新状态徽标；终态仍要结合 `output` 或异常判断 |
+| `path` | 这次委派在 Agent 树中的 namespace 路径 | handle 出现时 | 作为当前运行内的卡片路由键，区分多个同名子 Agent |
+| `status` | `started`、`completed`、`failed`、`interrupted` 等生命周期状态 | 收到 handle 及其后续状态时 | 更新状态徽标；终态仍要结合 `output` 或异常判断 |
 | `messages` | 该子 Agent 发出的消息 projection | 需要文本过程时 | 写入当前 `path` 对应的消息列表 |
 | `tool_calls` | 该子 Agent 发起的工具调用 projection | 需要工具细节时 | 在当前卡片下建立工具行 |
 | `values` | 该子 Agent 的状态值 projection | 需要状态快照时 | 调试或状态面板使用，不等同于文本消息 |
 | `subagents` | 该子 Agent 继续发起的嵌套委派 | 存在多级委派时 | 递归建立子卡片 |
 | `output` | 该委派的最终状态或完成信号 | 需要等待终态时 | 完成后保存最终结果；失败时捕获异常 |
 
-`name` 的来源值得单独记住：它不是内部 graph node 名，也不是一次运行的唯一 ID。它来自 coordinator 为 `task` 选择的 `subagent_type`。同一个 `researcher` 可以被调用多次，所以 UI 应按 `path` 存储状态，用 `name` 显示标签。
+`name` 的来源值得单独记住：它不是内部 graph node 名，也不是一次运行的唯一 ID。它来自 coordinator 为 `task` 选择的 `subagent_type`。同一个 `researcher` 可以被调用多次，所以 UI 应在当前运行内按 `path` 存储状态，用 `name` 显示标签。
 
 `status` 是生命周期，不是质量结论：
 
 | 状态 | 表示什么 | 应用动作 |
 | --- | --- | --- |
-| `running` | 委派已经被发现并正在运行 | 创建或更新卡片为 running |
+| `started` | 委派已经被发现并开始运行 | 创建或更新卡片为 running |
 | `completed` | 子 Agent 已结束且可读取最终输出 | 读取 `output`，保存结果并结束计时 |
 | `failed` | 子 Agent 以错误结束 | 保存异常，卡片进入 failed |
 | `interrupted` | 运行在中断点暂停 | 保留现有状态，等待恢复或取消 |
 
 `completed` 也不代表研究内容一定正确，只代表这次委派正常结束。业务验收仍要由测试、Rubric 或人工审核完成。
 
-### 3.3 Projection 是按需打开的
+### 3.3 `path`、`namespace` 和 `ns` 是什么关系
+
+这三个名字表达的是同一个概念：从根 Agent 走到当前执行位置的 namespace 路径。它们出现在不同 API 层，形状和作用域并不相同：
+
+| API | 字段 | Python 形状 | 表示什么 |
+| --- | --- | --- | --- |
+| v3 Typed Projection | `subagent.path` | `tuple[str, ...]` | 当前子 Agent 委派的根路径 |
+| v3 raw protocol | `event["params"]["namespace"]` | `list[str]` | 产生当前 raw event 的完整路径 |
+| v2 Streaming | `chunk["ns"]` | `tuple[str, ...]` | 产生当前 `StreamPart` 的完整路径 |
+| 模板应用协议 | `path` 或 `namespace` | JSON `list[str]` | adapter 序列化后的子 Agent 路径或 raw 事件路径 |
+
+路径中的每一段采用 `<node_name>:<runtime_or_task_id>` 形式。Deep Agents 通过 `task` 工具启动一级子 Agent 时，`subagent.path` 通常只有一个 `tools:<id>` 段。这里的 `tools` 是承载委派的图节点，`<id>` 用于区分这一次执行；它不是 `researcher` 这样的显示名。
+
+```text
+根 Agent 的 v2 ns              ()
+根 Agent 的 v3 raw namespace   []
+一级子 Agent 的 path            ("tools:abc123",)
+子 Agent 根级事件的 v2 ns       ("tools:abc123",)
+子 Agent 内部模型事件的 v2 ns   ("tools:abc123", "model_request:def456")
+同一内部事件的 v3 namespace     ["tools:abc123", "model_request:def456"]
+```
+
+所以，子 Agent 根级事件的 namespace 在 tuple/list 归一化后通常等于 `subagent.path`；更深层的模型或工具事件会在后面追加路径段。这时 `subagent.path` 是完整 namespace 的前缀：
+
+```python
+def belongs_to_subagent(namespace: list[str] | tuple[str, ...], path: tuple[str, ...]) -> bool:
+    return tuple(namespace[: len(path)]) == path
+```
+
+同名 `researcher` 可以被调用多次，每次的 `<id>` 不同。因此 UI 在当前运行内用完整 `path` 作为卡片键，用 `name` 显示角色；不要用 `name` 代替路径，也不要要求子 Agent 内的每个事件 namespace 都与根 `path` 完全相等。
+
+`path` 的唯一性边界也是当前运行。若要把多个运行写入数据库或 Trace，应用仍需先建立自己的请求记录，再把 `path` 作为该记录下的分支键；这不会让某个应用请求 ID 变成框架的流事件字段。
+
+### 3.4 Projection 是按需打开的
 
 刚才我们只关心“启动、结束、失败”，所以没有订阅子 Agent 的全部消息。v3 的 projection 是惰性的：访问 `subagent.messages` 或 `subagent.tool_calls` 时，才打开对应的细流。
 
@@ -292,7 +325,7 @@ for subagent in stream.subagents:
         print(f"nested subagent {nested.name}: {nested.status}")
 ```
 
-递归时要用 `path` 作为 UI 的唯一键。同名 `researcher` 可能来自不同委派分支，单独用 `name` 会把两张卡片的状态写到一起。
+递归时要用 `path` 作为当前运行内的 UI 唯一键。同名 `researcher` 可能来自不同委派分支，单独用 `name` 会把两张卡片的状态写到一起。
 
 ## 6. 顺序乱了：两种方式修复实时消费
 
@@ -404,7 +437,7 @@ raw event 的字段属于协议层。上例中的 `source` 只是根据 `namespa
 | `data[0]["event"]` | `str` | 在本节 `messages` 示例中，`content-block-delta` 表示增量块 |
 | `data[0]["delta"]` | `dict` | 在本节示例中继续检查 `delta["type"] == "text-delta"` 后读取文本 |
 
-`namespace` 不是子 Agent 的显示名。v3 的 `subagent.name` 来自 `subagent_type`，raw event 的 namespace 是执行路径，每一段采用 `<name>:<runtime_id>` 形式。前端 adapter 可以同时保存两者：`name` 用于界面，`path` 或 `namespace` 用于路由和审计。
+`namespace` 不是子 Agent 的显示名。v3 的 `subagent.name` 来自 `subagent_type`，raw event 的 namespace 是当前事件的完整执行路径，每一段采用 `<name>:<runtime_id>` 形式。它与 `subagent.path` 使用同一套 namespace 语义：根级事件归一化后通常相等，子 Agent 内部事件则以 `subagent.path` 为前缀。前端 adapter 可以同时保存 `name`、`path` 和 raw `namespace`，分别用于显示、卡片路由和协议审计。
 
 ## 8. 旧代码为什么还在处理 `type/ns/data`
 
@@ -427,7 +460,7 @@ for chunk in agent.stream(
 | 字段 | 形状 | 解读 |
 | --- | --- | --- |
 | `type` | 字符串 | 当前 chunk 属于 `updates`、`messages` 或 `custom` 哪一种模式 |
-| `ns` | tuple/list-like namespace | 空值通常是主 Agent；非空值表示子图或内部节点路径 |
+| `ns` | `tuple[str, ...]` | `()` 表示主 Agent；非空 tuple 是产生当前 chunk 的完整 namespace |
 | `data` | 随 `type` 变化 | `updates` 常是节点状态字典，`messages` 常是消息与 metadata，`custom` 是工具写入的自定义 payload |
 
 ![v3 与 v2 Streaming 的观察层级对比：v3 Typed Projection 面向产品角色提供 message、subagent 和 tool_call 字段；v2 StreamPart 面向图执行提供 type、ns、data；两者通过应用事件 Adapter 转换为统一页面事件](../public/imgs/47-comparison-v3-v2-streaming.png)
@@ -435,8 +468,35 @@ for chunk in agent.stream(
 ```text
 ()                              -> main agent
 ("tools:abc123",)              -> task 工具启动的子 Agent
-("tools:abc123", "model:xyz")  -> 子 Agent 内部模型节点
+("tools:abc123", "model_request:def456") -> 子 Agent 内部模型节点
 ```
+
+每一段都由节点名和本次执行 ID 组成。下面的写法可以按官方示例识别 `tools:` 段，并把子 Agent 更新路由到对应卡片：
+
+```python
+for chunk in agent.stream(
+    request,
+    stream_mode="updates",
+    subgraphs=True,
+    version="v2",
+):
+    if chunk["type"] != "updates":
+        continue
+
+    ns = chunk["ns"]
+    task_segment = next(
+        (segment for segment in ns if segment.startswith("tools:")),
+        None,
+    )
+
+    if task_segment is None:
+        print("Main agent:", chunk["data"])
+    else:
+        task_id = task_segment.split(":", 1)[1]
+        print(f"Subagent {task_id}:", chunk["data"])
+```
+
+这个 `task_id` 来自 namespace 段，适合作为本次执行的路由标识。若存在嵌套子 Agent，路径里可能出现多个 `tools:` 段；这时应保留完整 `ns` 或按已知 `subagent.path` 做前缀匹配，不能只取第一个 ID 当作全局唯一键。
 
 `stream_mode` 决定 `data` 的形状：`updates` 适合看节点状态变化，`messages` 适合 token 和工具消息，`custom` 适合应用自定义进度。`subgraphs=True` 才会让子图事件出现在同一条流里：
 
@@ -557,16 +617,16 @@ error/interrupted    -> 对应层级的错误或中断提示
 | --- | --- | --- |
 | `kind` | 模板 `event_adapter.py` 中每个 helper 写入的字面量 | 让前端分派应用事件；不是 Deep Agents 或 LangGraph 字段 |
 | `source` | 模板 `routes.py` 在消费 coordinator 或 subagent projection 时显式传入 | 决定写入主对话还是子卡片；不是 raw protocol 字段 |
-| `path` | coordinator 使用 `[]`，子 Agent 使用官方 `subagent.path` | 路由 message、tool 和 subagent 卡片 |
+| `path` | coordinator 使用 `[]`；子 Agent 的官方 tuple `subagent.path` 由模板转成 JSON list | 路由 message、tool 和 subagent 卡片 |
 | `phase` | 模板路由根据消费步骤写入 `started/delta/completed/failed/in_progress` | 表达模板事件处理阶段；不要与官方 `subagent.status` 混用 |
-| `status` | 官方 `subagent.status`，由模板原样转为字符串 | 表达 `running/completed/failed/interrupted` 等委派生命周期 |
+| `status` | 官方 `subagent.status`，由模板原样转为字符串 | 表达 `started/completed/failed/interrupted` 等委派生命周期 |
 | `delta` | 官方 tool-call handle 的 `output_deltas` | 只出现在模板的 `tool_call` 事件中，不是所有事件的通用 payload |
 | `sequence` | raw protocol 顶层 `seq`，由模板重命名 | 保留同一次运行内的严格事件顺序 |
-| `namespace` | raw protocol 的 `params.namespace` | 调试 raw 事件的执行路径；模板没有把它冒充 `subagent.path` |
+| `namespace` | raw protocol 的 `params.namespace` | 当前 raw 事件的完整路径；与 `subagent.path` 同源，但可能包含更深层路径段 |
 
 这里没有 `run_id`。三份官方 Event Streaming 文档没有把它定义成 projection 字段或 `ProtocolEvent` 字段，专用模板也没有发出它。模板请求只有可选的 `thread_id`：浏览器用它保持后续请求的会话连续性，后端把它传给 checkpointer；它不是单条流事件的 ID，也不能改名成 `run_id` 后声称来自框架。
 
-页面不需要知道 `model_request` 这种内部节点名，但要保留模板事件里的 `path`，以及 raw 事件里的 `namespace`。前者负责产品卡片路由，后者负责协议调试；`name` 只是用户看到的标签。
+页面不需要展示 `model_request` 这种内部节点名，但 adapter 要理解路径前缀关系。模板事件里的 `path` 标识子 Agent 卡片根，raw 事件里的 `namespace` 标识当前事件位置；二者使用同一套 namespace 语义，却因作用域和 JSON 形状不同而分别保留。`name` 只负责用户看到的角色标签。
 
 ### 四个生产问题
 
@@ -622,7 +682,9 @@ agentseek dev
 ## 官方参考
 
 - [Deep Agents Event Streaming](https://docs.langchain.com/oss/python/deepagents/event-streaming)
+- [Deep Agents Streaming：v2 Namespaces](https://docs.langchain.com/oss/python/deepagents/streaming)
 - [LangChain Event Streaming](https://docs.langchain.com/oss/python/langchain/event-streaming)
 - [LangGraph Event Streaming](https://docs.langchain.com/oss/python/langgraph/event-streaming)
+- [LangGraph Streaming：v2 StreamPart 与 `ns`](https://docs.langchain.com/oss/python/langgraph/streaming)
 - [AgentSeek `deepagents/streaming` 模板](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/streaming)
 - [AgentSeek Templates PR #20](https://github.com/agentseek-ai/agentseek-templates/pull/20)
