@@ -24,16 +24,21 @@ const streamingChapterSource = await readFile(
 );
 const readmeSource = await readFile(new URL('../README.md', import.meta.url), 'utf8');
 
-test('Chapters 13 and 14 share the preview-feature row', () => {
+test('Chapters 13 through 15 share the preview-feature row', () => {
   assert.equal(manifest['ch13-grading-rubrics'].section, '前沿预览');
   assert.equal(manifest['ch14-streaming'].section, '前沿预览');
+  assert.equal(manifest['ch15-interpreters'].section, '前沿预览');
   assert.equal(
     manifest['ch14-streaming'].order,
     manifest['ch13-grading-rubrics'].order + 1,
   );
+  assert.equal(
+    manifest['ch15-interpreters'].order,
+    manifest['ch14-streaming'].order + 1,
+  );
 });
 
-test('README places Chapters 13 and 14 together in the preview section', () => {
+test('README places Chapters 13 through 15 together in the preview section', () => {
   let currentSection = '';
   const chapters = [];
 
@@ -49,9 +54,10 @@ test('README places Chapters 13 and 14 together in the preview section', () => {
 
   assert.deepEqual(
     chapters.filter(({ section }) => section === '前沿预览').map(({ chapter }) => chapter),
-    [13, 14],
+    [13, 14, 15],
   );
   assert.equal(chapters.filter(({ chapter }) => chapter === 14).length, 1);
+  assert.equal(chapters.filter(({ chapter }) => chapter === 15).length, 1);
 });
 
 test('Chapter 13 publishes its video resource links', () => {
