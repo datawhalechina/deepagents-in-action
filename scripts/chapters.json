@@ -191,7 +191,7 @@
   "ch14-streaming": {
     "title": "Streaming — 实时观察主 Agent、子 Agent 与工具调用",
     "chapter": 14,
-    "section": "进阶篇",
+    "section": "前沿预览",
     "order": 16,
     "description": "运行 AgentSeek deepagents/streaming 专用模板，观察主 Agent、委派子 Agent、工具调用、状态快照、最终输出和 raw protocol，并区分官方字段与应用适配字段。",
     "slides": [

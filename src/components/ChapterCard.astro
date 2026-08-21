@@ -91,7 +91,7 @@ const chapterLabel = isExtra ? (preMatch ? preMatch[1] : 'EX') : String(chapter)
             <span data-copy-label>复制 AgentSeek 创建命令</span>
           </button>
         </div>
-        <p>{experiment.note}</p>
+        <p title={experiment.note}>{experiment.note}</p>
       </div>
     )}
   </div>
@@ -139,9 +139,12 @@ const chapterLabel = isExtra ? (preMatch ? preMatch[1] : 'EX') : String(chapter)
 
   .chapter-experiment p {
     margin: 0.4rem 0 0;
+    overflow: hidden;
     color: var(--color-ink-muted);
     font-size: 0.68rem;
     line-height: 1.5;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .chapter-experiment button {

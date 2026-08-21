@@ -200,15 +200,6 @@ agentseek create deepagents/content-builder --checkout main --no-input
 agentseek create deepagents/mcp --checkout main --no-input
 ```
 
-#### 第 14 章：[Streaming — 实时观察主 Agent、子 Agent 与工具调用](https://datawhalechina.github.io/deepagents-in-action/chapters/ch14-streaming/)
-
-- 模板：[`deepagents/streaming`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/streaming)（由 [agentseek-templates PR #20](https://github.com/agentseek-ai/agentseek-templates/pull/20) 引入）
-- 实验：直接运行 Event Streaming v3 应用，观察 coordinator/subagent messages、工具生命周期、状态快照、最终输出和 raw protocol，并核对哪些字段来自官方协议、哪些由模板 adapter 生成。
-
-```bash
-agentseek create deepagents/streaming --checkout main --no-input
-```
-
 ### 前沿预览
 
 #### 第 13 章：[Grading Rubrics（评分量规）— 让 Agent 按验收标准自我迭代](https://datawhalechina.github.io/deepagents-in-action/chapters/ch13-grading-rubrics/)
@@ -218,6 +209,15 @@ agentseek create deepagents/streaming --checkout main --no-input
 
 ```bash
 agentseek create langchain/rubric --checkout main --no-input
+```
+
+#### 第 14 章：[Streaming — 实时观察主 Agent、子 Agent 与工具调用](https://datawhalechina.github.io/deepagents-in-action/chapters/ch14-streaming/)
+
+- 模板：[`deepagents/streaming`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/streaming)（由 [agentseek-templates PR #20](https://github.com/agentseek-ai/agentseek-templates/pull/20) 引入）
+- 实验：直接运行 Event Streaming v3 应用，观察 coordinator/subagent messages、工具生命周期、状态快照、最终输出和 raw protocol，并核对哪些字段来自官方协议、哪些由模板 adapter 生成。
+
+```bash
+agentseek create deepagents/streaming --checkout main --no-input
 ```
 
 后续课程内容将根据 Deep Agents 的官方能力演进持续更新。

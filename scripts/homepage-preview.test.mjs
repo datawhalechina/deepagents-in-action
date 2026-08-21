@@ -22,9 +22,36 @@ const streamingChapterSource = await readFile(
   new URL('../content/ch14-streaming.md', import.meta.url),
   'utf8',
 );
+const readmeSource = await readFile(new URL('../README.md', import.meta.url), 'utf8');
 
-test('Chapter 13 starts the preview-feature section', () => {
+test('Chapters 13 and 14 share the preview-feature row', () => {
   assert.equal(manifest['ch13-grading-rubrics'].section, '前沿预览');
+  assert.equal(manifest['ch14-streaming'].section, '前沿预览');
+  assert.equal(
+    manifest['ch14-streaming'].order,
+    manifest['ch13-grading-rubrics'].order + 1,
+  );
+});
+
+test('README places Chapters 13 and 14 together in the preview section', () => {
+  let currentSection = '';
+  const chapters = [];
+
+  for (const line of readmeSource.split(/\r?\n/)) {
+    const sectionMatch = line.match(/^### (.+)$/);
+    if (sectionMatch) currentSection = sectionMatch[1];
+
+    const chapterMatch = line.match(/^#### 第 (\d+) 章：/);
+    if (chapterMatch) {
+      chapters.push({ chapter: Number(chapterMatch[1]), section: currentSection });
+    }
+  }
+
+  assert.deepEqual(
+    chapters.filter(({ section }) => section === '前沿预览').map(({ chapter }) => chapter),
+    [13, 14],
+  );
+  assert.equal(chapters.filter(({ chapter }) => chapter === 14).length, 1);
 });
 
 test('Chapter 13 publishes its video resource links', () => {
@@ -37,7 +64,6 @@ test('Chapter 13 publishes its video resource links', () => {
 });
 
 test('Chapter 14 publishes its video resource links', () => {
-  assert.equal(manifest['ch14-streaming'].section, '进阶篇');
   assert.deepEqual(manifest['ch14-streaming'].slides[0], {
     id: 'ch14',
     title: 'Lec 18: Streaming — 实时观察智能体和工具',
@@ -79,7 +105,7 @@ test('Chapter 14 points readers to the dedicated streaming template', async () =
 
   assert.deepEqual(chapterExperiments['ch14-streaming'], {
     template: 'deepagents/streaming',
-    note: '直接运行 Event Streaming v3 模板，观察主 Agent、子 Agent、工具生命周期、状态快照、最终输出和 raw protocol。',
+    note: '运行 Streaming 模板，观察 Agent 与工具事件流。',
     command: 'agentseek create deepagents/streaming --checkout main --no-input',
     source: 'https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/streaming',
   });
@@ -110,6 +136,18 @@ test('homepage keeps the experiment entry inside each chapter card', () => {
   assert.doesNotMatch(cardSource, /创建后/);
   assert.doesNotMatch(cardSource, /运行说明/);
   assert.doesNotMatch(indexSource, /TemplateLab/);
+});
+
+test('homepage experiment descriptions stay concise', async () => {
+  const { chapterExperiments } = await import('../src/data/chapter-experiments.mjs');
+
+  for (const [chapterId, experiment] of Object.entries(chapterExperiments)) {
+    assert.ok(
+      [...experiment.note].length <= 36,
+      `${chapterId} experiment note exceeds 36 characters`,
+    );
+    assert.doesNotMatch(experiment.note, /[\r\n]/);
+  }
 });
 
 test('every published numbered chapter maps to exactly one current template command', async () => {
