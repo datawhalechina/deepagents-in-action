@@ -194,7 +194,9 @@
     "section": "进阶篇",
     "order": 16,
     "description": "运行 AgentSeek deepagents/streaming 专用模板，观察主 Agent、委派子 Agent、工具调用、状态快照、最终输出和 raw protocol，并区分官方字段与应用适配字段。",
-    "slides": [],
+    "slides": [
+      { "id": "ch14", "title": "Lec 18: Streaming — 实时观察智能体和工具", "bilibili": "https://www.bilibili.com/video/BV1qt8A61ELE/", "xhs": "https://xhslink.cn/o/6uKY9nP8GLk" }
+    ],
     "published": true,
     "pubDate": "2026-08-18"
   }

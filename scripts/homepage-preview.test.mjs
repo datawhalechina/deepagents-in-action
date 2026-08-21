@@ -36,9 +36,14 @@ test('Chapter 13 publishes its video resource links', () => {
   });
 });
 
-test('Chapter 14 is an advanced chapter without invented slide resources', () => {
+test('Chapter 14 publishes its video resource links', () => {
   assert.equal(manifest['ch14-streaming'].section, '进阶篇');
-  assert.deepEqual(manifest['ch14-streaming'].slides, []);
+  assert.deepEqual(manifest['ch14-streaming'].slides[0], {
+    id: 'ch14',
+    title: 'Lec 18: Streaming — 实时观察智能体和工具',
+    bilibili: 'https://www.bilibili.com/video/BV1qt8A61ELE/',
+    xhs: 'https://xhslink.cn/o/6uKY9nP8GLk',
+  });
   assert.match(chapterLayoutSource, /bilibili \|\| xhs \|\| slides\.some/);
   assert.match(cardSource, /slides && slides\.length > 0 && \(/);
 });
