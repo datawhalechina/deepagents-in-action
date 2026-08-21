@@ -241,7 +241,7 @@ const risky = rows
 
 ### PTC 改变的是调用路径
 
-PTC 不是 Provider 自带的批量工具协议，而是 Middleware 提供的桥。普通工具调用和 PTC 最终可以调用同一个 Python 工具，事件路径却不同。
+PTC 不是 Provider 自带的批量工具协议。`CodeInterpreterMiddleware` 通过 PTC runtime / tool proxy，把白名单中的 Python 工具映射到 QuickJS 的 `tools.*` 命名空间。`lookup_order` / `tools.lookupOrder` 只是本章订单场景中的映射示例，不是专用桥接函数。普通工具调用和 PTC 最终可以调用同一个 Python 工具，事件路径却不同。
 
 | 对比项 | 普通 Tool Calling | PTC |
 |---|---|---|
@@ -344,7 +344,7 @@ config = {"configurable": {"thread_id": "order-review-001"}}
 | 跨轮读取函数时报恢复错误 | Snapshot 中是否包含不可序列化对象 | 跨轮只保存数据，下个 turn 重新定义函数 |
 | 恢复旧快照后外部数据没回滚 | 是否把 Snapshot 当成事务 | 为有副作用工具设计幂等键、补偿或真正的事务机制 |
 
-第 14 章的 Event Streaming 可以继续观察主 Agent 的消息和普通工具调用。PTC 中间步骤由解释器桥执行，不要假设现有前端会自动把每个 `tools.*` 调用渲染成普通工具卡片。需要审计时，应同时记录 `eval` 输入、PTC 工具自身日志和最终结果摘要，并对敏感参数做脱敏。
+第 14 章的 Event Streaming 可以继续观察主 Agent 的消息和普通工具调用。PTC 中间步骤由 PTC runtime / tool proxy 执行，不要假设现有前端会自动把每个 `tools.*` 调用渲染成普通工具卡片。需要审计时，应同时记录 `eval` 输入、PTC 工具自身日志和最终结果摘要，并对敏感参数做脱敏。
 
 ## 6. 收紧安全边界
 

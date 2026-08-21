@@ -130,7 +130,7 @@ normalize_png_assets() {
 }
 
 compress_pdfs() {
-  local file tmp out old_size new_size
+  local file tmp out old_size new_size savings min_savings
 
   while IFS= read -r -d '' file; do
     tmp="$(tmp_base)"
@@ -140,11 +140,12 @@ compress_pdfs() {
     "$GHOSTSCRIPT_BIN" \
       -sDEVICE=pdfwrite \
       -dCompatibilityLevel=1.6 \
-      -dPDFSETTINGS=/screen \
-      -dPassThroughJPEGImages=false \
-      -dColorImageResolution=72 \
-      -dGrayImageResolution=72 \
-      -dMonoImageResolution=150 \
+      -dPDFSETTINGS=/ebook \
+      -dPassThroughJPEGImages=true \
+      -dColorImageResolution=150 \
+      -dGrayImageResolution=150 \
+      -dMonoImageResolution=300 \
+      -dJPEGQ=90 \
       -dDownsampleColorImages=true \
       -dDownsampleGrayImages=true \
       -dNOPAUSE \
@@ -159,8 +160,13 @@ compress_pdfs() {
 
     old_size="$(wc -c < "$file")"
     new_size="$(wc -c < "$out")"
+    savings=$(( old_size - new_size ))
+    min_savings=$(( old_size / 100 ))
+    if (( min_savings < 4096 )); then
+      min_savings=4096
+    fi
 
-    if (( new_size < old_size )); then
+    if (( savings >= min_savings )); then
       mv "$out" "$file"
       echo "Compressed $file"
     else
