@@ -26,7 +26,7 @@
 
 > [!WARNING]
 > 本课程讲授的 Deep Agents 版本为 **≥ 0.5**。
-> 部分进阶功能有更高最低版本要求，章节正文会单独标注；例如 `FilesystemPermission` 基础权限需要 `deepagents>=0.5.2`，`FilesystemBackend` 的 `virtual_mode` 参数需要 `deepagents>=0.5.0`，`interrupt` 权限模式需要 `deepagents>=0.6.8`。`RubricMiddleware` 仍为 Beta，需要 `deepagents>=0.6.5`，第 13 章以 `deepagents==0.7.1` 验证版本化行为；第 14 章以 `deepagents>=0.6` 引入的 Event Streaming v3 为主线。
+> 部分进阶功能有更高最低版本要求，章节正文会单独标注；例如 `FilesystemPermission` 基础权限需要 `deepagents>=0.5.2`，`FilesystemBackend` 的 `virtual_mode` 参数需要 `deepagents>=0.5.0`，`interrupt` 权限模式需要 `deepagents>=0.6.8`。`RubricMiddleware` 仍为 Beta，需要 `deepagents>=0.6.5`，第 13 章以 `deepagents==0.7.1` 验证版本化行为；第 14 章以 `deepagents>=0.6` 引入的 Event Streaming v3 为主线。第 15 章的 Interpreters 仍为 Beta，需要 Python 3.11+ 与 `langchain-quickjs>=0.2.0`。
 > 官方文档：[Deep Agents Overview](https://docs.langchain.com/oss/python/deepagents/overview)
 
 > [!NOTE]
@@ -63,7 +63,7 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
 
 ### 按章节开始实验
 
-每个章节卡片都标出了最合适的 AgentSeek 模板和适配理由；README 也按同样的章节分区列出，读到哪一章就从哪一行开始实验。第 6、8、9、11 章需要在模板基础上按正文补充本章能力，具体步骤以章节内容为准；第 14 章已经有可直接运行的专用模板。
+已有适配模板的章节卡片会标出 AgentSeek 模板和适配理由；README 也按同样的章节分区列出。第 6、8、9、11 章需要在模板基础上按正文补充本章能力，具体步骤以章节内容为准；第 14 章已经有可直接运行的专用模板。
 
 先升级 AgentSeek，并确认 `main` 分支当前有哪些模板：
 
@@ -219,6 +219,10 @@ agentseek create langchain/rubric --checkout main --no-input
 ```bash
 agentseek create deepagents/streaming --checkout main --no-input
 ```
+
+#### 第 15 章：[Interpreters — 让 Agent 用代码编排工具与数据](https://datawhalechina.github.io/deepagents-in-action/chapters/ch15-interpreters/)
+
+- 内容：从纯内存 JavaScript 开始，再通过 PTC 批量读取和筛选订单，理解状态范围、资源预算与安全边界。
 
 后续课程内容将根据 Deep Agents 的官方能力演进持续更新。
 

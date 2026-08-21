@@ -199,5 +199,17 @@
     ],
     "published": true,
     "pubDate": "2026-08-18"
+  },
+  "ch15-interpreters": {
+    "title": "Interpreters — 让 Agent 用代码编排工具与数据",
+    "chapter": 15,
+    "section": "前沿预览",
+    "order": 17,
+    "description": "为 Deep Agents 加入 QuickJS 解释器，在内存代码中转换数据、通过 PTC 编排白名单工具，并掌握状态持久化、资源限制与安全边界。",
+    "slides": [
+      { "id": "ch15", "title": "Lec 19: Interpreters — 让 Agent 用代码编排工具与数据" }
+    ],
+    "published": true,
+    "pubDate": "2026-08-21"
   }
 }

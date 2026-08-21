@@ -111,6 +111,20 @@ test('Chapter 14 points readers to the dedicated streaming template', async () =
   });
 });
 
+test('Chapter 15 publishes its PDF without invented media links', async () => {
+  const chapter = manifest['ch15-interpreters'];
+  const { chapterExperiments } = await import('../src/data/chapter-experiments.mjs');
+
+  assert.equal(chapter.chapter, 15);
+  assert.equal(chapter.section, '前沿预览');
+  assert.deepEqual(chapter.slides, [{
+    id: 'ch15',
+    title: 'Lec 19: Interpreters — 让 Agent 用代码编排工具与数据',
+  }]);
+  assert.equal(chapter.published, true);
+  assert.equal(chapterExperiments['ch15-interpreters'], undefined);
+});
+
 test('content schema accepts the preview-feature section', () => {
   assert.match(contentConfigSource, /'前沿预览'/);
 });
@@ -150,16 +164,14 @@ test('homepage experiment descriptions stay concise', async () => {
   }
 });
 
-test('every published numbered chapter maps to exactly one current template command', async () => {
+test('every declared chapter experiment targets a published numbered chapter', async () => {
   const { chapterExperiments } = await import('../src/data/chapter-experiments.mjs');
-  const publishedNumberedChapters = Object.entries(manifest)
+  const publishedNumberedChapters = new Set(Object.entries(manifest)
     .filter(([id, chapter]) => id.startsWith('ch') && chapter.published)
-    .map(([id]) => id)
-    .sort();
+    .map(([id]) => id));
 
-  assert.deepEqual(Object.keys(chapterExperiments).sort(), publishedNumberedChapters);
-  assert.equal(new Set(Object.keys(chapterExperiments)).size, 14);
-  for (const experiment of Object.values(chapterExperiments)) {
+  for (const [chapterId, experiment] of Object.entries(chapterExperiments)) {
+    assert.equal(publishedNumberedChapters.has(chapterId), true);
     assert.match(experiment.command, /^agentseek create \S+ --checkout main --no-input$/);
     assert.match(experiment.source, /^https:\/\/github\.com\/agentseek-ai\/agentseek-templates\/tree\/main\/templates\//);
   }
