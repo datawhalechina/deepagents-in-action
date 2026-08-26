@@ -80,6 +80,15 @@ test('Chapter 14 publishes its video resource links', () => {
   assert.match(cardSource, /slides && slides\.length > 0 && \(/);
 });
 
+test('Chapter 15 publishes its video resource links', () => {
+  assert.deepEqual(manifest['ch15-interpreters'].slides[0], {
+    id: 'ch15',
+    title: 'Lec 19: Interpreters — 让 Agent 用代码编排工具与数据',
+    bilibili: 'https://www.bilibili.com/video/BV1DAh36fEWJ/',
+    xhs: 'https://xhslink.cn/o/7nkz9WmQ00W',
+  });
+});
+
 test('Chapter 14 keeps recommended v3 projections separate from v2 protocol streaming', () => {
   assert.match(streamingChapterSource, /stream_events\(request, version="v3"\)/);
   assert.match(streamingChapterSource, /stream\.subagents/);
@@ -117,16 +126,12 @@ test('Chapter 14 points readers to the dedicated streaming template', async () =
   });
 });
 
-test('Chapter 15 publishes its PDF without invented media links', async () => {
+test('Chapter 15 publishes its PDF without invented experiment metadata', async () => {
   const chapter = manifest['ch15-interpreters'];
   const { chapterExperiments } = await import('../src/data/chapter-experiments.mjs');
 
   assert.equal(chapter.chapter, 15);
   assert.equal(chapter.section, '前沿预览');
-  assert.deepEqual(chapter.slides, [{
-    id: 'ch15',
-    title: 'Lec 19: Interpreters — 让 Agent 用代码编排工具与数据',
-  }]);
   assert.equal(chapter.published, true);
   assert.equal(chapterExperiments['ch15-interpreters'], undefined);
 });
