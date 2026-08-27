@@ -211,5 +211,17 @@
     ],
     "published": true,
     "pubDate": "2026-08-21"
+  },
+  "ch16-dynamic-subagents": {
+    "title": "Dynamic Subagents — 用代码编排多个 Agent",
+    "chapter": 16,
+    "section": "前沿预览",
+    "order": 18,
+    "description": "在 QuickJS 中通过 task() 动态编排子 Agent，掌握分类路由、并行扇出、交叉验证、迭代收敛、结构化输出以及并发、失败、成本和审批边界。",
+    "slides": [
+      { "id": "ch16", "title": "Lec 20: Dynamic Subagents — 用代码编排多个 Agent" }
+    ],
+    "published": true,
+    "pubDate": "2026-08-21"
   }
 }

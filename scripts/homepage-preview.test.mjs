@@ -24,10 +24,11 @@ const streamingChapterSource = await readFile(
 );
 const readmeSource = await readFile(new URL('../README.md', import.meta.url), 'utf8');
 
-test('Chapters 13 through 15 share the preview-feature row', () => {
+test('Chapters 13 through 16 share the preview-feature row', () => {
   assert.equal(manifest['ch13-grading-rubrics'].section, '前沿预览');
   assert.equal(manifest['ch14-streaming'].section, '前沿预览');
   assert.equal(manifest['ch15-interpreters'].section, '前沿预览');
+  assert.equal(manifest['ch16-dynamic-subagents'].section, '前沿预览');
   assert.equal(
     manifest['ch14-streaming'].order,
     manifest['ch13-grading-rubrics'].order + 1,
@@ -36,9 +37,13 @@ test('Chapters 13 through 15 share the preview-feature row', () => {
     manifest['ch15-interpreters'].order,
     manifest['ch14-streaming'].order + 1,
   );
+  assert.equal(
+    manifest['ch16-dynamic-subagents'].order,
+    manifest['ch15-interpreters'].order + 1,
+  );
 });
 
-test('README places Chapters 13 through 15 together in the preview section', () => {
+test('README places Chapters 13 through 16 together in the preview section', () => {
   let currentSection = '';
   const chapters = [];
 
@@ -54,10 +59,11 @@ test('README places Chapters 13 through 15 together in the preview section', () 
 
   assert.deepEqual(
     chapters.filter(({ section }) => section === '前沿预览').map(({ chapter }) => chapter),
-    [13, 14, 15],
+    [13, 14, 15, 16],
   );
   assert.equal(chapters.filter(({ chapter }) => chapter === 14).length, 1);
   assert.equal(chapters.filter(({ chapter }) => chapter === 15).length, 1);
+  assert.equal(chapters.filter(({ chapter }) => chapter === 16).length, 1);
 });
 
 test('Chapter 13 publishes its video resource links', () => {
@@ -134,6 +140,32 @@ test('Chapter 15 publishes its PDF without invented experiment metadata', async 
   assert.equal(chapter.section, '前沿预览');
   assert.equal(chapter.published, true);
   assert.equal(chapterExperiments['ch15-interpreters'], undefined);
+});
+
+test('Chapter 16 publishes its PDF and uses the dynamic subagents template', async () => {
+  const chapter = manifest['ch16-dynamic-subagents'];
+  const { chapterExperiments } = await import('../src/data/chapter-experiments.mjs');
+
+  assert.equal(chapter.chapter, 16);
+  assert.equal(chapter.section, '前沿预览');
+  assert.deepEqual(chapter.slides, [{
+    id: 'ch16',
+    title: 'Lec 20: Dynamic Subagents — 用代码编排多个 Agent',
+  }]);
+  assert.equal(chapter.published, true);
+  assert.deepEqual(chapterExperiments['ch16-dynamic-subagents'], {
+    template: 'deepagents/subagents-dynamic',
+    note: '运行六种 Dynamic Subagents 编排模式。',
+    command: 'agentseek create deepagents/subagents-dynamic --checkout main --no-input',
+    source: 'https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/subagents-dynamic',
+  });
+
+  const readmeBlock = readmeSource.slice(
+    readmeSource.indexOf('#### 第 16 章：'),
+    readmeSource.indexOf('后续课程内容将根据'),
+  );
+  assert.match(readmeBlock, /templates\/deepagents\/subagents-dynamic/);
+  assert.match(readmeBlock, /agentseek create deepagents\/subagents-dynamic --checkout main --no-input/);
 });
 
 test('content schema accepts the preview-feature section', () => {
