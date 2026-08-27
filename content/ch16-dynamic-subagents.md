@@ -25,7 +25,7 @@ Deep Agents 已经可以通过普通 `task` Tool 把工作交给子 Agent。主 
 
 Dynamic Subagents 不是新的子 Agent 类型。它改变的是编排位置：普通委派由主模型逐次调用 `task` Tool；动态编排则由一次 `eval` 中的 JavaScript 多次调用 `task()`。
 
-![普通委派由主 Agent 逐次选择并等待一个子 Agent；Dynamic Subagents 由 QuickJS 代码对完整输入集合进行分类、并行分发和结果汇总](../public/imgs/52-comparison-direct-vs-dynamic-subagents.png)
+![一次明确交接由普通 task 完成；面对批量或多阶段任务，主 LLM 可以生成 JavaScript，并由 QuickJS 多次调用 task() 后汇总结果](../public/imgs/52-comparison-direct-vs-dynamic-subagents.png)
 
 ### 为什么代码编排更稳定
 
@@ -54,7 +54,7 @@ Dynamic Subagents 不是新的子 Agent 类型。它改变的是编排位置：�
 
 提示词里的 `workflow` 会提醒主 LLM 优先考虑代码编排。它不是 API 参数；真正提供能力的是 `subagents` 配置和 `CodeInterpreterMiddleware`。下一节的提示词只写业务目标与约束，不需要加入底层函数和工具名。只有一次明确委派时，普通 `task` Tool 往往更直接。
 
-![Dynamic Subagents 的运行结构：主 Agent 通过 eval 进入 QuickJS，tools.* 可发现或筛选输入，task() 启动多个完整子 Agent 循环，结果在 JavaScript 中合并后返回](../public/imgs/53-framework-quickjs-task-orchestration.png)
+![用户用 workflow 描述请求，主 LLM 编写 JavaScript，经 eval 进入 QuickJS；task() 使用三个可用字段启动已配置的子 Agent，结果经筛选和合并后返回](../public/imgs/53-framework-quickjs-task-orchestration.png)
 
 ### `task()` 只有三个字段
 
@@ -176,6 +176,8 @@ agent = create_deep_agent(
 ```
 
 这个骨架描述的是业务流程，不规定底层函数和代码写法。主 LLM 可能选择并发、循环、分支或结构化返回；能否生成正确代码，仍取决于模型的代码生成和工具调用能力。
+
+![开发者先通过 subagents 和 CodeInterpreterMiddleware 准备可调度角色，用户再用 workflow 描述输入范围、角色顺序、结果要求和停止条件，两部分共同交给主 LLM 生成 JavaScript](../public/imgs/54-framework-three-orchestration-patterns.png)
 
 ### 3.2 三个示例：从流程提示到可能的 JavaScript
 
@@ -319,13 +321,9 @@ for (let round = 0; round < 5; round += 1) {
 
 这段代码里，“没有新结果”是业务停止条件，“最多 5 轮”是资源上限。两者都应能从生成的 JavaScript 中直接看到。
 
-把三个例子放在一起，可以看到流程提示分别约束了路由、并行复核和迭代停止：
+把三个例子放在一起，可以看到流程提示分别约束了路由、并行复核和迭代停止。三个示例的 JavaScript 都只是可能结果：变量名、循环和并发写法可以不同，但输入覆盖、角色名、结果结构和停止条件必须与提示词一致。如果需要在运行前看到代码，可以先要求只输出草案，或对 `eval` 本身设置审批。
 
-![动态子 Agent 的三类编排形状：分类路由按类别选择角色；并行扇出后由 verifier 交叉验证；迭代收敛通过去重、停止条件和最大轮数逐步缩小工作集](../public/imgs/54-framework-three-orchestration-patterns.png)
-
-三个示例的 JavaScript 都只是可能结果。变量名、循环和并发写法可以不同，但输入覆盖、角色名、结果结构和停止条件必须与提示词一致。如果需要在运行前看到代码，可以先要求只输出草案，或对 `eval` 本身设置审批。
-
-![可用作生成后检查清单的 Dynamic Subagents 边界：限制输入与批次，区分成功、失败和结构化结果，同时检查调度规模、Interpreter 状态、子 Agent 权限和审批位置](../public/imgs/55-flow-dynamic-subagents-guardrails.png)
+![检查主 LLM 可能生成的 JavaScript：subagentType 应来自已配置的 name，task() 字段应正确，输入覆盖和阶段顺序应符合流程，数量上限和停止条件应实际生效](../public/imgs/55-flow-dynamic-subagents-guardrails.png)
 
 ## 4. 回到 Interpreter：同一组中间件参数继续生效
 
