@@ -4,9 +4,9 @@
 
 直接调用子 Agent 适合一次明确委派。任务覆盖许多独立对象，或者需要分类、并行、交叉验证和反复收敛时，让模型逐次选择下一次委派会带来漏项、额外模型轮次和不稳定的控制流。Dynamic Subagents（动态子 Agent）沿用上一章的 QuickJS Interpreter：模型先生成编排代码，再由代码调用内置的 `task()`，启动多个完整的子 Agent 循环并汇总结果。
 
-本章用 `reviewer` 和 `verifier` 两个角色贯穿示例。除了分清 `task()` 和普通 `task` Tool，还要能根据任务形状选择分类路由、并行扇出或迭代收敛，并知道如何把输入范围、调度约束和停止条件说清楚。
+本章用工单分流、代码审查和死代码排查三个例子串起六种控制流。除了分清 `task()` 和普通 `task` Tool，还要能定义可供选择的子 Agent，根据任务形状选择分类路由、并行扇出或迭代收敛，并知道如何把输入范围、调度约束和停止条件说清楚。
 
-Dynamic Subagents 依赖仍处于 Beta 的 Interpreter Runtime，接口和生命周期可能继续变化。运行环境需要 Python 3.11+ 与 `langchain-quickjs>=0.2.0`；本章在 `deepagents==0.7.8`、`langchain-quickjs==0.3.5` 中核对接口和运行时限制。
+Dynamic Subagents 依赖的 Interpreter Runtime 仍处于 Beta 阶段，接口和生命周期可能继续变化。运行环境需要 Python 3.11+ 与 `langchain-quickjs>=0.2.0`；本章在 `deepagents==0.7.8`、`langchain-quickjs==0.3.5` 中核对接口和运行时限制。
 
 ## 1. 从单次委派到动态编排
 
@@ -37,37 +37,11 @@ Dynamic Subagents 不是新的子 Agent 类型。它改变的是编排位置：�
 4. 只有高风险发现进入复核。
 5. 最终只把已确认的结果交还主模型。
 
-代码保证的是控制流和覆盖范围，不是子 Agent 判断必然正确。每次 `task()` 都会启动完整的 Agent 推理循环，结果仍受模型、Prompt、工具和输入影响。
+生成的代码通过检查后，可以把控制流和覆盖规则明确下来，但不能保证每个子任务都成功，也不能保证子 Agent 的判断正确。每次 `task()` 都会启动完整的 Agent 推理循环，结果仍受模型、Prompt、工具和输入影响。
 
 ## 2. 先看运行过程：AI 编写 JavaScript，`task()` 执行调度
 
-先配置可用的子 Agent 和 Interpreter 中间件。`reviewer` 负责提出候选问题，`verifier` 负责重新检查证据并反驳误报。
-
-```python
-from deepagents import create_deep_agent
-from langchain_quickjs import CodeInterpreterMiddleware
-
-subagents = [
-    {
-        "name": "reviewer",
-        "description": "检查代码中的安全问题并给出文件、行号和证据",
-        "system_prompt": "你是代码安全审查员。只报告有代码证据的问题。",
-    },
-    {
-        "name": "verifier",
-        "description": "独立复核候选安全问题，优先识别误报",
-        "system_prompt": "你是审慎的复核员。重新读取代码后再确认或反驳。",
-    },
-]
-
-agent = create_deep_agent(
-    model=model,
-    subagents=subagents,
-    middleware=[CodeInterpreterMiddleware(mode="turn")],
-)
-```
-
-这里有两个不同层次的模型调用。`langchain-quickjs` 负责把 Python 侧的 Interpreter 中间件、QuickJS 运行时与异步能力桥接起来：
+当 Agent 同时配置了子 Agent 和 Interpreter 中间件，JavaScript 环境会出现全局函数 `task()`。具体的 `subagents` 定义放在下一节，这里先看运行链路。`langchain-quickjs` 负责把 Python 侧的 Interpreter 中间件、QuickJS 运行时与异步能力桥接起来：
 
 1. 主 LLM 读取用户请求，决定是否调用 `eval`，并为当前任务编写 JavaScript。
 2. 这段 JavaScript 在 QuickJS 中运行，遇到 `task()` 时启动指定的子 Agent。
@@ -76,22 +50,9 @@ agent = create_deep_agent(
 
 因此，`task()` 不是开发者在 Python 中手写的固定工作流函数。它是 Interpreter 注入到 JavaScript 环境里的全局函数，而调用它的 JavaScript 通常由主 LLM 根据当前请求现场生成。
 
-这对主模型提出了更高要求。模型既要稳定调用工具，也要写出可运行的异步 JavaScript，正确使用 `await`、数组方法、循环、分支和 Schema，还要选中真实存在的 `subagentType`。模型能力不足时，常见问题不是“子 Agent 不够聪明”，而是编排代码先出现语法错误、角色名漂移、遗漏输入或循环失控。上线前要用真实任务验证模型的代码生成和工具调用能力，而不是只看一次演示是否成功。
+这对主模型提出了更高要求。模型既要稳定调用工具，也要写出可运行的异步 JavaScript，正确使用 `await`、数组方法、循环、分支和 Schema，还要选中真实存在的 `subagentType`。模型能力不足时，编排代码容易出现语法错误、角色名漂移、遗漏输入或循环失控。
 
-### “workflow” 是提示信号，不是开关
-
-用户请求里出现 “workflow”，会提示主 LLM 优先考虑用 `eval` 组织一段动态编排：
-
-```python
-result = agent.invoke({
-    "messages": [{
-        "role": "user",
-        "content": "运行一个 workflow：审查 src/routes/ 下的文件，并复核高风险发现。",
-    }]
-})
-```
-
-这个词不是 API 参数。真正决定能力是否存在的是 `subagents` 配置和 `CodeInterpreterMiddleware`。只有一次明确委派时，普通 `task` Tool 往往更直接。
+提示词里的 `workflow` 会提醒主 LLM 优先考虑代码编排。它不是 API 参数；真正提供能力的是 `subagents` 配置和 `CodeInterpreterMiddleware`。下一节的提示词只写业务目标与约束，不需要加入底层函数和工具名。只有一次明确委派时，普通 `task` Tool 往往更直接。
 
 ![Dynamic Subagents 的运行结构：主 Agent 通过 eval 进入 QuickJS，tools.* 可发现或筛选输入，task() 启动多个完整子 Agent 循环，结果在 JavaScript 中合并后返回](../public/imgs/53-framework-quickjs-task-orchestration.png)
 
@@ -138,153 +99,208 @@ const highRisk = review.issues.filter((item) => item.severity === "high");
 
 上面的 JavaScript 只是便于解释接口的代表性写法。实际运行时，主 LLM 可能改用 `for...of`、`Promise.all`、辅助函数或不同变量名。判断是否正确，应看输入有没有完整覆盖、角色是否选对、停止条件是否生效，以及结果是否满足 Schema，不要要求生成代码逐字一致。
 
-## 3. 六种动态编排场景
+## 3. 六种动态编排场景：从提示词到可能的代码
 
-下面六段代码描述的是控制流形状，不是框架预先生成的固定脚本。真正运行时，主 LLM 会根据用户请求、可用子 Agent 和中间结果重新组织 JavaScript。它可能使用不同的循环、并发方式和变量名，只要调度语义一致即可。
+六种场景都是控制流形状，不是六个 API 开关。主 LLM 会根据请求、可用角色和中间结果现场组织 JavaScript。
 
-### 3.1 分类并处理（Classify and act）
+| 场景 | 控制流 | 适合的任务 |
+|---|---|---|
+| 分类并处理 | 先确定受控类别，再路由到对应角色 | 工单、日志、用户反馈 |
+| 扇出并汇总 | 将独立对象并行交给同类角色，再合并结果 | 批量代码审查、文档分析 |
+| 对抗复核 | 第一阶段提出候选，第二阶段独立寻找反证 | 安全问题、合规判断 |
+| 生成并筛选 | 并行生成多个候选，再按可计算条件过滤 | 设计方案、候选查询 |
+| 锦标赛 | 候选两两比较，胜者逐轮晋级 | 代码改写、文案版本选择 |
+| 循环直到完成 | 对已发现项去重，直到没有新结果或达到轮数上限 | 范围未知的搜索和排查 |
 
-工单、日志或反馈混在一起时，先分类，再把每一类交给对应角色。下面的片段假设主 LLM 已经为每条工单生成受控的 `ticket.category`；JavaScript 只负责校验映射并执行调度，不是凭空得出分类。
+![动态子 Agent 的三类编排形状：分类路由按类别选择角色；并行扇出后由 verifier 交叉验证；迭代收敛通过去重、停止条件和最大轮数逐步缩小工作集](../public/imgs/54-framework-three-orchestration-patterns.png)
 
-```typescript
-const specialist = {
+### 3.1 先定义本节使用的子 Agent
+
+`name` 是 JavaScript 中 `subagentType` 的可用值，`description` 帮助主 LLM 选角色，`system_prompt` 则约束该角色怎样完成任务。下面七个角色覆盖三个详细示例：
+
+```python
+subagents = [
+    {
+        "name": "classifier",
+        "description": "将工单归为 bug、feature、question 或 unknown",
+        "system_prompt": "只负责分类；信息不足时返回 unknown，不处理工单。",
+    },
+    {
+        "name": "bug-fixer",
+        "description": "调查缺陷工单并给出复现步骤",
+        "system_prompt": "核对现象与上下文，返回复现步骤和影响。",
+    },
+    {
+        "name": "feature-analyst",
+        "description": "评估功能请求的可行性和成本",
+        "system_prompt": "说明用户价值、实现条件和主要取舍。",
+    },
+    {
+        "name": "support-agent",
+        "description": "根据已有材料回答使用问题",
+        "system_prompt": "只根据可用材料回答；缺少依据时明确说明。",
+    },
+    {
+        "name": "reviewer",
+        "description": "审查代码并给出文件、行号和证据",
+        "system_prompt": "只报告有代码证据的候选问题；稳定 ID 使用‘文件:行号:问题类型’。",
+    },
+    {
+        "name": "verifier",
+        "description": "独立复核候选问题并优先识别误报",
+        "system_prompt": "重新读取代码，寻找反证后再确认或反驳。",
+    },
+    {
+        "name": "analyzer",
+        "description": "在给定范围内分轮查找死代码",
+        "system_prompt": "用文件和符号组成稳定 ID，不要重复已发现项。",
+    },
+]
+```
+
+将这个列表传给 `create_deep_agent(..., subagents=subagents)`。Interpreter 中间件的配置放在第 4 节统一说明。
+
+### 3.2 分类并处理
+
+提示词只说业务目标、可用角色和验收条件。`workflow` 是这里唯一需要显式写出的触发词：
+
+```text title="建议提示词"
+运行一个 workflow，处理下面三条工单：
+- T-101：点击登录后返回 500。
+- T-102：希望订单页可以导出 CSV。
+- T-103：如何重置密码？
+
+先让 classifier 把每条归为 bug、feature、question 或 unknown，再分别交给 bug-fixer、feature-analyst 或 support-agent。
+每条工单只能进入一个处理分支，不得遗漏或重复。无法确定时保留 unknown，不要猜。
+最后按工单 ID 返回类别、处理结果和未处理原因。
+```
+
+主 LLM 可能先调用 classifier，再根据受控类别选择处理角色：
+
+```typescript title="可能生成的 JavaScript"
+const tickets = [
+  { id: "T-101", text: "点击登录后返回 500" },
+  { id: "T-102", text: "订单页导出 CSV" },
+  { id: "T-103", text: "如何重置密码" },
+];
+const categorySchema = {
+  type: "object",
+  properties: {
+    category: { type: "string", enum: ["bug", "feature", "question", "unknown"] },
+  },
+  required: ["category"],
+};
+const handler = {
   bug: "bug-fixer",
   feature: "feature-analyst",
   question: "support-agent",
 };
-
-const handled = await Promise.all(tickets.map((ticket) => {
-  const subagentType = specialist[ticket.category];
-  if (!subagentType) throw new Error(`未知类别: ${ticket.category}`);
-  return task({
-    description: `处理这条 ${ticket.category} 工单：${ticket.text}`,
-    subagentType,
+const results = await Promise.all(tickets.map(async (ticket) => {
+  const { category } = await task({
+    description: `只对工单分类：${ticket.id}\n${ticket.text}`,
+    subagentType: "classifier",
+    responseSchema: categorySchema,
   });
+  if (!handler[category]) {
+    return { id: ticket.id, category, unhandledReason: "分类为 unknown" };
+  }
+  const result = await task({
+    description: `处理工单 ${ticket.id}：${ticket.text}`,
+    subagentType: handler[category],
+  });
+  return { id: ticket.id, category, result };
 }));
+results;
 ```
 
-不要直接把任意文本放进 `subagentType`。分类结果必须先校验，无法识别的类别应进入兜底路径。
+检查时看三点：类别是否受 Schema 限制，unknown 是否没有被强行路由，三个工单 ID 是否都出现在结果中。
 
-### 3.2 扇出并汇总（Fan-out and synthesize）
+### 3.3 扇出审查，再做对抗复核
 
-当多个对象可以独立处理时，同一种角色可以并行工作。例如先用 PTC 的 `tools.glob(...)` 找到文件，再让 reviewer 分别审查：
+这个例子把“扇出并汇总”和“对抗复核”连成两个阶段。文件列表直接写进提示词，不需要让主 LLM 猜搜索范围：
 
-```typescript
-const files = (await tools.glob({ pattern: "src/routes/**/*.ts" }))
-  .split("\n")
-  .filter(Boolean);
+```text title="建议提示词"
+运行一个 workflow，审查下面三个文件：
+- src/routes/login.ts
+- src/routes/session.ts
+- src/routes/reset-password.ts
 
-const reviews = await Promise.all(files.map((file) =>
-  task({
-    description: `审查 ${file} 的认证问题，并引用行号。`,
-    subagentType: "reviewer",
-    responseSchema: findingsSchema,
-  })
-));
-
-const findings = reviews.flatMap((item) => item.findings);
+让 reviewer 分别检查每个文件的认证问题，候选结果必须包含稳定 ID、文件、行号和证据。
+按稳定 ID 去重，再让 verifier 独立确认或反驳，最多复核 20 条。
+最后只返回已确认问题，并说明被反驳和未复核的数量。
 ```
 
-`tools.glob` 负责发现输入，`task()` 负责需要语义判断的审查。PTC 默认关闭，只有加入 `ptc` 白名单后，JavaScript 才能使用 `tools.*`。
+下面只展示两阶段调度。`findingsSchema` 和 `verdictSchema` 不是内置变量；实际生成的完整代码必须先定义它们，字段分别对应上面的候选结果和复核结论：
 
-### 3.3 对抗复核（Adversarial verification）
-
-先让 reviewer 提出候选，再把每条候选交给 verifier 独立确认。第二个角色的目标不是润色结论，而是主动寻找反证。
-
-```typescript
-const { findings } = await task({
-  description: "审查 payments 模块，列出候选漏洞。",
+```typescript title="可能生成的 JavaScript 核心片段"
+const files = [
+  "src/routes/login.ts",
+  "src/routes/session.ts",
+  "src/routes/reset-password.ts",
+];
+const reviews = await Promise.all(files.map((file) => task({
+  description: `审查 ${file} 的认证问题；每条候选返回稳定 ID、文件、行号和证据，稳定 ID 使用“文件:行号:问题类型”。`,
   subagentType: "reviewer",
   responseSchema: findingsSchema,
+})));
+const findings = reviews.flatMap((review) => review.findings);
+const unique = [...new Map(findings.map((item) => [item.id, item])).values()];
+const candidates = unique.slice(0, 20);
+const verdicts = await Promise.all(candidates.map((finding) => task({
+  description: `复核 ${finding.file}:${finding.line}，确认或反驳：${finding.evidence}`,
+  subagentType: "verifier",
+  responseSchema: verdictSchema,
+})));
+const confirmed = candidates.filter((_, index) => verdicts[index].confirmed);
+({
+  confirmed,
+  rejected: candidates.length - confirmed.length,
+  unreviewed: unique.length - candidates.length,
 });
-
-const verdicts = await Promise.all(findings.map((finding) =>
-  task({
-    description: `复核 ${finding.file}:${finding.line}，确认或反驳：${finding.evidence}`,
-    subagentType: "verifier",
-    responseSchema: verdictSchema,
-  })
-));
-
-const confirmed = findings.filter((_, index) => verdicts[index]?.confirmed);
 ```
 
-同一个角色重复确认自己的输出，独立性很弱。对抗复核需要不同的系统提示词，必要时还要使用不同模型或工具集合。
+主 LLM 可能使用循环或分批处理，不一定使用 `Promise.all`。验收时检查三个文件是否全部进入 reviewer、每条进入复核的候选是否都得到 verifier 的独立结论，以及超出 20 条的部分是否计入未复核数。
 
-### 3.4 生成并筛选（Generate and filter）
+### 3.4 循环直到完成
 
-需要比较多种设计方案时，可以并行生成候选，再按明确条件过滤。下面的例子让 architect 提出三个数据库方案，然后丢弃迁移风险过高的结果：
+范围事先不知道有多大时，提示词要同时给出业务停止条件和资源上限：
 
-```typescript
-const proposals = await Promise.all([1, 2, 3].map((number) =>
-  task({
-    description: `方案 ${number}：重新设计 orders 表，并说明取舍。`,
-    subagentType: "architect",
-    responseSchema: designSchema,
-  })
-));
-
-const acceptable = proposals.filter((item) => item.migrationRisk !== "high");
-const best = acceptable.sort((a, b) => b.coverage - a.coverage)[0];
+```text title="建议提示词"
+运行一个 workflow，在 src/legacy/ 范围内分轮查找死代码。
+每轮都让 analyzer 继续查找，并把已发现项的稳定 ID 传给它，避免重复。
+如果某一轮没有新增项就停止；无论如何最多运行 5 轮，每轮最多保留 20 项。
+最后返回已发现并保留的去重结果、实际轮数和停止原因。
 ```
 
-过滤条件应能从 Schema 中稳定读取。若“哪个更好”本身需要语义判断，可以再交给 judge，而不是在 JavaScript 里伪造一个没有依据的分数。
+这里的 `itemsSchema` 同样不是内置变量；完整代码应用它约束 ID、文件、位置和证据：
 
-### 3.5 锦标赛（Tournament）
-
-候选较多时，可以两两比较，让胜者进入下一轮。这个形状适合代码改写、文案版本或方案选择。
-
-```typescript
-let bracket = await Promise.all([1, 2, 3, 4].map((number) =>
-  task({
-    description: `生成 processOrder 的可读性改写，版本 ${number}。`,
-    subagentType: "writer",
-  })
-));
-
-while (bracket.length > 1) {
-  const winners = [];
-  for (let index = 0; index < bracket.length; index += 2) {
-    const pair = bracket.slice(index, index + 2);
-    if (pair.length === 1) { winners.push(pair[0]); continue; }
-    const result = await task({
-      description: `比较 A 和 B 的可读性，返回胜者。\nA:\n${pair[0]}\nB:\n${pair[1]}`,
-      subagentType: "judge",
-      responseSchema: pickSchema,
-    });
-    winners.push(result.winner === "A" ? pair[0] : pair[1]);
-  }
-  bracket = winners;
-}
-```
-
-每一轮都会增加模型调用。候选数、比较轮数和单次输入长度都应有上限。
-
-### 3.6 循环直到完成（Loop until done）
-
-范围事先未知时，可以让 analyzer 分轮发现候选，对稳定 ID 去重，直到本轮没有新增项。
-
-```typescript
+```typescript title="可能生成的 JavaScript 核心片段"
 const seen = new Set();
 const found = [];
-
+let rounds = 0;
+let stopReason = "达到 5 轮上限";
 for (let round = 0; round < 5; round += 1) {
+  rounds = round + 1;
   const { items } = await task({
-    description: `继续寻找死代码。已发现：${[...seen].join(", ") || "无"}`,
+    description: `在 src/legacy/ 中继续查找死代码，每轮最多返回 20 项。已发现：${[...seen].join(", ") || "无"}`,
     subagentType: "analyzer",
     responseSchema: itemsSchema,
   });
-  const fresh = items.filter((item) => !seen.has(item.id));
-  if (fresh.length === 0) break;
+  const fresh = items.filter((item) => !seen.has(item.id)).slice(0, 20);
+  if (fresh.length === 0) {
+    stopReason = "本轮没有新增项";
+    break;
+  }
   for (const item of fresh) { seen.add(item.id); found.push(item); }
 }
+({ rounds, stopReason, found });
 ```
 
-“没有新结果”是业务停止条件，`round < 5` 是资源上限，两者缺一不可。只靠自然语言判断“差不多完成了”，容易让循环继续消耗模型调用。
+这段代码里，“没有新结果”是业务停止条件，“最多 5 轮”是资源上限。两者都应能从生成的 JavaScript 中直接看到。
 
-六种场景仍可以从控制流上归纳为三类：分类并处理属于路由；扇出、复核和生成筛选强调并发与合并；锦标赛和循环直到完成强调迭代收敛。下图用于快速选型，不代表运行时只有三种固定实现。
+三个示例的 JavaScript 都只是可能结果。变量名、循环和并发写法可以不同，但输入覆盖、角色名、结果结构和停止条件必须与提示词一致。如果需要在运行前看到代码，可以先要求只输出草案，或对 `eval` 本身设置审批。
 
-![动态子 Agent 的三类编排形状：分类路由按类别选择角色；并行扇出后由 verifier 交叉验证；迭代收敛通过去重、停止条件和最大轮数逐步缩小工作集](../public/imgs/54-framework-three-orchestration-patterns.png)
+![可用作生成后检查清单的 Dynamic Subagents 边界：限制输入与批次，区分成功、失败和结构化结果，同时检查调度规模、Interpreter 状态、子 Agent 权限和审批位置](../public/imgs/55-flow-dynamic-subagents-guardrails.png)
 
 ## 4. 回到 Interpreter：同一组中间件参数继续生效
 
@@ -323,61 +339,16 @@ middleware = CodeInterpreterMiddleware(
 
 `responseSchema` 也不是中间件参数，它属于每次 `task()` 的调用契约。Schema 只保证返回形状可组合，不保证结论正确。汇总时仍要保留来源文件、行号、证据、复核状态和稳定 ID，方便去重与回查。
 
-## 5. 让主 LLM 写出可检查的编排代码
-
-前面的 JavaScript 都是为了讲清控制流而整理的片段。真正运行时，主 LLM 根据当前请求现场写代码。只说“批量审查这些文件”，模型就要自己猜角色、批次、失败处理和返回结构，生成的 JavaScript 很容易漂移。
-
-一个可执行的请求至少要说清下面五件事：
-
-| 信息 | 需要写明的内容 |
-|---|---|
-| 输入范围 | 哪些对象可以处理，哪些必须排除；没有 PTC 时直接给出文件列表 |
-| 可用角色 | 列出真实的 `subagentType` 及分工，并禁止自创角色名 |
-| 调度规则 | 批次大小、复核范围、最多轮数，以及单项失败后是继续还是停止 |
-| 返回契约 | 哪些 `task()` 需要 `responseSchema`，最终结果保留哪些字段 |
-| 停止条件 | 什么状态算完成，达到调度上限或输入不足时怎么返回 |
-
-以“批量代码审查 + 交叉验证”为例，可以这样向主 LLM 下达任务。使用时把 `[files]` 换成实际路径列表：
-
-```text
-运行一个 Dynamic Subagents workflow，使用 eval 编写并执行 JavaScript。
-
-输入范围：只处理我列出的文件：[files]，不扩展到其他目录。
-可用角色：reviewer 提出候选问题；verifier 独立确认或反驳。不得自创角色名。
-
-编排要求：
-1. task() 只使用 description、subagentType 和可选的 responseSchema。
-2. reviewer 每批最多处理 4 个文件；单个文件失败时记录错误，继续处理其余文件。
-3. 分别定义 JSON Schema：reviewer 返回 ID、文件、行号和证据；verifier 返回 ID、是否确认和理由。
-4. 候选按稳定 ID 去重后再交给 verifier，最多复核 20 条；超出部分记入未处理数量。
-5. 最后只返回已确认问题、被反驳数、失败清单和未处理数。
-
-如果输入列表缺失、角色不存在或无法满足上述约束，停止并说明原因，不要自行补全。
-```
-
-这段提示词也不会让模型突然变得可靠。它只是把原本隐藏的决策变成可检查条件。调试时，可以先要求模型“只输出 JavaScript 草案，不执行 `eval`”，确认下面几项后再运行：
-
-- `task()` 没有多余字段，`subagentType` 都来自已配置角色。
-- 输入集合没有漏项或越界，批次、复核数和循环都有上限。
-- 单项失败有独立分支，不会把“无发现”误当成“执行失败”。
-- 使用 `responseSchema` 后直接读取对象，没有多做一次 `JSON.parse`。
-- 最终返回值保留来源、证据和未处理项，可以回到输入复核。
-
-如果不想分两步，可以对 `eval` 本身设置审批，在执行前查看模型生成的代码。`task()` 发生在已经开始的 `eval` 内部，父 Agent 针对普通 `task` Tool 的 `interrupt_on` 不会在每次动态调度前重复触发。
-
-![可用作提示词和生成后检查清单的 Dynamic Subagents 边界：限制输入与批次，区分成功、失败和结构化结果，同时检查调度规模、Interpreter 状态、子 Agent 权限和审批位置](../public/imgs/55-flow-dynamic-subagents-guardrails.png)
-
-提示词能减少漂移，不能代替模型选型和真实任务测试。如果模型多次生成语法错误、自创角色或漏掉输入，换一个代码生成和工具调用更稳定的模型，比继续堆叠提示词更有效。
-
 ## 本章小结
 
 - Dynamic Subagents 使用 Interpreter 中的 JavaScript 编排已配置子 Agent。普通 `task` Tool 适合单次委派，`task()` 适合批量路由和多阶段组合。
 - `task()` 只有 `description`、`subagentType` 和可选的 `responseSchema` 三个字段；设置 Schema 后直接读取 JavaScript 对象。
+- `subagents` 中的 `name`、`description` 和 `system_prompt` 分别定义角色标识、选择依据和工作边界；它们决定生成代码可以调度谁。
 - 每次 `task()` 都运行完整的子 Agent 循环。`description` 要自包含，并优先传文件路径等定位信息。
-- “workflow” 是帮助模型选择动态编排的提示信号，不是 API 开关。常见形状包括分类、扇出、复核、筛选、锦标赛和迭代收敛。
+- `workflow` 是帮助模型选择动态编排的提示信号，不是 API 开关。常见形状包括分类、扇出、复核、筛选、锦标赛和迭代收敛。
 - 动态 JavaScript 由主 LLM 按请求生成，模型需要同时具备稳定的工具调用和代码生成能力。
 - `CodeInterpreterMiddleware` 的内存、超时、输出、PTC、状态和 `subagents` 配置会继续约束动态编排。
-- 提示词要给出输入范围、可用角色、调度规则、返回契约和停止条件。上线前还要检查模型生成的 JavaScript。
+- 面向用户的提示词写清输入范围、角色分工、返回结果和停止条件即可，不需要指定 `eval`、`task()` 等底层实现。运行前仍要检查模型生成的 JavaScript。
 
 ## 参考资料
 
@@ -385,4 +356,4 @@ middleware = CodeInterpreterMiddleware(
 - [Deep Agents Interpreters](https://docs.langchain.com/oss/python/deepagents/interpreters)
 - [Deep Agents Subagents](https://docs.langchain.com/oss/python/deepagents/subagents)
 - [Deep Agents Human-in-the-Loop](https://docs.langchain.com/oss/python/deepagents/human-in-the-loop)
-- [Deep Agents Event Streaming](https://docs.langchain.com/oss/python/deepagents/streaming)
+- [Deep Agents Event Streaming](https://docs.langchain.com/oss/python/deepagents/event-streaming)
