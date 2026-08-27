@@ -65,6 +65,10 @@ export const chapterExperiments = {
     'deepagents/streaming',
     '运行 Streaming 模板，观察 Agent 与工具事件流。',
   ),
+  'ch15-interpreters': experiment(
+    'deepagents/subagents-dynamic',
+    '观察 QuickJS eval 与 task() 动态调度。',
+  ),
   'ch16-dynamic-subagents': experiment(
     'deepagents/subagents-dynamic',
     '运行六种 Dynamic Subagents 编排模式。',

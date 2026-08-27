@@ -132,14 +132,26 @@ test('Chapter 14 points readers to the dedicated streaming template', async () =
   });
 });
 
-test('Chapter 15 publishes its PDF without invented experiment metadata', async () => {
+test('Chapter 15 publishes its PDF and uses the dynamic subagents template', async () => {
   const chapter = manifest['ch15-interpreters'];
   const { chapterExperiments } = await import('../src/data/chapter-experiments.mjs');
 
   assert.equal(chapter.chapter, 15);
   assert.equal(chapter.section, '前沿预览');
   assert.equal(chapter.published, true);
-  assert.equal(chapterExperiments['ch15-interpreters'], undefined);
+  assert.deepEqual(chapterExperiments['ch15-interpreters'], {
+    template: 'deepagents/subagents-dynamic',
+    note: '观察 QuickJS eval 与 task() 动态调度。',
+    command: 'agentseek create deepagents/subagents-dynamic --checkout main --no-input',
+    source: 'https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/subagents-dynamic',
+  });
+
+  const readmeBlock = readmeSource.slice(
+    readmeSource.indexOf('#### 第 15 章：'),
+    readmeSource.indexOf('#### 第 16 章：'),
+  );
+  assert.match(readmeBlock, /templates\/deepagents\/subagents-dynamic/);
+  assert.match(readmeBlock, /agentseek create deepagents\/subagents-dynamic --checkout main --no-input/);
 });
 
 test('Chapter 16 publishes its PDF and uses the dynamic subagents template', async () => {
