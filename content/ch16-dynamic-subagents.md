@@ -4,7 +4,7 @@
 
 直接调用子 Agent 适合一次明确委派。任务覆盖许多独立对象，或者需要分类、并行、交叉验证和反复收敛时，让模型逐次选择下一次委派会带来漏项、额外模型轮次和不稳定的控制流。Dynamic Subagents（动态子 Agent）沿用上一章的 QuickJS Interpreter：模型先生成编排代码，再由代码调用内置的 `task()`，启动多个完整的子 Agent 循环并汇总结果。
 
-本章使用 `reviewer` 和 `verifier` 两个角色跑通“批量代码审查 + 交叉验证”。除了分清 `task()` 和普通 `task` Tool，还要能根据任务形状选择分类路由、并行扇出或迭代收敛，并为并发、失败、成本、状态和审批画定边界。
+本章用 `reviewer` 和 `verifier` 两个角色贯穿示例。除了分清 `task()` 和普通 `task` Tool，还要能根据任务形状选择分类路由、并行扇出或迭代收敛，并知道如何把输入范围、调度约束和停止条件说清楚。
 
 Dynamic Subagents 依赖仍处于 Beta 的 Interpreter Runtime，接口和生命周期可能继续变化。运行环境需要 Python 3.11+ 与 `langchain-quickjs>=0.2.0`；本章在 `deepagents==0.7.8`、`langchain-quickjs==0.3.5` 中核对接口和运行时限制。
 
@@ -41,13 +41,7 @@ Dynamic Subagents 不是新的子 Agent 类型。它改变的是编排位置：�
 
 ## 2. 先看运行过程：AI 编写 JavaScript，`task()` 执行调度
 
-第 15、16 章共用 `deepagents/subagents-dynamic` 应用模板。先创建项目，再按模板 README 配置模型和依赖：
-
-```bash
-agentseek create deepagents/subagents-dynamic --checkout main --no-input
-```
-
-模板里的核心配置等价于下面这段 Python。`reviewer` 负责提出候选问题，`verifier` 负责重新检查证据并反驳误报。
+先配置可用的子 Agent 和 Interpreter 中间件。`reviewer` 负责提出候选问题，`verifier` 负责重新检查证据并反驳误报。
 
 ```python
 from deepagents import create_deep_agent
@@ -288,7 +282,7 @@ for (let round = 0; round < 5; round += 1) {
 
 “没有新结果”是业务停止条件，`round < 5` 是资源上限，两者缺一不可。只靠自然语言判断“差不多完成了”，容易让循环继续消耗模型调用。
 
-六种场景仍可以从控制流上归纳为三类：分类并处理属于路由；扇出、复核和生成筛选强调并发与合并；锦标赛和循环直到完成强调迭代收敛。下图用于快速选型，不代表运行时只有三种固定模板。
+六种场景仍可以从控制流上归纳为三类：分类并处理属于路由；扇出、复核和生成筛选强调并发与合并；锦标赛和循环直到完成强调迭代收敛。下图用于快速选型，不代表运行时只有三种固定实现。
 
 ![动态子 Agent 的三类编排形状：分类路由按类别选择角色；并行扇出后由 verifier 交叉验证；迭代收敛通过去重、停止条件和最大轮数逐步缩小工作集](../public/imgs/54-framework-three-orchestration-patterns.png)
 
@@ -329,128 +323,61 @@ middleware = CodeInterpreterMiddleware(
 
 `responseSchema` 也不是中间件参数，它属于每次 `task()` 的调用契约。Schema 只保证返回形状可组合，不保证结论正确。汇总时仍要保留来源文件、行号、证据、复核状态和稳定 ID，方便去重与回查。
 
-## 5. 并发、失败、成本、状态与权限边界
+## 5. 让主 LLM 写出可检查的编排代码
 
-Dynamic Subagents 能在几行代码里启动很多子 Agent。调用量也会跟着放大，所以并发、失败、成本、状态和权限要在运行前定好边界。
+前面的 JavaScript 都是为了讲清控制流而整理的片段。真正运行时，主 LLM 根据当前请求现场写代码。只说“批量审查这些文件”，模型就要自己猜角色、批次、失败处理和返回结构，生成的 JavaScript 很容易漂移。
 
-### 并发：分批扇出，不要一次启动全部任务
+一个可执行的请求至少要说清下面五件事：
 
-不要依赖运行时内部上限替你控制业务并发。批次大小应同时考虑模型服务限流、子 Agent 工具容量、`timeout` 和预算。先从小批次开始，再用 Trace 观察延迟与失败率。
+| 信息 | 需要写明的内容 |
+|---|---|
+| 输入范围 | 哪些对象可以处理，哪些必须排除；没有 PTC 时直接给出文件列表 |
+| 可用角色 | 列出真实的 `subagentType` 及分工，并禁止自创角色名 |
+| 调度规则 | 批次大小、复核范围、最多轮数，以及单项失败后是继续还是停止 |
+| 返回契约 | 哪些 `task()` 需要 `responseSchema`，最终结果保留哪些字段 |
+| 停止条件 | 什么状态算完成，达到调度上限或输入不足时怎么返回 |
 
-```typescript
-const batchSize = 8;
-const reviews = [];
-for (let i = 0; i < files.length; i += batchSize) {
-  const batch = files.slice(i, i + batchSize);
-  reviews.push(...await Promise.all(batch.map(reviewFile)));
-}
-```
-
-这不是让八个 Agent 共享一个推理循环，而是同时启动八个彼此独立的完整循环。
-
-### 失败：保留成功结果，并明确失败清单
-
-`Promise.all` 中任一 Promise 抛错，整批等待会直接失败。批量任务应该在单项边界捕获异常，返回 `{ ok, item, value | error }` 这样的统一结构。汇总时分别统计成功、失败和待重试项；重试还要设置次数上限，并只对幂等任务启用自动重试。
-
-不要把“返回空 findings”与“子 Agent 执行失败”合并成同一种结果。前者表示完成审查但没有发现，后者表示没有得到可用判断。
-
-### 成本：`task()` 是完整 Agent 循环
-
-总成本不只等于调度次数，还取决于每个子 Agent 内部的模型轮次、读取文件数量和工具调用。可以用一个简单预算估算：
+以“批量代码审查 + 交叉验证”为例，可以这样向主 LLM 下达任务。使用时把 `[files]` 换成实际路径列表：
 
 ```text
-总模型工作量 ≈ 调度数 × 每个子 Agent 的平均推理轮次 + 主 Agent 汇总轮次
+运行一个 Dynamic Subagents workflow，使用 eval 编写并执行 JavaScript。
+
+输入范围：只处理我列出的文件：[files]，不扩展到其他目录。
+可用角色：reviewer 提出候选问题；verifier 独立确认或反驳。不得自创角色名。
+
+编排要求：
+1. task() 只使用 description、subagentType 和可选的 responseSchema。
+2. reviewer 每批最多处理 4 个文件；单个文件失败时记录错误，继续处理其余文件。
+3. 分别定义 JSON Schema：reviewer 返回 ID、文件、行号和证据；verifier 返回 ID、是否确认和理由。
+4. 候选按稳定 ID 去重后再交给 verifier，最多复核 20 条；超出部分记入未处理数量。
+5. 最后只返回已确认问题、被反驳数、失败清单和未处理数。
+
+如果输入列表缺失、角色不存在或无法满足上述约束，停止并说明原因，不要自行补全。
 ```
 
-先用确定性工具发现和过滤输入，只把需要判断的对象交给子 Agent；先做便宜分类，再对少量高风险项深审；限制每轮输入数和迭代轮数。这些优化通常比单纯提高并发更有效。
+这段提示词也不会让模型突然变得可靠。它只是把原本隐藏的决策变成可检查条件。调试时，可以先要求模型“只输出 JavaScript 草案，不执行 `eval`”，确认下面几项后再运行：
 
-### 状态：Interpreter 变量持久化，不等于子 Agent 会话持久化
+- `task()` 没有多余字段，`subagentType` 都来自已配置角色。
+- 输入集合没有漏项或越界，批次、复核数和循环都有上限。
+- 单项失败有独立分支，不会把“无发现”误当成“执行失败”。
+- 使用 `responseSchema` 后直接读取对象，没有多做一次 `JSON.parse`。
+- 最终返回值保留来源、证据和未处理项，可以回到输入复核。
 
-`mode="thread"` 可以让 JavaScript 变量跨 Agent turn 恢复。它适合保留 `files`、`findings` 或去重集合，但不意味着上一次 `task()` 启动的子 Agent 还能继续接收消息。下一次调度仍是新的运行，任务描述必须自包含。
+如果不想分两步，可以对 `eval` 本身设置审批，在执行前查看模型生成的代码。`task()` 发生在已经开始的 `eval` 内部，父 Agent 针对普通 `task` Tool 的 `interrupt_on` 不会在每次动态调度前重复触发。
 
-只在当前请求内编排时，`mode="turn"` 可以减少旧变量干扰。确实需要跨 turn 保留 JavaScript 数据时，再使用默认的 `mode="thread"`，并确认快照大小没有超过 `max_snapshot_bytes`。
+![可用作提示词和生成后检查清单的 Dynamic Subagents 边界：限制输入与批次，区分成功、失败和结构化结果，同时检查调度规模、Interpreter 状态、子 Agent 权限和审批位置](../public/imgs/55-flow-dynamic-subagents-guardrails.png)
 
-### 权限与审批：父 Agent 的 `interrupt_on` 不会逐次覆盖动态调度
-
-`task()` 在已经开始的 `eval` 调用内部调度子 Agent，不经过父 Agent 普通 `task` Tool 的逐次调用路径。因此，父 Agent 为普通 `task` 配置的 `interrupt_on` 不会在每次动态调度前重复触发。
-
-如果启动子 Agent 前必须人工确认，可以选择：
-
-1. 对 `eval` 本身设置审批，把整批动态编排作为一次审批单元。
-2. 使用普通 `task` Tool，让每次委派回到父级调用路径。
-3. 在声明式子 Agent 自己的配置中加入审批中间件，保护它内部的高风险工具。
-4. 设置 `CodeInterpreterMiddleware(subagents=False)`，禁止解释器内的动态调度，同时保留普通 `task` Tool。
-
-每个子 Agent 只应获得完成角色任务所需的工具和文件权限。让 reviewer 读取代码，不代表它需要写文件、执行任意 Shell 或访问生产密钥。动态编排扩大的是调用规模，不应该顺带扩大能力范围。
-
-![Dynamic Subagents 的运行边界：输入先限批次，单项失败被隔离，结构化结果进入汇总；外层同时约束模型成本、Interpreter 状态、子 Agent 工具权限，并把 eval 或普通 task 设为清晰审批边界](../public/imgs/55-flow-dynamic-subagents-guardrails.png)
-
-## 6. 运行“批量代码审查 + 交叉验证”实验
-
-选择一个包含 4 到 8 个源文件的小目录。为了让实验结果可复核，目录中最好同时包含：明显的输入校验、一个需要判断上下文的可疑点，以及几个没有问题的文件。
-
-向 Agent 提交下面的任务：
-
-```text
-运行一个代码审查 workflow：
-1. 找出目标目录中的源文件；
-2. 使用 reviewer 分批审查每个文件；
-3. 把所有候选问题交给 verifier 独立复核；
-4. 只汇总已确认问题，同时列出失败和被反驳的数量。
-```
-
-模型生成的 JavaScript 和自然语言措辞不会完全一致。不要匹配整段答案，检查这些可观察行为：
-
-1. 主 Agent 使用 `eval`，并在代码中调用 `task()`，而不是逐个调用普通 `task` Tool。
-2. 所有目标文件都进入 reviewer，批次大小没有超过设定值。
-3. reviewer 返回符合 `responseSchema` 的候选列表，代码没有再次 `JSON.parse`。
-4. 每个候选发现都进入 verifier，已反驳项不会出现在最终确认列表。
-5. 单个文件失败时，成功结果仍被保留，最终报告单独列出失败对象。
-6. 最终结果包含文件、行号、证据和复核理由，可以回到源码检查。
-7. Trace 或事件记录能区分主 Agent、`eval` 和各次子 Agent 调度，调用数量与预算一致。
-
-代表性的汇总形状可以是：
-
-```text title="代表性结果"
-审查文件：6
-候选问题：4
-已确认：2
-已反驳：2
-执行失败：0
-```
-
-数字取决于你的代码和模型，不是固定答案。实验的重点是证明：输入覆盖、两阶段调度、结构化合并、失败隔离和审批边界都符合设计。
-
-### 选型检查
-
-在真实任务中启用 Dynamic Subagents 前，逐项回答：
-
-- 输入是否可以组成明确的集合或批次？
-- 每个子任务是否值得启动完整 Agent 循环？
-- 任务更适合分类路由、并行扇出还是迭代收敛？
-- 哪些中间结果必须用 `responseSchema` 约束？
-- 单批并发、总调度数、重试和最大轮数分别是多少？
-- 单项失败后是继续、重试还是终止整批？
-- JavaScript 状态需要保留到 call、turn 还是 thread？
-- 审批应发生在每次普通委派、整次 `eval`，还是子 Agent 内部工具？
-
-如果任务只有一次明确委派，普通 `task` Tool 通常更清楚。如果任务没有可枚举的工作集，也没有可写成代码的路由或停止条件，不要为了“多 Agent”而引入动态编排。
+提示词能减少漂移，不能代替模型选型和真实任务测试。如果模型多次生成语法错误、自创角色或漏掉输入，换一个代码生成和工具调用更稳定的模型，比继续堆叠提示词更有效。
 
 ## 本章小结
 
-- Dynamic Subagents 使用 Interpreter 中的 JavaScript 编排已配置子 Agent。
-- 普通 `task` Tool 适合单次委派；`task()` 适合批量路由、并行扇出和多阶段组合。
-- 每次 `task()` 都运行一个完整的子 Agent 循环，成本和权限要按调度规模计算。
-- `description` 应自包含，并优先传文件路径等定位信息，不复制大段文件内容。
-- “workflow” 是帮助模型选择动态编排的提示信号，不是 API 开关。
-- 常见形状包括分类并处理、扇出汇总、对抗复核、生成筛选、锦标赛和循环直到完成。
-- `responseSchema` 让结果直接成为可组合的 JavaScript 值，不需要再次 `JSON.parse`。
-- `task()` 只有 `description`、`subagentType` 和可选的 `responseSchema` 三个字段。
+- Dynamic Subagents 使用 Interpreter 中的 JavaScript 编排已配置子 Agent。普通 `task` Tool 适合单次委派，`task()` 适合批量路由和多阶段组合。
+- `task()` 只有 `description`、`subagentType` 和可选的 `responseSchema` 三个字段；设置 Schema 后直接读取 JavaScript 对象。
+- 每次 `task()` 都运行完整的子 Agent 循环。`description` 要自包含，并优先传文件路径等定位信息。
+- “workflow” 是帮助模型选择动态编排的提示信号，不是 API 开关。常见形状包括分类、扇出、复核、筛选、锦标赛和迭代收敛。
 - 动态 JavaScript 由主 LLM 按请求生成，模型需要同时具备稳定的工具调用和代码生成能力。
 - `CodeInterpreterMiddleware` 的内存、超时、输出、PTC、状态和 `subagents` 配置会继续约束动态编排。
-- 并发应分批限制；单项失败、空结果和被反驳结果必须分开记录。
-- `mode="thread"` 保存的是 Interpreter 变量，不会把一次子 Agent 调度变成可续聊会话。
-- 动态 `task()` 不逐次执行父级普通 `interrupt_on`；需要逐次审批时使用普通 `task`，或关闭 `subagents` 动态桥。
+- 提示词要给出输入范围、可用角色、调度规则、返回契约和停止条件。上线前还要检查模型生成的 JavaScript。
 
 ## 参考资料
 
