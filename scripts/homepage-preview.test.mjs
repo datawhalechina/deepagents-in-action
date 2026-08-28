@@ -163,6 +163,8 @@ test('Chapter 16 publishes its PDF and uses the dynamic subagents template', asy
   assert.deepEqual(chapter.slides, [{
     id: 'ch16',
     title: 'Lec 20: Dynamic Subagents — 用代码编排多个 Agent',
+    bilibili: 'https://www.bilibili.com/video/BV17btw6uEJm/',
+    xhs: 'https://xhslink.cn/o/1IlBOSMZg1j',
   }]);
   assert.equal(chapter.published, true);
   assert.deepEqual(chapterExperiments['ch16-dynamic-subagents'], {
