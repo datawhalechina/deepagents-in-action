@@ -544,6 +544,8 @@ PolicyWrapper.write(...)
 
 包装器必须保持 Backend 协议的返回类型和路径语义。策略拒绝应返回相应结果对象中的 `error`，让文件工具得到可处理的结构化失败；策略放行时则原样返回内部 Backend 的结果。
 
+> **CompositeBackend 路由内的路径语义**：如果把包装器放在 `routes={"/skills/": PolicyWrapper(...)}` 内部，`CompositeBackend` 会先剥离 `/skills/`，因此包装器看到的是 `/test-skill/SKILL.md`，而不是 `/skills/test-skill/SKILL.md`。此时 `deny_prefixes=["/skills/"]` 不会命中。若目标只是让整条 `/skills/**` 路由只读，优先在 Agent 层使用 `FilesystemPermission(paths=["/skills/**"], operations=["write"], mode="deny")`；确实需要内部动态策略时，可用 `deny_prefixes=["/"]` 覆盖该路由 Backend 的全部写入。
+
 这段代码尚未实现 `delete()`。如果所用 Backend 和工具集支持删除，应按同一模式增加 `delete()` 与 `DeleteResult`，否则删除操作可能绕过这项策略。
 
 | 需求 | 推荐机制 |
