@@ -61,6 +61,12 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
 - [AgentSeek 生命周期工作流](https://datawhalechina.github.io/deepagents-in-action/chapters/pre01-agentseek-create/)：创建 DeepAgents 模板，检查环境并启动前后端
 - [`npx skills` 安装开发技能](https://datawhalechina.github.io/deepagents-in-action/chapters/pre02-agentseek-skills/)：为 AI 编码助手加载 LangChain 工程经验
 
+### 版本更新 — 理解变化，再决定如何升级
+
+版本更新不按功能逐条抄录，而是解释默认行为为什么改变、哪些应用会受影响，以及如何用评测和 Trace 验证迁移结果：
+
+- [Deep Agents v0.7：更轻、更透明、更可配置的 Harness](https://datawhalechina.github.io/deepagents-in-action/chapters/release-v0-7/)：正确理解 65% 基础输入 Token 降幅，判断是否恢复 Todo，掌握 Middleware 原位覆盖、文件工具语义变化与 v0.6→v0.7 迁移路径。
+
 ### 按章节开始实验
 
 已有适配模板的章节卡片会标出 AgentSeek 模板和适配理由；README 也按同样的章节分区列出。第 6、8、9、11 章需要在模板基础上按正文补充本章能力，具体步骤以章节内容为准；第 14 章使用 Streaming 专用模板，第 15、16 章共用 Dynamic Subagents Pattern Lab。

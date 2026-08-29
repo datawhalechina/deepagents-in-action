@@ -223,5 +223,15 @@
     ],
     "published": true,
     "pubDate": "2026-08-21"
+  },
+  "release-v0-7": {
+    "title": "Deep Agents v0.7：更轻、更透明、更可配置的 Harness",
+    "chapter": 0,
+    "section": "版本更新",
+    "order": 19,
+    "description": "从 65% 基础输入 Token 降幅出发，理解精简默认 Prompt、Todo 改为可选、Middleware 原位覆盖和文件工具语义变化，并完成 v0.6 到 v0.7 的可验证迁移。",
+    "slides": [],
+    "published": true,
+    "pubDate": "2026-08-29"
   }
 }

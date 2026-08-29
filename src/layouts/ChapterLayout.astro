@@ -30,15 +30,20 @@ const sectionColors: Record<string, string> = {
   '认知篇': 'bg-ink text-white',
   '核心篇': 'bg-gold text-white',
   '准备篇': 'bg-emerald-600 text-white',
+  '版本更新': 'bg-violet-700 text-white',
   '进阶篇': 'bg-accent text-white',
   '实战篇': 'bg-ink-light text-white',
 };
 const tagClass = sectionColors[section] || 'bg-ink text-white';
 const isExtra = section === '准备篇';
+const isRelease = section === '版本更新';
+const isUnnumbered = isExtra || isRelease;
+const releaseMatch = isRelease && chapterId?.match(/^release-v(\d+)-(\d+)/);
+const releaseLabel = releaseMatch ? `v${releaseMatch[1]}.${releaseMatch[2]}` : 'Release';
 const hasXhs = !!xhs || slides.some(s => s.xhs);
 ---
 
-<BaseLayout title={`${isExtra ? '' : `第 ${chapter} 章：`}${title} — Deep Agents 实战`} description={description}>
+<BaseLayout title={`${isUnnumbered ? '' : `第 ${chapter} 章：`}${title} — Deep Agents 实战`} description={description}>
   <Header />
   <article class="max-w-3xl mx-auto px-6 py-16">
     <ContentsRail headings={headings} />
@@ -47,7 +52,11 @@ const hasXhs = !!xhs || slides.some(s => s.xhs);
         <span class={`inline-block text-[10px] font-mono font-medium tracking-wider px-2.5 py-1 rounded ${tagClass}`}>
           {section}
         </span>
-        {!isExtra && <span class="text-xs text-ink-muted/40 font-mono">EP.{String(chapter).padStart(2, '0')}</span>}
+        {isRelease ? (
+          <span class="text-xs text-ink-muted/40 font-mono">{releaseLabel}</span>
+        ) : !isExtra && (
+          <span class="text-xs text-ink-muted/40 font-mono">EP.{String(chapter).padStart(2, '0')}</span>
+        )}
       </div>
       <h1 class="text-3xl md:text-4xl font-black font-sans tracking-tight leading-tight text-ink">
         {title}
@@ -64,7 +73,7 @@ const hasXhs = !!xhs || slides.some(s => s.xhs);
       <slot />
     </Prose>
 
-    {slides.length > 0 && !isExtra && (
+    {slides.length > 0 && !isUnnumbered && (
       <PdfDownload slides={slides} />
     )}
 
