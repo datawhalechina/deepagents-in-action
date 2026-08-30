@@ -8,13 +8,19 @@ Deep Agents v0.7 撤掉了一批不再普遍必要的脚手架：默认基础提
 
 架构上的变化很清楚：默认层更薄，原先藏在框架里的策略需要由应用显式选择。
 
-本章以 [`deepagents==0.7.0` changelog](https://docs.langchain.com/oss/python/releases/changelog#deepagents-v0-7-0) 和 [Deep Agents v0.7 发布博客](https://www.langchain.com/blog/deep-agents-v0-7)为基线，并继续核对其中指向的评测报告、官方文档和实现 PR。重点是识别受影响的应用、决定是否恢复旧默认值，以及验证升级后的行为。
+本章以 [`deepagents==0.7.0` changelog](https://docs.langchain.com/oss/python/releases/changelog#deepagents-v0-7-0) 和 [Deep Agents v0.7 发布博客](https://www.langchain.com/blog/deep-agents-v0-7)为首发行为基线，并继续核对其中指向的评测报告、官方文档和实现 PR。重点是识别受影响的应用、决定是否恢复旧默认值，以及验证升级后的行为。
 
-如果要严格复现本章行为，可以先在独立分支或临时环境固定版本：
+日常学习和迁移应安装当前 0.7.x 补丁版本，同时限制在同一个 minor 版本内：
+
+```bash
+uv add --upgrade "deepagents>=0.7,<0.8"
+uv run python -c "import deepagents; print(deepagents.__version__)"
+```
+
+提交项目的 `uv.lock`，或保存等价的环境快照，才能记录实际解析到的精确版本。如果要逐项复现 v0.7.0 首发 changelog，再在独立临时环境固定版本：
 
 ```bash
 uv add "deepagents==0.7.0"
-uv run python -c "import deepagents; print(deepagents.__version__)"
 ```
 
 不要直接在生产环境原地升级。v0.7 同时改变默认 Middleware、Backend 兼容接口和文件工具输出，单看“能否成功 import”无法证明迁移完成。
@@ -433,9 +439,9 @@ v0.7 提供 Nemotron 3 Ultra 的内置 Harness profile，覆盖 NVIDIA / ChatNVI
 
 保存成功率、输入 / 输出 Token、模型轮次、工具调用数、子 Agent 数、延迟和成本。
 
-### 第二步：在隔离环境固定 v0.7.0
+### 第二步：在隔离环境升级到当前 0.7.x
 
-先验证发布行为，再决定使用哪个最新 0.7.x 补丁版本。不要让“升级 Deep Agents”与“同时升级模型、提示词和业务工具”混在同一批变更里。
+使用 `deepagents>=0.7,<0.8` 获取当前补丁版本，并锁定项目的依赖快照；只有排查某项首发行为时，才用 `==0.7.0` 单独复现。不要让“升级 Deep Agents”与“同时升级模型、提示词和业务工具”混在同一批变更里。
 
 ### 第三步：迁移会直接报错的 API
 

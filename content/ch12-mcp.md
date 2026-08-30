@@ -10,7 +10,7 @@
 4. 理解多 Server、HTTP、会话、错误与结构化结果
 5. 为 MCP 工具补上命名、审批、子 Agent 和进程安全边界
 
-本章原始示例写于 Deep Agents 0.6 阶段，现已把课程运行基线更新为 Python 3.11+、`deepagents==0.7.8`、`langchain-mcp-adapters>=0.3,<0.4`、`mcp>=1.28,<2`。MCP 依赖继续保留原有兼容上界，避免在学习 Deep Agents 0.7 的同时切换另一套尚未验证的 MCP API。
+本章原始示例写于 Deep Agents 0.6 阶段，现已把课程运行基线更新为 Python 3.11+、`deepagents>=0.7,<0.8`、`langchain-mcp-adapters>=0.3,<0.4`、`mcp>=1.28,<2`。安装时会解析当前 0.7.x 补丁版本，项目应提交 lockfile 或保存环境快照。MCP 依赖继续保留原有兼容上界，避免在学习 Deep Agents 0.7 的同时切换另一套尚未验证的 MCP API。
 
 ## 1. MCP 在 Deep Agents 中的位置
 
@@ -67,7 +67,7 @@ MCP 不只有工具。先区分三个核心概念，才能避免把所有能力�
 mkdir deepagents-mcp-demo
 cd deepagents-mcp-demo
 uv init --bare --python 3.11
-uv add "deepagents==0.7.8" "langchain-mcp-adapters>=0.3,<0.4" "mcp>=1.28,<2" langchain-openai
+uv add --upgrade "deepagents>=0.7,<0.8" "langchain-mcp-adapters>=0.3,<0.4" "mcp>=1.28,<2" langchain-openai
 ```
 
 如果使用 `pip`，等价命令是：
@@ -75,7 +75,7 @@ uv add "deepagents==0.7.8" "langchain-mcp-adapters>=0.3,<0.4" "mcp>=1.28,<2" lan
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install "deepagents==0.7.8" "langchain-mcp-adapters>=0.3,<0.4" "mcp>=1.28,<2" langchain-openai
+python -m pip install --upgrade "deepagents>=0.7,<0.8" "langchain-mcp-adapters>=0.3,<0.4" "mcp>=1.28,<2" langchain-openai
 ```
 
 本章最终得到三个文件：

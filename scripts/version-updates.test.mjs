@@ -10,6 +10,14 @@ const chapters = JSON.parse(
 const publishedCourseChapterCount = Object.entries(chapters).filter(
   ([id, chapter]) => id.startsWith('ch') && chapter.published,
 ).length;
+const releaseGuide = readFileSync(
+  new URL('../content/release-v0-7.md', import.meta.url),
+  'utf8',
+);
+const mcpChapter = readFileSync(
+  new URL('../content/ch12-mcp.md', import.meta.url),
+  'utf8',
+);
 
 before(() => {
   const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
@@ -60,6 +68,13 @@ test('v0.7 release page uses release metadata instead of numbered-chapter metada
   assert.match(page, />\s*v0\.7\s*</);
   assert.doesNotMatch(page, /第 0 章/);
   assert.doesNotMatch(page, /EP\.00/);
+});
+
+test('general v0.7 install guidance follows current patches within the minor release', () => {
+  assert.match(releaseGuide, /uv add --upgrade "deepagents>=0\.7,<0\.8"/);
+  assert.match(releaseGuide, /uv add "deepagents==0\.7\.0"/);
+  assert.match(mcpChapter, /deepagents>=0\.7,<0\.8/);
+  assert.doesNotMatch(mcpChapter, /deepagents==0\.7\.8/);
 });
 
 test('v0.7 update card publishes the PDF and reserves future social links', () => {
