@@ -245,10 +245,10 @@ agent = create_deep_agent(
         default=StateBackend(),
         routes={
             "/memories/": StoreBackend(
-                namespace=assistant_namespace,
+                namespace=lambda rt: (*assistant_namespace(rt), "memories"),
             ),
             "/skills/": StoreBackend(
-                namespace=assistant_namespace,
+                namespace=lambda rt: (*assistant_namespace(rt), "skills"),
             ),
         },
     ),
@@ -271,10 +271,10 @@ agent = create_deep_agent(
         default=StateBackend(),
         routes={
             "/memories/": StoreBackend(
-                namespace=user_namespace,
+                namespace=lambda rt: (*user_namespace(rt), "memories"),
             ),
             "/skills/": StoreBackend(
-                namespace=user_namespace,
+                namespace=lambda rt: (*user_namespace(rt), "skills"),
             ),
         },
     ),
@@ -683,18 +683,42 @@ agent = create_deep_agent(
 }
 ```
 
-旧版本中 `content` 可能是 `list[str]`，但该格式只是向后兼容。不要手写底层 JSON，Agent 外部（后端服务、初始化脚本）预填记忆时应使用 `create_file_data` 辅助函数：
+旧版本中 `content` 可能是 `list[str]`，但该格式只是向后兼容。不要手写底层 JSON，Agent 外部（后端服务、初始化脚本）预填记忆时应使用 `create_file_data` 辅助函数。
+
+外部写入时，Store key 取决于 `StoreBackend` 是否挂载在 `CompositeBackend` 路由下：
+
+| Backend 配置 | Agent 可见路径 | Store key |
+|---|---|---|
+| 直接使用 `StoreBackend` | `/skills/langgraph-docs/SKILL.md` | `/skills/langgraph-docs/SKILL.md` |
+| 挂载到 `routes={"/skills/": StoreBackend(...)}` | `/skills/langgraph-docs/SKILL.md` | `/langgraph-docs/SKILL.md` |
+
+下面按 `CompositeBackend` 路由方式预填记忆和 Skill。两条路由使用不同 namespace，既保留各自的存储边界，也避免相同相对 key 互相覆盖：
 
 ```python
+from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 from deepagents.backends.utils import create_file_data
 from langgraph.store.memory import InMemoryStore
 
 store = InMemoryStore()
+memory_namespace = ("my-agent", "memories")
+skill_namespace = ("my-agent", "skills")
+
+backend = CompositeBackend(
+    default=StateBackend(),
+    routes={
+        "/memories/": StoreBackend(
+            namespace=lambda _rt: memory_namespace,
+        ),
+        "/skills/": StoreBackend(
+            namespace=lambda _rt: skill_namespace,
+        ),
+    },
+)
 
 # 预填 Agent 记忆
 store.put(
-    ("my-agent",),                          # namespace
-    "/memories/AGENTS.md",                  # 文件路径
+    memory_namespace,
+    "/AGENTS.md",  # Agent 可见路径是 /memories/AGENTS.md
     create_file_data("""## Response style
 - Keep responses concise
 - Use code examples where possible
@@ -703,8 +727,8 @@ store.put(
 
 # 预填一个 Skill
 store.put(
-    ("my-agent",),
-    "/skills/langgraph-docs/SKILL.md",
+    skill_namespace,
+    "/langgraph-docs/SKILL.md",  # Agent 可见路径会补回 /skills/
     create_file_data("""---
 name: langgraph-docs
 description: Fetch relevant LangGraph documentation to provide accurate guidance.
@@ -716,6 +740,8 @@ Use the fetch_url tool to read https://docs.langchain.com/llms.txt, then fetch r
 """),
 )
 ```
+
+如果这里把 key 写成 `/skills/langgraph-docs/SKILL.md`，`CompositeBackend` 在返回结果时还会补一次 `/skills/`，最终暴露成错误的 `/skills/skills/langgraph-docs/SKILL.md`。反过来，如果 Agent 直接使用 `StoreBackend` 而没有路由层，就应保留完整虚拟路径。
 
 > 使用 LangSmith 部署时，也可以通过 SDK 远程写入：`await client.store.put_item(namespace, key, value)`
 
