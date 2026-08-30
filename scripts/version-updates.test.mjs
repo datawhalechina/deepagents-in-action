@@ -38,6 +38,17 @@ test('homepage renders v0.7 in a dedicated release section without changing the 
   );
 });
 
+test('homepage positions 0.5 as the course origin and 0.7 as the current baseline', () => {
+  const homepage = readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8');
+
+  assert.match(homepage, /0\.5 起步 · 当前基线 0\.7/);
+  assert.match(homepage, /从 0\.5 \/ 0\.6 迁移到当前 0\.7 基线/);
+  assert.doesNotMatch(homepage, /Deep Agents SDK ≥ 0\.5/);
+  assert.match(chapters['release-v0-7'].description, /从 0\.5、0\.6 一路跟学/);
+  assert.match(chapters['ch03-virtual-filesystem'].description, /v0\.7 的七个文件工具/);
+  assert.match(chapters['ch04-task-planning'].description, /按需启用 TodoListMiddleware/);
+});
+
 test('v0.7 release page uses release metadata instead of numbered-chapter metadata', () => {
   const page = readFileSync(
     new URL('../dist/chapters/release-v0-7/index.html', import.meta.url),

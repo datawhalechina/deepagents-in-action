@@ -94,9 +94,9 @@ agent = create_deep_agent(
 |---|---|---|
 | `model` | 模型实例（如 `ChatOpenAI`）或 `provider:model_name` 字符串 | `claude-sonnet-4-6`（可覆盖） |
 | `tools` | 自定义工具函数列表 | `[]` |
-| `system_prompt` | 系统提示词，定义 Agent 的角色和行为 | 内置默认提示词 |
+| `system_prompt` | 系统提示词，定义 Agent 的角色和行为 | v0.7 默认基础提示词为空 |
 
-注意，除了你传入的 `tools`，Deep Agent 还会自动附带一整套内置工具（文件系统、任务规划、子 Agent），这正是 Harness 的价值——你不需要手动配置这些。
+注意，除了你传入的 `tools`，Deep Agent 还会提供文件系统和子 Agent 等 Harness 能力。v0.7 不再默认启用任务规划；需要 `write_todos` 时，应显式加入 `TodoListMiddleware`。这样短任务不用为计划工具和提示词支付固定成本，长任务则可以主动选择这层脚手架。
 
 ### `agent.invoke()` 的输入输出
 
@@ -247,6 +247,7 @@ def internet_search(
 ```python
 from langchain_openai import ChatOpenAI
 from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
 
 # 使用硅基流动接入模型（当前免费的 Qwen2.5-7B 即可跑通，复杂任务可改用 GLM-5.2）
 model = ChatOpenAI(
@@ -265,10 +266,11 @@ agent = create_deep_agent(
     model=model,
     tools=[internet_search],
     system_prompt=research_instructions,
+    middleware=[TodoListMiddleware()],
 )
 ```
 
-注意系统提示词中包含了工具使用说明——这不是必须的（Agent 能从 docstring 理解工具），但显式说明可以让 Agent 的行为更可预测。
+系统提示词只需要说明研究目标、证据要求和输出边界。`internet_search` 的参数与接口已经由工具 Schema 表达，不必再复制一遍通用使用教程；只有当业务确实要求特定调用顺序或来源范围时，才补充相应规则。
 
 ### Step 4：运行 Agent
 
@@ -284,7 +286,7 @@ print(result["messages"][-1].content)
 
 当你调用 `agent.invoke()` 时，Deep Agent 会自动执行一系列操作。这正是它作为 Harness 的价值所在——你只写了几行代码，但 Agent 背后的工作流程远比你看到的复杂：
 
-1. **规划任务** — 调用内置的 `write_todos` 工具，把“研究 LangGraph”拆解为多个子步骤
+1. **规划任务** — 因为示例显式启用了 `TodoListMiddleware`，Agent 可以调用 `write_todos`，把“研究 LangGraph”拆解为多个子步骤
 2. **搜索信息** — 调用你提供的 `internet_search` 工具，执行多次网络搜索
 3. **管理上下文** — 调用内置的 `write_file` 将大量搜索结果写入虚拟文件系统，避免上下文溢出
 4. **委派子任务**（如需要）— 调用内置的 `task` 工具，将复杂子任务委派给专门的子 Agent
@@ -293,6 +295,9 @@ print(result["messages"][-1].content)
 这个过程中，Agent 可能调用了 10+ 次工具，但你只需要一次 `invoke()` 调用。
 
 ![agent.invoke() 背后发生了什么？规划任务 → 搜索信息 → 管理上下文 → 委派子任务（如需要）→ 综合报告，你只写了 1 行调用，Agent 自动完成 10+ 次工具调用](../public/imgs/05-flowchart-agent-workflow.png)
+
+> [!NOTE]
+> **v0.7 提醒**：图中的规划流程对应“已启用 Todo”的复杂研究任务。没有传入 `TodoListMiddleware` 时，Agent 不会获得 `write_todos` 和 `todos` 状态；即使已经启用，模型也会根据任务决定是否实际调用工具，不能把图中的每一步当成固定执行协议。
 
 ## 模型选择
 

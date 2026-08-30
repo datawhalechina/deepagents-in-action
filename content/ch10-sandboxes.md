@@ -410,6 +410,8 @@ Auth Proxy 是“沙箱需要访问已认证服务”时比复制 API Key 更好
 
 普通 `BackendProtocol` 覆盖 `ls`、`read`、`write`、`edit`、`glob`、`grep`，可选 `delete`；要获得 `execute`，实现扩展后的 `SandboxBackendProtocol`。沙箱基类会在 `execute()` 上构建文件系统工具。
 
+v0.7 的工具语义在沙箱内同样成立：`write_file` 可以完整覆盖已有文件，`grep`、`glob` 可能返回带 `truncated=True` 的部分结果。沙箱限制的是副作用范围，不会把部分搜索结果自动变成全集；消费工具结果的 Agent 和宿主应用仍要检查分页与截断信息。
+
 实现规则：
 
 - `execute()` 运行 Shell 命令并返回结构化结果

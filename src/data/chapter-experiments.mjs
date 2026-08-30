@@ -23,7 +23,7 @@ export const chapterExperiments = {
   ),
   'ch04-task-planning': experiment(
     'deepagents/research',
-    '通过 Todo 面板观察计划生成与状态变化。',
+    '检查模板的 Todo 配置；启用后观察计划生成与状态变化。',
   ),
   'ch05-subagents': experiment(
     'deepagents/research',

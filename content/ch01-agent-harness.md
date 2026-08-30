@@ -59,7 +59,7 @@ agent = create_agent(
 
 这是最上面的一层，也是本系列课程的主角。
 
-**Agent Harness** 是一个"开箱即用"的 Agent 套件，它在 Runtime 和 Framework 的基础上，**预置了一整套经过验证的工具和能力**。
+**Agent Harness** 是一个"开箱即用"的 Agent 套件，它在 Runtime 和 Framework 的基础上，**预置了一整套经过验证的工具接口和中间件框架**。从 v0.7 开始，Harness 仍提供这些能力，但不再替所有应用默认打开每一种策略。
 
 这个概念怎么理解？打个比方：
 
@@ -71,8 +71,8 @@ Deep Agents 就是这样一个 Harness。它利用 LangChain 的核心构建块�
 
 | 能力 | 说明 |
 |---|---|
-| 虚拟文件系统 | `read_file`、`write_file`、`edit_file`、`ls`、`glob`、`grep` 六大文件操作工具 |
-| 任务规划 | `write_todos` 工具，让 Agent 能把复杂任务拆解为可追踪的步骤 |
+| 虚拟文件系统 | `read_file`、`write_file`、`edit_file`、`delete`、`ls`、`glob`、`grep` 七个文件操作工具 |
+| 任务规划 | 按需启用 `TodoListMiddleware` 后获得 `write_todos`，把复杂任务拆解为可追踪的步骤 |
 | 子 Agent 委派 | `task` 工具，让 Agent 能将子任务派发给专门的 Agent |
 | 长期记忆 | 基于 LangGraph Memory Store，支持跨对话的持久化记忆 |
 
@@ -86,7 +86,7 @@ Deep Agents 就是这样一个 Harness。它利用 LangChain 的核心构建块�
 |---|---|---|---|
 | Runtime（底层） | LangGraph | 持久化执行、流式输出、人机协作、状态管理 | 需要精细控制的长期运行 Agent 和复杂工作流 |
 | Framework（中间层） | LangChain | 模型抽象、工具接口、Agent 循环、中间件 | 快速上手、构建标准化的 Agent 应用 |
-| Harness（上层） | Deep Agents | 预置工具、提示词、子 Agent、长期记忆 | 复杂多步骤任务、自主性较高的 Agent |
+| Harness（上层） | Deep Agents | 预置工具接口、中间件框架、子 Agent、长期记忆 | 复杂多步骤任务、自主性较高的 Agent |
 
 三者不是互相替代的关系，而是自底向上层层构建。LangGraph 是底层运行时，LangChain 构建在 LangGraph 之上提供更高层抽象，Deep Agents 则在两者之上提供开箱即用的 Agent 能力。你可以根据需求选择在不同层次上工作——需要最大灵活性就直接用 LangGraph，需要快速开发就用 LangChain，需要解决复杂任务就用 Deep Agents。
 
@@ -204,6 +204,9 @@ Deep Agents 的解决方案是引入一个**虚拟文件系统**，让 Agent 像
 最后，我们用一张图来总结 Deep Agents 在整个 LangChain 生态中的位置：
 
 ![Deep Agents 技术全景图：顶层 Deep Agents (Harness) 包含文件系统工具、任务规划、子 Agent、可插拔存储后端、长期记忆五大模块；中间层 LangChain (Framework) 和 LangGraph (Runtime)；底层 LangSmith 提供可观测性](../public/imgs/04-framework-tech-panorama.png)
+
+> [!NOTE]
+> **v0.7 提醒**：这张图记录了课程早期的能力全景，能力本身仍然存在，但默认装配方式已经变化。当前文件工具包含新增的 `delete`；任务规划需要显式传入 `TodoListMiddleware`；默认基础提示词为空，业务提示词由应用自己定义。
 
 ## 小结
 

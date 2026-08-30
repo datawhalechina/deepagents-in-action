@@ -295,9 +295,11 @@ agentseek doctor --live
 Research what LangGraph 1.0 added vs 0.x. Cite sources.
 ```
 
+AgentSeek 的 `main` 模板会继续更新。运行前先查看生成项目的 Agent 配置：如果显式传入了 `TodoListMiddleware`，下面的界面和 Trace 应出现 Todo；如果没有启用，v0.7 不会提供 `write_todos`，缺少计划面板并不代表运行失败。
+
 运行正常时，你会看到：
 
-- Agent 创建研究计划并更新待办状态
+- 启用了 Todo 时，Agent 创建研究计划并更新待办状态
 - 模型选择委派时，界面展示研究子 Agent 的任务卡
 - 最终报告展示搜索得到的来源链接
 - 最终回答以 Markdown 渲染，并附带来源链接
@@ -312,7 +314,7 @@ Research what LangGraph 1.0 added vs 0.x. Cite sources.
 - `research-agent` 子 Agent
 - `ChatOpenAI` 模型调用
 - `tavily_search` 搜索调用
-- `write_todos`、文件工具和 middleware 包装层
+- 文件工具和 middleware 包装层；模板启用 Todo 时还会出现 `write_todos`
 
 本文使用 SiliconFlow GLM 的实测运行完成了 4/4 个任务，用时约 473.5 秒。该数字只说明 5–10 分钟的流程已经走通；你的模型、网络、搜索结果和 Run 数量可能不同。
 

@@ -29,7 +29,7 @@
     "chapter": 3,
     "section": "核心篇",
     "order": 3,
-    "description": "深入 Deep Agents 最核心的创新——虚拟文件系统。六大工具、存储后端、上下文自动管理，理解 Context Engineering 的工程实现。",
+    "description": "深入 Deep Agents 的虚拟文件系统。掌握 v0.7 的七个文件工具、存储后端和上下文自动管理。",
     "slides": [
       { "id": "ch03-1", "title": "Lec 04: 虚拟文件系统与上下文管理", "bilibili": "https://www.bilibili.com/video/BV1V4daBnEtP/", "xhs": "http://xhslink.com/o/22RS7gEmuHS" },
       { "id": "ch03-2", "title": "Lec 05: 可插拔存储后端", "bilibili": "https://www.bilibili.com/video/BV1zAouBhENj/", "xhs": "http://xhslink.com/o/7P4zwxyjyx" }
@@ -42,7 +42,7 @@
     "chapter": 4,
     "section": "核心篇",
     "order": 4,
-    "description": "深入 create_deep_agent() 的中间件架构：常驻层、条件层、用户自定义层三层结构，理解 write_todos 任务规划与 TodoListMiddleware 的工作原理。",
+    "description": "理解 create_deep_agent() 的默认层、条件层和应用选择层，按需启用 TodoListMiddleware，并掌握 write_todos 的工作原理。",
     "slides": [
       { "id": "ch04", "title": "Lec 06: 任务规划与中间件", "bilibili": "https://www.bilibili.com/video/BV1mkdwBoEDf/", "xhs": "http://xhslink.com/o/M00gPc2EBF" }
     ],
@@ -229,7 +229,7 @@
     "chapter": 0,
     "section": "版本更新",
     "order": 19,
-    "description": "从 65% 基础输入 Token 降幅出发，理解精简默认 Prompt、Todo 改为可选、Middleware 原位覆盖和文件工具语义变化，并完成 v0.6 到 v0.7 的可验证迁移。",
+    "description": "面向从 0.5、0.6 一路跟学的读者，理解精简默认 Prompt、Todo 改为可选、Middleware 原位置换和文件工具语义变化，完成到 v0.7 的可验证迁移。",
     "slides": [
       {
         "id": "release-v0-7",
