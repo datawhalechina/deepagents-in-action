@@ -77,12 +77,14 @@ test('general v0.7 install guidance follows current patches within the minor rel
   assert.doesNotMatch(mcpChapter, /deepagents==0\.7\.8/);
 });
 
-test('v0.7 update card publishes the PDF and reserves future social links', () => {
+test('v0.7 update card keeps the PDF and social links appear on both pages', () => {
   const slide = chapters['release-v0-7'].slides[0];
 
   assert.deepEqual(slide, {
     id: 'release-v0-7',
     title: 'Deep Agents v0.7 版本更新',
+    bilibili: 'https://www.bilibili.com/video/BV1gPtf6XELh/',
+    xhs: 'https://xhslink.cn/o/9ei512nEQph',
   });
   assert.equal(existsSync(new URL('../public/pdfs/release-v0-7.pdf', import.meta.url)), true);
 
@@ -92,8 +94,15 @@ test('v0.7 update card publishes the PDF and reserves future social links', () =
     homepage.indexOf('id="sec-认知篇"'),
   );
 
+  const releasePage = readFileSync(
+    new URL('../dist/chapters/release-v0-7/index.html', import.meta.url),
+    'utf8',
+  );
+
   assert.match(releaseCard, /href="\/deepagents-in-action\/pdfs\/release-v0-7\.pdf"/);
-  assert.match(releaseCard, /<span[^>]*>[\s\S]*?B站[\s\S]*?<\/span>/);
-  assert.match(releaseCard, /<span[^>]*>[\s\S]*?小红书[\s\S]*?<\/span>/);
-  assert.doesNotMatch(releaseCard, /href="[^"]*(?:bilibili|xiaohongshu|xhslink)/);
+  for (const html of [releaseCard, releasePage]) {
+    assert.match(html, /href="https:\/\/www\.bilibili\.com\/video\/BV1gPtf6XELh\/"/);
+    assert.match(html, /href="https:\/\/xhslink\.cn\/o\/9ei512nEQph"/);
+    assert.doesNotMatch(html, /即将上线/);
+  }
 });
