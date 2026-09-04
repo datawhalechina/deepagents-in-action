@@ -91,9 +91,11 @@ agent = create_deep_agent(
 
 `permissions` 同样需要特别小心：省略时继承父规则，显式提供后则整体替换而非叠加。如何为只读审计子 Agent 写出闭合的权限集，见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
 
+v0.7 对 Todo 有一个容易混淆的边界：默认 `general-purpose` 子 Agent 会继承主 Agent 显式传入的 `TodoListMiddleware`；`subagents=[...]` 声明的专业子 Agent 不会继承，需要在各自的 `middleware` 字段中启用。继承的是规划能力与配置，不是主 Agent 已经生成的任务清单；每个 Agent 仍维护自己的状态。
+
 ## General-purpose 子 Agent：默认的"万能助手"
 
-即使你不定义任何子 Agent，Deep Agents 也自带一个 **general-purpose 子 Agent**。它是唯一的例外——**继承主 Agent 的 system_prompt、tools、model 和 skills**。
+即使你不定义任何子 Agent，Deep Agents 也自带一个 **general-purpose 子 Agent**。它是唯一的例外——**继承主 Agent 的 system_prompt、tools、model 和 skills**；主 Agent 显式启用 Todo 时，它也会继承同一个 Todo Middleware 配置。
 
 > **示意片段**：`model` 和 `internet_search` 沿用应用已有定义，这里只演示不传 `subagents` 时的继承行为。
 
@@ -214,6 +216,7 @@ agent = create_deep_agent(
 import os
 from langchain_openai import ChatOpenAI
 from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
 
 model = ChatOpenAI(
     # 主 Agent 负责协调多个子 Agent，建议使用能力较强、支持工具调用的模型
@@ -245,6 +248,7 @@ subagents = [
 
 agent = create_deep_agent(
     model=model,
+    middleware=[TodoListMiddleware()],
     system_prompt="""你是一位项目协调者。面对复杂任务时：
 1. 先用 write_todos 制定计划
 2. 将数据收集委派给 data-collector
@@ -259,7 +263,7 @@ agent = create_deep_agent(
 
 执行流程：
 
-1. 主 Agent 制定计划（`write_todos`）
+1. 主 Agent 使用显式启用的 `write_todos` 制定计划
 2. `task(name="data-collector", task="搜索 AI Agent 领域的最新趋势")` → 返回数据摘要
 3. `task(name="data-analyzer", task="分析以下数据...")` → 返回关键发现
 4. `task(name="report-writer", task="根据以下发现撰写报告...")` → 返回报告

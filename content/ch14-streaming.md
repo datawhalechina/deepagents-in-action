@@ -184,6 +184,8 @@ def belongs_to_subagent(namespace: list[str] | tuple[str, ...], path: tuple[str,
 
 `values` 需要再多解释一句：它不是另一种消息流，也没有 Deep Agents 统一规定的业务字段。它发出的是当前 Agent state 的快照，字段取决于应用和中间件。例如启用了 Todo 或自定义状态时，快照可能包含消息列表、todos 或其他运行状态。把它用于调试和状态面板比较合适；主对话文本仍从 `messages` 读取，工具结果仍从 `tool_calls` 读取。
 
+v0.7 默认不再启用 Todo。前端如果依赖 `todos` 渲染进度，必须在 Agent 端显式传入 `TodoListMiddleware`，并让“没有该字段”成为合法状态；不要用一次没有 Todo 的快照判断流式连接失败。
+
 ```python
 stream = agent.stream_events(request, version="v3")
 

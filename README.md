@@ -6,7 +6,7 @@
 
 [![Bilibili](https://img.shields.io/badge/视频合集-B站-00A1D6?logo=bilibili&logoColor=white)](https://space.bilibili.com/28357052/lists/7757577?type=season)
 [![小红书](https://img.shields.io/badge/图文合集-小红书-FF2442?logo=xiaohongshu&logoColor=white)](https://www.xiaohongshu.com/collection/item/69c4fd2a0072000000000001?xhsshare=&appuid=65032a0300000000120065e8&apptime=1778152909&share_id=2abb593f301a4e60a6e71fbbee3c8967)
-[![Deep Agents](https://img.shields.io/badge/Deep%20Agents-≥%200.5-1C3C3C?logo=langchain&logoColor=white)](https://docs.langchain.com/oss/python/deepagents/overview)
+[![Deep Agents](https://img.shields.io/badge/Deep%20Agents-0.5%20%E2%86%92%200.7-1C3C3C?logo=langchain&logoColor=white)](https://docs.langchain.com/oss/python/deepagents/overview)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/内容协议-CC%20BY--NC--SA%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
@@ -25,8 +25,10 @@
 ---
 
 > [!WARNING]
-> 本课程讲授的 Deep Agents 版本为 **≥ 0.5**。
-> 部分进阶功能有更高最低版本要求，章节正文会单独标注；例如 `FilesystemPermission` 基础权限需要 `deepagents>=0.5.2`，`FilesystemBackend` 的 `virtual_mode` 参数需要 `deepagents>=0.5.0`，`interrupt` 权限模式需要 `deepagents>=0.6.8`。`RubricMiddleware` 仍为 Beta，需要 `deepagents>=0.6.5`，第 13 章以 `deepagents==0.7.1` 验证版本化行为；第 14 章以 `deepagents>=0.6` 引入的 Event Streaming v3 为主线。第 15 章的 Interpreters 仍为 Beta，需要 Python 3.11+ 与 `langchain-quickjs>=0.2.0`。
+> 本课程从 Deep Agents **0.5** 开始编写，保留了框架能力逐步完善的学习路径；当前推荐的学习与运行基线是 **0.7**。
+> 新读者建议直接使用最新的 0.7.x 补丁版本。已经跟随 0.5 或 0.6 章节学习的读者，请先阅读 [Deep Agents v0.7 版本更新](https://datawhalechina.github.io/deepagents-in-action/chapters/release-v0-7/)，完成迁移检查后再继续实验。旧章节和图片记录的是当时的默认行为，紧邻它们的“v0.7 提醒”代表当前用法。
+>
+> 部分进阶功能仍有各自的最低版本要求。例如 `FilesystemPermission` 基础权限需要 `deepagents>=0.5.2`，`interrupt` 权限模式需要 `deepagents>=0.6.8`。`RubricMiddleware` 仍为 Beta，第 13 章以 `deepagents==0.7.1` 验证版本化行为；第 14 章以 `deepagents>=0.6` 引入的 Event Streaming v3 为主线。第 15 章的 Interpreters 仍为 Beta，需要 Python 3.11+ 与 `langchain-quickjs>=0.2.0`。
 > 官方文档：[Deep Agents Overview](https://docs.langchain.com/oss/python/deepagents/overview)
 
 > [!NOTE]
@@ -60,6 +62,14 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
 
 - [AgentSeek 生命周期工作流](https://datawhalechina.github.io/deepagents-in-action/chapters/pre01-agentseek-create/)：创建 DeepAgents 模板，检查环境并启动前后端
 - [`npx skills` 安装开发技能](https://datawhalechina.github.io/deepagents-in-action/chapters/pre02-agentseek-skills/)：为 AI 编码助手加载 LangChain 工程经验
+
+### 版本更新 — 理解变化，再决定如何升级
+
+版本更新不按功能逐条抄录，而是解释默认行为为什么改变、哪些应用会受影响，以及如何用评测和 Trace 验证迁移结果：
+
+- [Deep Agents v0.7：更轻、更透明、更可配置的 Harness](https://datawhalechina.github.io/deepagents-in-action/chapters/release-v0-7/)：正确理解 65% 基础输入 Token 降幅，判断是否恢复 Todo，掌握 Middleware 原位覆盖、文件工具语义变化与 v0.6→v0.7 迁移路径。
+
+如果你从 0.5 或 0.6 一路学到这里，建议先读更新章，再升级依赖和重跑原有实验。v0.7 的默认 Harness 更轻，通用提示词不再重复占用每轮输入；Todo 从固定成本变成按任务选择；Middleware 可以在原位置换；文件工具新增删除能力，并明确覆盖、分页和截断语义。官方给出的 65% 是简单回合的基础输入降幅，不代表每个应用的总成本都会下降 65%。
 
 ### 按章节开始实验
 
@@ -120,7 +130,7 @@ agentseek create deepagents/content-builder --checkout main --no-input
 #### 第 4 章：[任务规划与分解 — 让 Agent 学会拆解复杂任务](https://datawhalechina.github.io/deepagents-in-action/chapters/ch04-task-planning/)
 
 - 模板：[`deepagents/research`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/research)
-- 实验：通过 Todo 面板观察 `write_todos` 的计划生成与状态变化。
+- 实验：使用显式启用 Todo 的研究模板，通过面板观察 `write_todos` 的计划生成与状态变化。
 
 ```bash
 agentseek create deepagents/research --checkout main --no-input

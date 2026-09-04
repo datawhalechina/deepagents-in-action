@@ -1,6 +1,6 @@
 # 第 4 章：任务规划与分解 — 让 Agent 学会拆解复杂任务
 
-> 上一章我们学习了虚拟文件系统如何管理 Agent 的上下文。本章聚焦另一个核心能力——任务规划。一个不会规划的 Agent，面对复杂任务时就像无头苍蝇；而 `write_todos` 工具，让 Agent 学会像人一样拆解任务、追踪进度。
+> 上一章我们学习了虚拟文件系统如何管理 Agent 的上下文。本章聚焦另一个核心能力——任务规划。`write_todos` 可以帮助 Agent 拆解任务、追踪进度；从 v0.7 开始，这项能力按需启用，不再是每个 Agent 的固定配置。
 
 ## 为什么 Agent 需要"规划"能力？
 
@@ -30,9 +30,32 @@ Agent：[调用天气工具] → 今天北京晴，25°C。
 
 规划能力让 Agent 能够**先思考再行动**——把大任务拆解为小步骤，然后逐步执行、追踪进度、动态调整。
 
+## 在 v0.7 中显式启用任务规划
+
+`TodoListMiddleware` 会同时注入 `write_todos` 工具、`todos` 状态和规划提示词。v0.7 默认不再安装它，需要时应明确传入：
+
+```python
+from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+
+agent = create_deep_agent(
+    model=model,
+    middleware=[TodoListMiddleware()],
+)
+```
+
+是否启用，应由任务和产品需求决定：
+
+| 场景 | 建议 |
+|---|---|
+| 单步问答、短工具调用 | 保持关闭，避免计划比任务本身还长 |
+| 长程、多阶段、容易漏步骤的任务 | 启用，并用真实任务检查完成率和轨迹长度 |
+| 能力较弱、容易失去主线的模型 | 先做 A/B 评测，通常值得尝试 |
+| UI 需要展示计划、当前步骤和进度 | 启用；此时 `todos` 也是产品状态协议 |
+
 ## `write_todos` 工具详解
 
-Deep Agents 内置了一个 `write_todos` 工具，让 Agent 可以创建和管理任务清单。这个工具在 `create_deep_agent()` 时自动注入，无需手动配置。
+启用后，Deep Agents 会获得 `write_todos` 工具，让 Agent 可以创建和管理任务清单。工具存在不代表每个任务都会调用；具体行为仍由模型、提示词和任务复杂度共同决定。
 
 ### 任务的数据结构
 
@@ -101,17 +124,21 @@ Agent 调用 write_todos 更新列表：
 
 ![Agent 如何使用 write_todos：制定计划（全部 pending）→ 逐步执行（状态流转 + 调用工具）→ 动态调整（发现新需求，新增步骤）](../public/imgs/10-flowchart-todo-workflow.png)
 
+> [!NOTE]
+> **v0.7 提醒**：这张图描述的是已启用 `TodoListMiddleware` 后的典型流程。默认配置中没有 `write_todos`；即使已经启用，图中的步骤也是可用工作方式，不是框架强制执行的状态机。
+
 ### 任务清单的持久化
 
 任务清单**持久化在 Agent State 中**，这意味着：
 
 - 在同一个对话中，任务清单不会丢失
 - 即使 Agent 的对话历史被总结压缩，任务清单依然完整
-- 子 Agent 无法访问主 Agent 的任务清单（上下文隔离）
+- 默认 `general-purpose` 子 Agent 会继承主 Agent 显式传入的 Todo 配置，但仍在自己的状态中维护清单
+- `subagents=[...]` 声明的子 Agent 有独立 Middleware 栈，需要规划能力时必须在自己的 spec 中启用 Todo；它也不会读取主 Agent 的清单
 
 ## 揭开引擎盖：LangChain 中间件
 
-到目前为止，我们一直从 Deep Agents 的视角看 `write_todos`——"调用 `create_deep_agent()` 就自动有了"。但如果你想真正理解这个能力是**怎么实现的**，以及将来**如何自己扩展**，就需要揭开引擎盖，看看底层的 LangChain 中间件机制。
+到目前为止，我们一直从 Deep Agents 的视角看 `write_todos`。如果你想理解它为什么可以按需加入，以及如何扩展，就需要揭开引擎盖，看看底层的 LangChain 中间件机制。
 
 还记得第 1 章的三层架构吗？Deep Agents（Harness）构建在 LangChain（Framework）之上。而 LangChain 提供了一套<strong>中间件（Middleware）</strong>系统——它是 Agent 能力的插件机制。`create_deep_agent()` 内部做的事情，本质上就是把一组中间件**自动组装**到了 Agent 上。
 
@@ -128,14 +155,13 @@ LangChain 中间件提供两类执行边界。它们都叫 Hook，但适合解�
 
 第 9 章会用一个完整例子展示[如何在自定义 Middleware 的 Node-style Hook 中直接调用 `interrupt()`](../ch09-human-in-the-loop/#在自定义-middleware-中使用-interrupt)。
 
-`create_deep_agent()` 的中间件堆栈分为三层：
+v0.7 可以从三类来源理解 `create_deep_agent()` 的中间件堆栈：
 
-**常驻层（始终启用，无论传入什么参数）**：
-- `TodoListMiddleware` — 任务规划，注入 `write_todos` 工具和规划提示词
+**框架默认层**：
 - `FilesystemMiddleware` — 注入 7 个文件工具，并执行 `permissions` 权限规则
 - `SummarizationMiddleware` — 上下文自动压缩，触发阈值可配置
 - `PatchToolCallsMiddleware` — 内部工具调用修补（框架内部使用）
-- `AnthropicPromptCachingMiddleware` — 提示词缓存加速（非 Anthropic 模型自动跳过）
+- Prompt caching 等模型相关能力 — 是否启用取决于模型和 Harness profile
 
 **条件层（按参数自动激活）**：
 - `SubAgentMiddleware` — 有子 Agent 时启用，自动加入通用子 Agent；注入 `task` 工具
@@ -144,8 +170,10 @@ LangChain 中间件提供两类执行边界。它们都叫 Hook，但适合解�
 - `MemoryMiddleware` — 传入 `memory=` 参数时启用，注入 AGENTS.md 记忆
 - `HumanInTheLoopMiddleware` — 传入 `interrupt_on=` 参数时启用，拦截指定工具调用等待人工审批
 
-**用户自定义层**（通过 `middleware=[...]` 参数插入，位于条件层之后）：
-- 可按需叠加 LangChain 提供的任何中间件
+**应用选择层**（通过 `middleware=[...]` 传入）：
+- `TodoListMiddleware` 等可选策略可以按需加入
+- 与默认 Middleware 同名的实例会在原位置换默认实例，而不是在末尾再叠加一个
+- 原位置换是完整实例替换，不会把新旧配置按字段合并
 
 理解这三层，你就能：
 - 看懂 Deep Agents 内部是怎么拼装出来的
@@ -156,9 +184,12 @@ LangChain 中间件提供两类执行边界。它们都叫 Hook，但适合解�
 
 ![揭开引擎盖：create_deep_agent() 内部分为常驻层（TodoList、Filesystem、Summarization、PatchToolCalls、AnthropicCaching）、条件层（SubAgent、Skills、Memory、HumanInTheLoop 等按参数激活）和用户自定义层](../public/imgs/11-framework-middleware-assembly.png)
 
+> [!NOTE]
+> **v0.7 提醒**：图片中的 TodoList 位于旧版常驻层。当前 Todo 属于应用选择层；同名的 `FilesystemMiddleware` 或 `SummarizationMiddleware` 则会替换默认实例，而且是整实例替换，不是字段合并。
+
 ### TodoListMiddleware：write_todos 的真身
 
-`write_todos` 工具在 Deep Agents 中是自动内置的。它的底层实现就是 LangChain 的 `TodoListMiddleware`。如果你使用更底层的 `create_agent()`，可以手动添加这个能力：
+`write_todos` 的底层实现是 LangChain 的 `TodoListMiddleware`。无论使用 Deep Agents 的 `create_deep_agent()`，还是更底层的 `create_agent()`，v0.7 都需要显式添加这项能力。下面展示 LangChain 层的手动组合：
 
 > **示意片段**：下面聚焦中间件组装，因此不注册额外的应用工具；运行前需要安装示例中的包并配置 `SILICONFLOW_API_KEY`。
 
@@ -189,9 +220,10 @@ agent = create_agent(
 添加 `TodoListMiddleware` 后，Agent 会自动获得：
 
 1. **`write_todos` 工具** — 创建和管理任务清单
-2. **规划指导提示词** — 自动注入到系统提示词中，引导 Agent 在面对复杂任务时先规划再执行
+2. **`todos` 状态** — 保存任务及其状态，供同一 Agent 的后续轮次和 UI 使用
+3. **规划指导提示词** — 引导 Agent 在面对复杂任务时先规划再执行
 
-这段代码展示了 LangChain `create_agent()` 的用法——注意和 Deep Agents 的 `create_deep_agent()` 的区别：前者需要你**手动选择和组合**中间件，后者帮你**预设好了一套最佳组合**。
+这段代码展示了 LangChain `create_agent()` 的用法。Deep Agents 会提供文件系统、上下文管理和子 Agent 等 Harness 默认能力，但 Todo 仍由应用选择。
 
 ### 自定义配置
 
@@ -261,7 +293,7 @@ agent = create_agent(
 )
 ```
 
-> 在 Deep Agents 中（`create_deep_agent()`），这两个能力都是自动内置的，不需要手动组合。
+> 在 Deep Agents 中，`SummarizationMiddleware` 仍属于默认上下文管理能力；`TodoListMiddleware` 则需要通过 `middleware=[...]` 显式加入。
 
 ## 代码实战：让 Agent 规划并执行研究任务
 
@@ -273,6 +305,7 @@ from langchain_openai import ChatOpenAI
 from typing import Literal
 from tavily import TavilyClient
 from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
 
 # 配置模型
 model = ChatOpenAI(
@@ -289,10 +322,11 @@ def internet_search(query: str, max_results: int = 5) -> dict:
     """搜索互联网获取最新信息。"""
     return tavily_client.search(query, max_results=max_results)
 
-# 创建 Agent（write_todos 自动内置）
+# 创建 Agent，并显式启用 write_todos
 agent = create_deep_agent(
     model=model,
     tools=[internet_search],
+    middleware=[TodoListMiddleware()],
     system_prompt="""你是一位专业的技术研究员。
 面对复杂研究任务时，你会：
 1. 先用 write_todos 制定研究计划
@@ -322,17 +356,16 @@ print(result["messages"][-1].content)
 
 ## LangChain 中间件全景：Deep Agents 的能力版图
 
-现在你已经理解了中间件的三层结构，让我们看看完整的中间件版图——Deep Agents 自动内置了常驻层和条件层，其余的 LangChain 预构建中间件可以通过 `create_deep_agent(middleware=[...])` 按需添加：
+现在你已经理解了中间件的来源，让我们看看完整的能力版图。框架提供默认层和条件层，应用可以通过 `create_deep_agent(middleware=[...])` 加入可选策略，或原位置换同名默认实例：
 
-**常驻层（始终内置）**
+**框架默认层**
 
 | 中间件 | 用途 |
 |---|---|
-| TodoListMiddleware | 任务规划与追踪，注入 `write_todos` 工具 |
 | FilesystemMiddleware | 7 个文件工具 + 权限控制 |
 | SummarizationMiddleware | 对话历史自动总结（触发阈值可配置） |
 | PatchToolCallsMiddleware | 工具调用内部修补（框架内部） |
-| AnthropicPromptCachingMiddleware | 提示词缓存（非 Anthropic 模型自动跳过） |
+| 模型 / Provider 相关 Middleware | 由 Harness profile 和实际模型决定 |
 
 **条件层（按参数激活）**
 
@@ -348,6 +381,7 @@ print(result["messages"][-1].content)
 
 | 类别 | 中间件 | 用途 |
 |---|---|---|
+| **规划** | TodoListMiddleware | 任务规划与追踪，注入 `write_todos` 和 `todos` 状态 |
 | **安全** | PIIMiddleware | 个人信息检测和脱敏 |
 | **弹性** | ToolRetryMiddleware | 工具调用失败自动重试 |
 | | ModelRetryMiddleware | 模型调用失败自动重试 |
@@ -358,16 +392,17 @@ print(result["messages"][-1].content)
 
 ![Deep Agents 中间件全景：常驻层（5个始终启用）、条件层（5个按参数激活）、可选层（LangChain 预构建，按需添加），以及不可排除的必要中间件 FilesystemMiddleware + SubAgentMiddleware](../public/imgs/12-infographic-middleware.png)
 
-> `FilesystemMiddleware` 和 `SubAgentMiddleware` 是**不可排除的必要中间件**——它们支撑了 Deep Agents 的核心功能（文件工具、权限控制、子 Agent 委派），框架会主动阻止将它们从堆栈中移除。其余中间件可以通过 `middleware` 参数按需叠加——**你可以像拼积木一样，给 Agent 添加任何你需要的能力**。
+> [!NOTE]
+> **v0.7 提醒**：图片保留了旧版“5 个常驻层”的结构。当前 Todo 不再常驻；`FilesystemMiddleware` 和 `SubAgentMiddleware` 仍支撑核心工具，但同名自定义实例可以在原位置换默认配置。替换时必须给出完整配置，并重新验证权限、Backend 和子 Agent 行为。
 
 ## 小结
 
 本章我们学习了两件事——Deep Agents 的任务规划能力，以及它背后的 LangChain 中间件机制：
 
 1. **为什么需要规划**：复杂任务需要先拆解再执行，否则 Agent 会遗漏步骤、重复劳动、半途而废
-2. **`write_todos` 工具**：支持 pending → in_progress → completed 三种状态，持久化在 Agent State 中，是 Agent 的"北极星"
+2. **`write_todos` 工具**：启用 `TodoListMiddleware` 后，任务以 pending → in_progress → completed 三种状态保存在 Agent State 中
 3. **LangChain 中间件**：Agent 能力的插件机制。`create_deep_agent()` 的本质就是把一组中间件自动组装到 Agent 上
 4. **由表及里**：`write_todos` 的真身是 `TodoListMiddleware`，上下文压缩的真身是 `SummarizationMiddleware`——理解底层，才能自由扩展
-5. **能力版图**：`create_deep_agent()` 的中间件分三层——常驻层（5 个始终启用）、条件层（5 个按参数激活）、用户自定义层（`middleware=[]` 按需叠加）。`FilesystemMiddleware` 和 `SubAgentMiddleware` 是不可排除的必要中间件
+5. **能力版图**：`create_deep_agent()` 组合框架默认层、条件层和应用选择层；v0.7 支持同名 Middleware 原位置换，但不会自动合并新旧配置
 
 下一章，我们将学习子 Agent 与上下文隔离——让 Agent 学会"委派"，把复杂子任务交给专门的 Agent 处理。

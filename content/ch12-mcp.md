@@ -10,7 +10,7 @@
 4. 理解多 Server、HTTP、会话、错误与结构化结果
 5. 为 MCP 工具补上命名、审批、子 Agent 和进程安全边界
 
-本章示例以 2026 年 7 月 27 日的稳定版本为基线：Python 3.11+、`deepagents==0.6.12`、`langchain-mcp-adapters>=0.3,<0.4`、`mcp>=1.28,<2`。MCP Python SDK 2.0 当时仍是预发布版本，因此示例显式保留 `<2` 上界，避免稳定版升级时意外切换到尚未迁移的 API。
+本章原始示例写于 Deep Agents 0.6 阶段，现已把课程运行基线更新为 Python 3.11+、`deepagents>=0.7,<0.8`、`langchain-mcp-adapters>=0.3,<0.4`、`mcp>=1.28,<2`。安装时会解析当前 0.7.x 补丁版本，项目应提交 lockfile 或保存环境快照。MCP 依赖继续保留原有兼容上界，避免在学习 Deep Agents 0.7 的同时切换另一套尚未验证的 MCP API。
 
 ## 1. MCP 在 Deep Agents 中的位置
 
@@ -18,7 +18,7 @@ MCP 是一套开放协议，用统一方式描述 Agent 可以使用的工具与
 
 | 层次 | 本章组件 | 负责什么 |
 |---|---|---|
-| Agent Harness | Deep Agents | 规划、文件系统、上下文管理、子 Agent 与工具调用循环 |
+| Agent Harness | Deep Agents | 文件系统、上下文管理、子 Agent、可选规划与工具调用循环 |
 | Agent 工具接口 | LangChain Tool | 让模型看到工具名、描述、参数 Schema，并执行调用 |
 | 协议适配 | `langchain-mcp-adapters` | 把 MCP 工具转换成 LangChain Tool |
 | MCP Client | `MultiServerMCPClient` | 连接一个或多个 Server，管理发现与调用会话 |
@@ -45,7 +45,7 @@ tools = await client.get_tools()
 agent = create_deep_agent(model=model, tools=tools)
 ```
 
-这些工具会加入 Deep Agents 的工具集合，与任务规划、文件系统和子 Agent 等 Harness 能力一起提供给模型。MCP Server 不会因此自动获得 Deep Agents 的状态、Store 或 Backend；它仍是边界外的独立进程或服务。
+这些工具会加入 Deep Agents 的工具集合，与文件系统和子 Agent 等 Harness 能力一起提供给模型。任务规划在 v0.7 中需要显式启用 `TodoListMiddleware`。MCP Server 不会因此自动获得 Deep Agents 的状态、Store 或 Backend；它仍是边界外的独立进程或服务。
 
 ### Tools、Resources 与 Prompts
 
@@ -67,7 +67,7 @@ MCP 不只有工具。先区分三个核心概念，才能避免把所有能力�
 mkdir deepagents-mcp-demo
 cd deepagents-mcp-demo
 uv init --bare --python 3.11
-uv add "deepagents==0.6.12" "langchain-mcp-adapters>=0.3,<0.4" "mcp>=1.28,<2" langchain-openai
+uv add --upgrade "deepagents>=0.7,<0.8" "langchain-mcp-adapters>=0.3,<0.4" "mcp>=1.28,<2" langchain-openai
 ```
 
 如果使用 `pip`，等价命令是：
@@ -75,7 +75,7 @@ uv add "deepagents==0.6.12" "langchain-mcp-adapters>=0.3,<0.4" "mcp>=1.28,<2" la
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install "deepagents==0.6.12" "langchain-mcp-adapters>=0.3,<0.4" "mcp>=1.28,<2" langchain-openai
+python -m pip install --upgrade "deepagents>=0.7,<0.8" "langchain-mcp-adapters>=0.3,<0.4" "mcp>=1.28,<2" langchain-openai
 ```
 
 本章最终得到三个文件：
@@ -513,6 +513,8 @@ for message in result["messages"]:
 
 从 `langchain-mcp-adapters>=0.3.0` 开始，MCP Server 返回 `CallToolResult(isError=True)` 时，适配器默认把它转换成 `status="error"` 的 `ToolMessage`。Agent 可以阅读错误，再修正参数或换用其他工具，而不必立即终止整次运行。
 
+这套错误语义不要套用到文件搜索的完整性判断。v0.7 的 `grep`、`glob` 可以成功返回部分结果，并用 `truncated=True` 标记；`ToolMessage` 没有报错，只能证明调用成功，不能证明结果完整。
+
 这只覆盖 Server 明确返回的工具执行错误：
 
 | 失败类型 | 默认行为 |
@@ -625,6 +627,8 @@ agent = create_deep_agent(
 ### 缩小子 Agent 的额外工具集
 
 默认 general-purpose 子 Agent 会继承父 Agent 的额外工具，自定义声明式子 Agent 在省略 `tools` 时也会继承。显式提供 `tools` 后，会整体替换这组继承的额外工具，而不是追加；但 Deep Agents Harness 安装的文件工具，以及 Backend 支持时可能出现的 `execute`，不会因此自动移除。
+
+规划能力另有一条 v0.7 规则：主 Agent 显式传入的 `TodoListMiddleware` 会交给默认 general-purpose 子 Agent；声明式子 Agent 有独立 Middleware 栈。如果它也需要 `write_todos`，应在自己的 `middleware` 字段中启用，不能从工具继承规则推断它会自动获得 Todo。
 
 下面是**示意片段**。`read_only_mcp_tools` 是应用筛选后的 LangChain Tool 列表；`model` 与 `all_mcp_tools` 沿用父 Agent 已有定义。示例同时拒绝子 Agent 使用内置文件工具写入：
 

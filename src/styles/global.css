@@ -170,6 +170,15 @@ body {
   right: 0.5rem;
 }
 
+.chapter-num--release {
+  font-size: 4.5rem;
+  letter-spacing: -0.08em;
+  -webkit-text-stroke: 1.5px #7c3aed;
+  opacity: 0.18;
+  top: -0.25rem;
+  right: 0.75rem;
+}
+
 /* Skills promo combined block (banner + skills in one) */
 .skills-promo-combined {
   margin-top: 4rem;
@@ -322,6 +331,10 @@ body {
 }
 
 [data-theme="dark"] .chapter-num--extra {
+  opacity: 0.12;
+}
+
+[data-theme="dark"] .chapter-num--release {
   opacity: 0.12;
 }
 

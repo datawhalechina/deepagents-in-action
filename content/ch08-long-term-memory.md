@@ -67,7 +67,7 @@ agent.invoke({"messages": [{"role": "user", "content": "我叫什么名字？"}]
 
 Checkpointer 的工作原理：
 
-- 每次 Agent 执行完一步，自动保存当前状态（消息历史、文件系统状态、任务清单等）
+- 每次 Agent 执行完一步，自动保存当前状态（消息历史、文件系统状态，以及启用 Todo 后的任务清单等）
 - 下次调用时，如果 `thread_id` 相同，自动恢复上次的状态
 - 开发用 `MemorySaver`（内存，重启丢失），生产用 `PostgresSaver`（数据库，持久化）
 
@@ -84,6 +84,8 @@ Checkpointer 的工作原理：
 | **Summarize（总结）** | 用 LLM 将旧消息压缩为摘要 | 需要保留历史语义，是最推荐的方式 |
 
 在 Deep Agents 中，**Summarize 策略已经自动内置**（第 3 章和第 4 章讲过的 `SummarizationMiddleware`）。当上下文达到模型窗口的 85% 时，自动触发总结。
+
+v0.7 允许通过同名 `SummarizationMiddleware` 原位置换默认实例。这里的“替换”是整实例替换，不会只覆盖 `trigger` 或摘要模型；自定义时要把 Backend、保留消息数、触发条件和摘要提示词作为一组完整配置重新检查。长期记忆文件也要区分写入方式：`write_file` 会完整覆盖已有内容，追加或局部修订应使用 `edit_file`。
 
 如果你需要自定义裁剪逻辑，可以用 LangChain 的 `@before_model` 中间件：
 

@@ -25,13 +25,20 @@ Deep Agents 当前提供 7 个内置文件工具。下图展示了最初的六�
 |---|---|---|
 | `ls` | 列出目录中的文件和元信息（大小、修改时间） | 打开文件夹看看有什么 |
 | `read_file` | 读取文件内容，支持偏移量和限制条数；原生支持多模态格式（图片、视频、音频、PDF/PPT） | 翻开某份资料阅读 |
-| `write_file` | 创建新文件 | 写一份新的备忘录 |
+| `write_file` | 创建文件，或完整覆盖已有文件 | 写一份新的备忘录或重写整份草稿 |
 | `edit_file` | 对已有文件做精确字符串替换 | 用红笔修改文档 |
 | `delete` | 删除文件或目录 | 清理不再需要的资料 |
 | `glob` | 按模式匹配查找文件（如 `**/*.py`） | 在文件柜中按标签找 |
 | `grep` | 搜索文件内容，按字面量匹配；支持内容输出和计数 | 全文检索 |
 
 ![虚拟文件系统六大工具：ls、read_file、write_file、edit_file、glob、grep](../public/imgs/07-infographic-six-tools.png)
+
+> [!NOTE]
+> **v0.7 提醒**：图片保留了早期“六大工具”的课程视角。当前版本新增 `delete`，而且 `write_file` 会完整覆盖同路径的已有文件；只改局部内容时应使用 `edit_file`。
+
+v0.7 还调整了读取与搜索结果的边界：`read_file` 会返回分页信息和下一段偏移量；`grep`、`glob` 可能返回有效但不完整的结果，并通过 `truncated=True` 明示截断；Agent-facing 的 `grep` 默认最多保留 1,000 个匹配。调用成功只代表工具正常执行，不代表已经得到全集，后续应缩小目录或匹配条件继续搜索。
+
+如果应用直接解析工具文本，还要更新快照和解析器：空的 `ls` / `glob` 现在返回 `No files found`，`read_file` 的行号与正文之间使用两个空格，不再使用 Tab。更稳妥的做法是优先消费结构化 Backend 结果，把面向模型的文本当作展示协议。
 
 工具定义的是 Agent **能做什么**，权限规则决定一次具体操作**是否可以做**。例如，`write_file` 和 `edit_file` 默认都是普通文件操作，但可以通过 `FilesystemPermission` 对敏感路径直接拒绝，或在执行前暂停等待人工审批。后者的完整中断与恢复流程见[第 9 章的“文件系统权限中断”](../ch09-human-in-the-loop/#文件系统权限中断)。
 
@@ -340,7 +347,8 @@ agent = create_deep_agent(
 
 ```python
 from deepagents.backends.protocol import (
-    BackendProtocol, WriteResult, EditResult, LsResult, ReadResult, GrepResult, GlobResult,
+    BackendProtocol, WriteResult, EditResult, DeleteResult,
+    LsResult, ReadResult, GrepResult, GlobResult,
 )
 
 class S3Backend(BackendProtocol):
@@ -372,9 +380,13 @@ class S3Backend(BackendProtocol):
     def glob(self, pattern: str, path: str = "/") -> GlobResult:
         # 模式匹配，返回 FileInfo 列表
         ...
+
+    def delete(self, file_path: str) -> DeleteResult:
+        # 删除对象或目录前缀；需要暴露 delete 工具时实现
+        ...
 ```
 
-`BackendProtocol` 要求实现 6 个方法：`ls`、`read`、`write`、`edit`、`grep`、`glob`。
+`BackendProtocol` 的核心读写与搜索接口包括 `ls`、`read`、`write`、`edit`、`grep`、`glob`。如果后端要向 Agent 暴露 v0.7 的删除能力，还要实现 `delete()` 并返回 `DeleteResult`。包装器也必须同步转发或拒绝删除，不能只保护 `write()` 和 `edit()`。
 
 ### 安全策略：PolicyWrapper
 
@@ -384,7 +396,7 @@ class S3Backend(BackendProtocol):
 
 ```python
 from deepagents.backends.filesystem import FilesystemBackend
-from deepagents.backends.protocol import WriteResult, EditResult
+from deepagents.backends.protocol import WriteResult, EditResult, DeleteResult
 
 class GuardedBackend(FilesystemBackend):
     def __init__(self, *, deny_prefixes: list[str], **kwargs):
@@ -401,12 +413,17 @@ class GuardedBackend(FilesystemBackend):
         if any(file_path.startswith(p) for p in self.deny_prefixes):
             return EditResult(error=f"编辑被拒绝：{file_path}")
         return super().edit(file_path, old_string, new_string, replace_all)
+
+    def delete(self, file_path: str) -> DeleteResult:
+        if any(file_path.startswith(p) for p in self.deny_prefixes):
+            return DeleteResult(error=f"删除被拒绝：{file_path}")
+        return super().delete(file_path)
 ```
 
 **方式二：通用包装器**（适用于任何后端）
 
 ```python
-from deepagents.backends.protocol import BackendProtocol, WriteResult, EditResult
+from deepagents.backends.protocol import BackendProtocol, WriteResult, EditResult, DeleteResult
 
 class PolicyWrapper(BackendProtocol):
     def __init__(self, inner: BackendProtocol, deny_prefixes: list[str]):
@@ -431,6 +448,11 @@ class PolicyWrapper(BackendProtocol):
         if self._deny(file_path):
             return EditResult(error=f"编辑被拒绝：{file_path}")
         return self.inner.edit(file_path, old_string, new_string, replace_all)
+
+    def delete(self, file_path: str) -> DeleteResult:
+        if self._deny(file_path):
+            return DeleteResult(error=f"删除被拒绝：{file_path}")
+        return self.inner.delete(file_path)
 ```
 
 ## 小结
@@ -442,6 +464,6 @@ class PolicyWrapper(BackendProtocol):
 3. **自动上下文管理**：大结果自动卸载（>20K tokens → 文件 + 引用）、对话历史自动总结（>85% 窗口 → 摘要 + 完整记录保存到文件）
 4. **可插拔后端**：StateBackend（临时）、FilesystemBackend（本地磁盘）、LocalShellBackend（本地 Shell）、StoreBackend（持久化）、CompositeBackend（混合路由）、沙箱后端（安全执行）
 5. **权限控制**：`FilesystemPermission` 声明式权限；`GuardedBackend` 或 `PolicyWrapper` 实现定制策略
-6. **废弃提醒**：工厂函数模式（`lambda rt: StateBackend(rt)`）已废弃，直接传实例即可
+6. **兼容提醒**：工厂函数模式（`lambda rt: StateBackend(rt)`）在 v0.7 已移除，必须直接传入具体 Backend 实例
 
-下一章，我们将学习另一个核心能力——任务规划，看 `write_todos` 工具如何让 Agent 学会拆解复杂任务。
+下一章，我们将学习另一个核心能力——任务规划，以及如何在 v0.7 中按任务需要启用 `write_todos`。

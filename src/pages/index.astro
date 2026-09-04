@@ -13,7 +13,7 @@ import '../styles/global.css';
 const allChapters = await getCollection('chapters');
 const sorted = allChapters.sort((a, b) => a.data.order - b.data.order);
 
-const sections = ['准备篇', '认知篇', '核心篇', '进阶篇', '前沿预览', '实战篇'] as const;
+const sections = ['准备篇', '版本更新', '认知篇', '核心篇', '进阶篇', '前沿预览', '实战篇'] as const;
 const grouped = sections.map(section => ({
   section,
   chapters: sorted.filter(ch => ch.data.section === section),
@@ -30,7 +30,9 @@ const railSections = grouped
   }))
   .filter(group => group.items.length > 0);
 
-const publishedCount = sorted.filter(ch => ch.data.published && ch.data.section !== '准备篇').length;
+const publishedCount = sorted.filter(
+  ch => ch.data.published && !['准备篇', '版本更新'].includes(ch.data.section),
+).length;
 
 let starCount: number | null = null;
 try {
@@ -73,7 +75,7 @@ try {
         <!-- SDK version tag -->
         <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gold-pale/40 border border-gold/20 mb-10">
           <span class="w-1 h-1 rounded-full bg-gold inline-block"></span>
-          <span class="text-[11px] font-mono text-gold/80 tracking-wide">Deep Agents SDK ≥ 0.5</span>
+          <span class="text-[11px] font-mono text-gold/80 tracking-wide">0.5 起步 · 当前基线 0.7</span>
         </div>
 
         <!-- CTAs -->

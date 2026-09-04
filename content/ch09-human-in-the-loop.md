@@ -336,13 +336,15 @@ agent = create_deep_agent(
 ```python
 interrupt_on = {
     # === 高风险：审批 + 修改 + 拒绝，不开放 respond ===
+    "delete": {"allowed_decisions": ["approve", "edit", "reject"]},
     "delete_file": {"allowed_decisions": ["approve", "edit", "reject"]},
+    "write_file": {"allowed_decisions": ["approve", "edit", "reject"]},
     "send_email": {"allowed_decisions": ["approve", "edit", "reject"]},
     "execute_sql": {"allowed_decisions": ["approve", "edit", "reject"]},
     "deploy_to_production": {"allowed_decisions": ["approve", "edit", "reject"]},
 
     # === 中风险：审批或拒绝（不允许修改参数）===
-    "write_file": {"allowed_decisions": ["approve", "reject"]},
+    "edit_file": {"allowed_decisions": ["approve", "reject"]},
     "call_external_api": {"allowed_decisions": ["approve", "reject"]},
 
     # === 低风险：无需中断 ===
@@ -360,14 +362,14 @@ interrupt_on = {
 
 | 风险等级 | 工具类型 | 配置 | 理由 |
 |---|---|---|---|
-| 高风险 | 删除、发送、部署 | `approve/edit/reject` | 操作不可逆或影响外部系统，避免 `respond` 被误当成成功结果 |
+| 高风险 | 删除、覆盖写入、发送、部署 | `approve/edit/reject` | 操作不可逆或影响外部系统，避免 `respond` 被误当成成功结果 |
 | 中风险 | 写入、外部调用 | `approve/reject` | 可审批但不需要修改参数 |
 | 低风险 | 读取、搜索、列表 | `False` | 只读操作，安全无副作用 |
 | 人工输入型 | 询问偏好、补充缺失信息 | `respond` | 工具本来就是让人回答，人的 `message` 会成为成功工具结果 |
 
 ## 文件系统权限中断
 
-除了 `interrupt_on`，Deep Agents 的内置文件系统工具也可以通过权限规则触发中断。这个能力需要 `deepagents>=0.6.8`。第 3 章介绍的 [`write_file` 和 `edit_file`](../ch03-virtual-filesystem/#六大文件系统工具) 在命中 `mode="interrupt"` 的权限规则时，Deep Agents 会抛出和普通工具审批相同格式的 HITL 中断：
+除了 `interrupt_on`，Deep Agents 的内置文件系统工具也可以通过权限规则触发中断。这个能力需要 `deepagents>=0.6.8`。第 3 章介绍的 [`write_file`、`edit_file` 和 `delete`](../ch03-virtual-filesystem/#内置文件系统工具) 在命中 `mode="interrupt"` 的权限规则时，Deep Agents 会抛出和普通工具审批相同格式的 HITL 中断：
 
 ```python
 from deepagents import FilesystemPermission, create_deep_agent
@@ -387,6 +389,8 @@ agent = create_deep_agent(
 ```
 
 恢复方式和普通工具一致：检查 `result.interrupts[0].value["action_requests"]`，然后用 `Command(resume={"decisions": [...]})` 继续执行。文件系统权限中断会和你传入的 `interrupt_on` 合并，因此一次人工审查可以同时覆盖自定义工具和受保护文件路径。
+
+v0.7 中 `write_file` 会完整覆盖已有文件，内置 `delete` 还能递归删除目录。因此 `operations=["write"]` 保护的不只是“新建或编辑”，也包括覆盖和删除；包含受保护后代的目录删除会整体拒绝，不会只删掉其中一部分。真实文件系统上的敏感路径优先使用路径权限，`interrupt_on` 更适合控制自定义工具或对所有路径采用同一审批策略。
 
 本章重点是中断后的审查与恢复；如何组合 `allow`、`deny`、`interrupt`，以及为什么权限不能约束自定义工具或沙箱 `execute`，见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
 
@@ -585,7 +589,7 @@ print(thread_state["next"])
 理解 `interrupt()` 的内部机制，能帮你避免常见的坑：
 
 1. **暂停方式**：`interrupt()` 通过**抛出一个特殊异常**来暂停执行。这个异常会沿调用栈向上传播，被 LangGraph 运行时捕获
-2. **状态保存**：运行时通过 Checkpointer 保存当前图状态（消息、文件、任务清单等）
+2. **状态保存**：运行时通过 Checkpointer 保存当前图状态（消息、文件，以及启用 Todo 后的任务清单等）
 3. **恢复方式**：当你调用 `Command(resume=...)` 时，LangGraph 加载保存的状态，**从节点的开头重新执行**
 4. **返回值**：`Command(resume=...)` 中的值成为 `interrupt()` 的返回值
 

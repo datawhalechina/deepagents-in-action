@@ -25,13 +25,19 @@ interface Props {
 const { id, title, chapter, section, description, published, slides, experiment } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const isExtra = section === '准备篇';
+const isRelease = section === '版本更新';
 const preMatch = isExtra && id.match(/^pre(\d+)/);
-const chapterLabel = isExtra ? (preMatch ? preMatch[1] : 'EX') : String(chapter).padStart(2, '0');
+const releaseMatch = isRelease && id.match(/^release-v(\d+)-(\d+)/);
+const chapterLabel = isRelease
+  ? (releaseMatch ? `v${releaseMatch[1]}.${releaseMatch[2]}` : 'REL')
+  : isExtra
+    ? (preMatch ? preMatch[1] : 'EX')
+    : String(chapter).padStart(2, '0');
 ---
 
 {published ? (
   <div class="relative p-6 rounded-lg border border-gold-pale/80 bg-paper-warm hover:border-gold-light hover:shadow-md transition-all group overflow-hidden">
-    <div class={`chapter-num ${isExtra ? 'chapter-num--extra' : ''}`}>{chapterLabel}</div>
+    <div class={`chapter-num ${isExtra ? 'chapter-num--extra' : ''} ${isRelease ? 'chapter-num--release' : ''}`}>{chapterLabel}</div>
     <a href={`${base}/chapters/${id}/`} class="relative block">
       <h3 class="text-lg font-bold font-sans leading-snug mb-2 group-hover:text-gold transition-colors">
         {title}
@@ -97,7 +103,7 @@ const chapterLabel = isExtra ? (preMatch ? preMatch[1] : 'EX') : String(chapter)
   </div>
 ) : (
   <div class="relative p-6 rounded-lg border border-gold-pale/30 bg-paper-warm/50 overflow-hidden">
-    <div class={`chapter-num opacity-10 ${isExtra ? 'chapter-num--extra' : ''}`}>{chapterLabel}</div>
+    <div class={`chapter-num opacity-10 ${isExtra ? 'chapter-num--extra' : ''} ${isRelease ? 'chapter-num--release' : ''}`}>{chapterLabel}</div>
     <h3 class="text-lg font-bold font-sans leading-snug mb-2 text-ink-muted/50">
       {title}
     </h3>

@@ -453,7 +453,7 @@ agent = create_deep_agent(
 )
 ```
 
-核心逻辑：`mode="deny"` 拒绝所有对 `/skills/**` 路径的写入操作。Agent 可以正常发现和读取 Skill 内容，但 `write_file` 和 `edit_file` 调用会被直接拦截并返回权限错误。Skill 库的更新只能通过管理员代码直接操作 Store 完成。
+核心逻辑：`mode="deny"` 拒绝所有对 `/skills/**` 路径的写入操作。Agent 可以正常发现和读取 Skill 内容，但 `write_file`、`edit_file` 和 v0.7 默认提供的 `delete` 都会被直接拦截并返回权限错误。Skill 库的更新只能通过管理员代码直接操作 Store 完成。
 
 这里要区分 **Agent 可见路径** 与 **路由内部路径**。`CompositeBackend` 收到 `/skills/test-skill/SKILL.md` 后，会先剥离挂载前缀 `/skills/`，再把 `/test-skill/SKILL.md` 交给内部 `StoreBackend`。因此，通过 Store API 预填这条路由时，key 应写成 `/test-skill/SKILL.md`；如果误写成 `/skills/test-skill/SKILL.md`，外层恢复路由前缀后就会出现 `/skills/skills/test-skill/SKILL.md`。只有直接把 `StoreBackend` 作为 Agent 的根 Backend、没有经过 `CompositeBackend` 路由时，Store key 才保留完整的 `/skills/...` 路径。
 
