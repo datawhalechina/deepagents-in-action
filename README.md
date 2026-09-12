@@ -1,42 +1,45 @@
 <div align="center">
 
-# 《Deep Agents 实战》
+# Deep Agents 实战
 
-**基于 LangChain / LangGraph 生态，系统构建生产级 AI Agent**
+<a href="https://datawhalechina.github.io/deepagents-in-action/">
+  <img src="public/imgs/hero.png" alt="Deep Agents 实战 — 基于 LangChain / LangGraph 的中文开源课程，感谢 2,000+ GitHub Stars" width="800" />
+</a>
 
-[![Bilibili](https://img.shields.io/badge/视频合集-B站-00A1D6?logo=bilibili&logoColor=white)](https://space.bilibili.com/28357052/lists/7757577?type=season)
-[![小红书](https://img.shields.io/badge/图文合集-小红书-FF2442?logo=xiaohongshu&logoColor=white)](https://www.xiaohongshu.com/collection/item/69c4fd2a0072000000000001?xhsshare=&appuid=65032a0300000000120065e8&apptime=1778152909&share_id=2abb593f301a4e60a6e71fbbee3c8967)
+**[在线阅读](https://datawhalechina.github.io/deepagents-in-action/)** &nbsp;·&nbsp; [B 站视频](https://space.bilibili.com/28357052/lists/7757577?type=season) &nbsp;·&nbsp; [小红书图文](https://www.xiaohongshu.com/collection/item/69c4fd2a0072000000000001?xhsshare=&appuid=65032a0300000000120065e8&apptime=1778152909&share_id=2abb593f301a4e60a6e71fbbee3c8967)
+
 [![Deep Agents](https://img.shields.io/badge/Deep%20Agents-0.5%20%E2%86%92%200.7-1C3C3C?logo=langchain&logoColor=white)](https://docs.langchain.com/oss/python/deepagents/overview)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/内容协议-CC%20BY--NC--SA%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
-<a href="https://trendshift.io/developers/10200?utm_source=developer-badge&utm_medium=badge&utm_campaign=badge-developer-10200" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/developers/10200" alt="webup | Trendshift" width="250" height="55"/></a>
-
-<br/>
-
-由 **[沧海九粟](https://space.bilibili.com/28357052)** 出品 &nbsp;·&nbsp; LangChain 官方认证大使 &nbsp;·&nbsp; 《LangChain 实战》《LangGraph 实战》作者 &nbsp;·&nbsp; B 站万粉 UP 主
-
-<a href="https://datawhalechina.github.io/deepagents-in-action/">
-  <img src="public/imgs/hero.png" alt="《Deep Agents 实战》课程网站" width="800" />
-</a>
+作者：**[沧海九粟](https://space.bilibili.com/28357052)** · LangChain 官方认证大使
 
 </div>
 
----
+基于 LangChain / LangGraph 的中文开源课程，配套 **16 章图文、视频与实验模板**。从第一个 Agent 开始，逐步掌握任务规划、文件系统、子 Agent 协作与上下文管理。
 
-> [!WARNING]
-> 本课程从 Deep Agents **0.5** 开始编写，保留了框架能力逐步完善的学习路径；当前推荐的学习与运行基线是 **0.7**。
-> 新读者建议直接使用最新的 0.7.x 补丁版本。已经跟随 0.5 或 0.6 章节学习的读者，请先阅读 [Deep Agents v0.7 版本更新](https://datawhalechina.github.io/deepagents-in-action/chapters/release-v0-7/)，完成迁移检查后再继续实验。旧章节和图片记录的是当时的默认行为，紧邻它们的“v0.7 提醒”代表当前用法。
->
-> 部分进阶功能仍有各自的最低版本要求。例如 `FilesystemPermission` 基础权限需要 `deepagents>=0.5.2`，`interrupt` 权限模式需要 `deepagents>=0.6.8`。`RubricMiddleware` 仍为 Beta，第 13 章以 `deepagents==0.7.1` 验证版本化行为；第 14 章以 `deepagents>=0.6` 引入的 Event Streaming v3 为主线。第 15 章的 Interpreters 仍为 Beta，需要 Python 3.11+ 与 `langchain-quickjs>=0.2.0`。
-> 官方文档：[Deep Agents Overview](https://docs.langchain.com/oss/python/deepagents/overview)
+**从这里开始：** [环境准备](https://datawhalechina.github.io/deepagents-in-action/chapters/pre01-agentseek-create/) → [5 分钟上手](https://datawhalechina.github.io/deepagents-in-action/chapters/ch02-quickstart/) → [课程大纲](#课程大纲)
 
 > [!NOTE]
-> **🤖 模型选择**：示例默认通过 [硅基流动](https://cloud.siliconflow.cn/i/Fq9zUwPf) 接入模型。建议用 `MODEL_NAME` 环境变量管理模型名，而非写死在代码里；平台模型、价格和免费范围会调整，使用前请查看 [模型广场](https://cloud.siliconflow.cn/models)、[价格页](https://siliconflow.cn/pricing)与[更新公告](https://api-docs.siliconflow.cn/docs/release-notes/overview)。
->
-> - **入门 / 简单任务** — 当前免费版 `Qwen/Qwen2.5-7B-Instruct` 可用于跑通示例；如果想用更强一点、同时控制成本，`deepseek-ai/DeepSeek-V4-Flash` 也适合作为快速试跑的选择。
-> - **复杂场景**（任务规划、上下文总结、多子 Agent 编排）— 小模型往往**无法稳定跑通**，建议改用能力更强、支持工具调用的模型：
->   - `zai-org/GLM-5.2` — 面向长程 Agent 任务，支持 1M 上下文
+> 课程从 0.5 起步，当前推荐使用最新的 **Deep Agents 0.7.x**。从 0.5 / 0.6 升级的读者，请先阅读 [v0.7 版本更新与迁移指南](https://datawhalechina.github.io/deepagents-in-action/chapters/release-v0-7/)。
+
+<details>
+<summary>版本要求与模型配置</summary>
+
+旧章节和图片保留了当时的默认行为，紧邻它们的“v0.7 提醒”代表当前用法。进阶与 Beta 功能的依赖要求以各章说明为准。
+
+| 功能 | 版本要求 |
+| --- | --- |
+| `FilesystemPermission` 基础权限 / `interrupt` 模式 | 分别需要 `deepagents>=0.5.2` / `deepagents>=0.6.8` |
+| 第 13 章：`RubricMiddleware`（Beta） | 章节以 `deepagents==0.7.1` 验证 |
+| 第 14 章：Event Streaming v3 | `deepagents>=0.6` |
+| 第 15 章：Interpreters（Beta） | Python 3.11+、`langchain-quickjs>=0.2.0` |
+
+示例默认通过 [硅基流动](https://cloud.siliconflow.cn/i/Fq9zUwPf) 接入支持工具调用的模型，使用 `MODEL_NAME` 环境变量配置模型名。小模型可用于简单试跑；任务规划、上下文总结和多 Agent 编排需要更强的模型能力。
+
+模型可用性、价格与免费额度会调整，使用前请查阅 [模型广场](https://cloud.siliconflow.cn/models)、[价格页](https://siliconflow.cn/pricing)和[更新公告](https://api-docs.siliconflow.cn/docs/release-notes/overview)。框架说明见 [Deep Agents 官方文档](https://docs.langchain.com/oss/python/deepagents/overview)。
+
+</details>
 
 ---
 
@@ -256,7 +259,13 @@ agentseek create deepagents/subagents-dynamic --checkout main --no-input
 
 - **视频合集**：[B 站 — 《Deep Agents 实战》合集](https://space.bilibili.com/28357052/lists/7757577?type=season)
 - **图文合集**：[小红书 — 《Deep Agents 实战》合集](https://www.xiaohongshu.com/collection/item/69c4fd2a0072000000000001?xhsshare=&appuid=65032a0300000000120065e8&apptime=1778152909&share_id=2abb593f301a4e60a6e71fbbee3c8967)
-- **课程网站**：部署在 GitHub Pages
+- **课程网站**：[在线阅读](https://datawhalechina.github.io/deepagents-in-action/)
+
+## 关于作者
+
+**[沧海九粟](https://space.bilibili.com/28357052)** · LangChain 官方认证大使 · 《LangChain 实战》《LangGraph 实战》作者 · B 站万粉 UP 主。
+
+<a href="https://trendshift.io/developers/10200?utm_source=developer-badge&utm_medium=badge&utm_campaign=badge-developer-10200" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/developers/10200" alt="webup | Trendshift" width="250" height="55"/></a>
 
 ---
 

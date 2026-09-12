@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Deep Agents 实战 · README Banner</title>
+  <!-- Export .banner at 800 × 360 CSS pixels with deviceScaleFactor: 2.
+       Save a truecolor PNG to public/imgs/hero.png (1600 × 720).
+       Keep the site's paper, ink and gold palette from src/styles/global.css. -->
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .banner {
+      width: 800px;
+      height: 360px;
+      padding: 30px 40px 26px;
+      background: #faf8f5;
+      color: #1a1a2e;
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      text-align: center;
+    }
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      height: 20px;
+      color: #62616a;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1.5px;
+    }
+    .eyebrow img { width: 155px; height: auto; }
+    .separator { width: 1px; height: 14px; background: #d7ccba; }
+    h1 {
+      margin: 23px 0 12px;
+      font-size: 55px;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -2px;
+    }
+    h1 span { color: #b8860b; }
+    .subtitle { margin: 0; color: #4a4a5a; font-size: 18px; line-height: 28px; }
+    .milestone {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 24px;
+      padding: 9px 20px;
+      border: 1px solid #dfc796;
+      border-radius: 8px;
+      background: #f5ead6;
+      color: #805b0a;
+      font-size: 15px;
+      line-height: 26px;
+    }
+    .milestone svg { width: 20px; height: 20px; fill: #b8860b; }
+    .milestone strong { font-size: 25px; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+    .thanks { margin: 10px 0 0; color: #62616a; font-size: 13px; line-height: 20px; }
+    .byline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 22px;
+      color: #62616a;
+      font-size: 12px;
+      line-height: 20px;
+    }
+    .byline::before, .byline::after { content: ""; width: 50px; height: 1px; background: #dfd4c2; }
+    .byline strong { color: #1a1a2e; font-weight: 600; }
+    .dot { color: #b8860b; }
+  </style>
+</head>
+<body>
+  <main class="banner">
+    <div class="eyebrow">
+      <img src="../public/imgs/langchain-community.svg" alt="LangChain Community" />
+      <span class="separator"></span>
+      <span>OPEN SOURCE COURSE</span>
+    </div>
+    <h1>Deep Agents <span>实战</span></h1>
+    <p class="subtitle">基于 LangChain / LangGraph，构建生产级 AI Agent</p>
+    <div class="milestone">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+      <strong>2,000+</strong>
+      <span>GitHub Stars</span>
+    </div>
+    <p class="thanks">感谢每一位学习者与贡献者</p>
+    <div class="byline">
+      <strong>沧海九粟</strong>
+      <span class="dot">·</span>
+      <span>LangChain 官方认证大使</span>
+    </div>
+  </main>
+</body>
+</html>
