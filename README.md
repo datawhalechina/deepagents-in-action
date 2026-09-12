@@ -2,11 +2,15 @@
 
 # Deep Agents 实战
 
-<a href="https://datawhalechina.github.io/deepagents-in-action/">
-  <img src="public/imgs/hero.png" alt="Deep Agents 实战 — 基于 LangChain / LangGraph 的中文开源课程，感谢 2,000+ GitHub Stars" width="800" />
-</a>
+<p>
+  <a href="https://datawhalechina.github.io/deepagents-in-action/">
+    <img src="public/imgs/hero.png" alt="Deep Agents 实战 — 基于 LangChain / LangGraph 的中文开源课程，感谢 2,000+ GitHub Stars" width="800" />
+  </a>
+</p>
 
-**[在线阅读](https://datawhalechina.github.io/deepagents-in-action/)** &nbsp;·&nbsp; [B 站视频](https://space.bilibili.com/28357052/lists/7757577?type=season) &nbsp;·&nbsp; [小红书图文](https://www.xiaohongshu.com/collection/item/69c4fd2a0072000000000001?xhsshare=&appuid=65032a0300000000120065e8&apptime=1778152909&share_id=2abb593f301a4e60a6e71fbbee3c8967)
+[![在线阅读](https://img.shields.io/badge/在线阅读-B8860B?style=for-the-badge&logo=readthedocs&logoColor=white)](https://datawhalechina.github.io/deepagents-in-action/)
+[![B 站视频](https://img.shields.io/badge/B站视频-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white)](https://space.bilibili.com/28357052/lists/7757577?type=season)
+[![小红书图文](https://img.shields.io/badge/小红书图文-FF2442?style=for-the-badge&logo=xiaohongshu&logoColor=white)](https://www.xiaohongshu.com/collection/item/69c4fd2a0072000000000001?xhsshare=&appuid=65032a0300000000120065e8&apptime=1778152909&share_id=2abb593f301a4e60a6e71fbbee3c8967)
 
 [![Deep Agents](https://img.shields.io/badge/Deep%20Agents-0.5%20%E2%86%92%200.7-1C3C3C?logo=langchain&logoColor=white)](https://docs.langchain.com/oss/python/deepagents/overview)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/内容协议-CC%20BY--NC--SA%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh)
@@ -176,12 +180,6 @@ agentseek dev
 后续课程内容将根据 Deep Agents 的官方能力演进持续更新。
 
 ---
-
-## 配套资源
-
-- **视频合集**：[B 站 — 《Deep Agents 实战》合集](https://space.bilibili.com/28357052/lists/7757577?type=season)
-- **图文合集**：[小红书 — 《Deep Agents 实战》合集](https://www.xiaohongshu.com/collection/item/69c4fd2a0072000000000001?xhsshare=&appuid=65032a0300000000120065e8&apptime=1778152909&share_id=2abb593f301a4e60a6e71fbbee3c8967)
-- **课程网站**：[在线阅读](https://datawhalechina.github.io/deepagents-in-action/)
 
 ## 关于作者
 
