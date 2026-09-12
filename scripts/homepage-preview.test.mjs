@@ -151,7 +151,6 @@ test('Chapter 15 publishes its PDF and uses the dynamic subagents template', asy
     readmeSource.indexOf('#### 第 16 章：'),
   );
   assert.match(readmeBlock, /templates\/deepagents\/subagents-dynamic/);
-  assert.match(readmeBlock, /agentseek create deepagents\/subagents-dynamic --checkout main --no-input/);
 });
 
 test('Chapter 16 publishes its PDF and uses the dynamic subagents template', async () => {
@@ -179,7 +178,6 @@ test('Chapter 16 publishes its PDF and uses the dynamic subagents template', asy
     readmeSource.indexOf('后续课程内容将根据'),
   );
   assert.match(readmeBlock, /templates\/deepagents\/subagents-dynamic/);
-  assert.match(readmeBlock, /agentseek create deepagents\/subagents-dynamic --checkout main --no-input/);
 });
 
 test('content schema accepts the preview-feature section', () => {
