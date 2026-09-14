@@ -218,7 +218,7 @@ checkpointer = MemorySaver()
 backend = StateBackend()
 
 # 从远程加载 Skill（也可以本地读取）
-skill_url = "https://raw.githubusercontent.com/langchain-ai/deepagents/refs/heads/main/libs/cli/examples/skills/langgraph-docs/SKILL.md"
+skill_url = "https://raw.githubusercontent.com/langchain-ai/deepagents/refs/heads/main/libs/code/examples/skills/langgraph-docs/SKILL.md"
 with urlopen(skill_url) as response:
     skill_content = response.read().decode('utf-8')
 
@@ -263,7 +263,7 @@ from langgraph.store.memory import InMemoryStore
 store = InMemoryStore()
 backend = StoreBackend(namespace=lambda _rt: ("filesystem",))
 
-skill_url = "https://raw.githubusercontent.com/langchain-ai/deepagents/refs/heads/main/libs/cli/examples/skills/langgraph-docs/SKILL.md"
+skill_url = "https://raw.githubusercontent.com/langchain-ai/deepagents/refs/heads/main/libs/code/examples/skills/langgraph-docs/SKILL.md"
 with urlopen(skill_url) as response:
     skill_content = response.read().decode('utf-8')
 
