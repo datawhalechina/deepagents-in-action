@@ -377,7 +377,7 @@ agent = create_deep_agent(model="openai:gpt-4.1")
 
 | 模型 | 参数量 | 特点 |
 |---|---|---|
-| `Qwen/Qwen2.5-7B-Instruct` | 7B | 中文理解优秀，支持 Tools，轻量快速；当前免费版有固定 [Rate Limits](https://docs.siliconflow.cn/cn/userguide/rate-limits/rate-limit-and-upgradation) |
+| `Qwen/Qwen2.5-7B-Instruct` | 7B | 中文理解优秀，支持 Tools，轻量快速；当前免费版有固定 [Rate Limits](https://docs.siliconflow.com/cn/userguide/rate-limits/rate-limit-and-upgradation) |
 
 **推荐模型（适合实际使用）：**
 
