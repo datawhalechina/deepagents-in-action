@@ -39,7 +39,7 @@ skills/
 
 | 目录 | 用途 | 加载时机 |
 |---|---|---|
-| `SKILL.md` | 元数据 + 核心指令 | Frontmatter 启动时加载；正文匹配时加载 |
+| `SKILL.md` | 元数据 + 核心指令 | 元数据启动时进入提示词；正文由 Agent 按需读取 |
 | `scripts/` | 可执行脚本（Python、Bash、JS 等） | Agent 按指令需要时执行 |
 | `references/` | 详细参考文档（API 模式、风格指南等） | Agent 需要深入信息时按需读取 |
 | `assets/` | 模板、数据文件、schema 等静态资源 | Agent 需要时按需读取 |
@@ -131,21 +131,23 @@ Skills 最关键的设计决策是 **Progressive Disclosure（渐进式披露）
 
 | 层级 | 加载内容 | 加载时机 | 处理者 |
 |---|---|---|---|
-| Level 1: Metadata | name + description | Agent 启动时，所有 Skills 一起加载 | SkillsMiddleware |
-| Level 2: Instructions | SKILL.md 完整正文 | 某个 Skill 被匹配激活时 | SkillsMiddleware |
+| Level 1: Metadata | name + description + 文件路径 | Agent 启动时，加载可发现的 Skills 元数据 | SkillsMiddleware |
+| Level 2: Instructions | SKILL.md 正文 | Agent 判断相关后调用 `read_file` | LLM 决策，通过文件系统工具读取 |
 | Level 3: Resources | scripts/、references/、assets/ 下的文件 | 指令中引用到某个文件时 | LLM 自行决策读取 |
 
 工作流程：
 
-- **启动阶段**：`SkillsMiddleware` 扫描所有 Skill 目录，只解析每个 `SKILL.md` 的 frontmatter，提取 name 和 description。这些摘要被注入到系统提示词中。如果有 20 个 Skills，大约只占用几百 token。
+- **启动阶段**：`SkillsMiddleware` 扫描配置目录下的 Skill 子目录，从各个 `SKILL.md` 的 frontmatter 提取 name 和 description。系统提示词包含这些元数据和文件路径，正文暂不进入上下文。
 
-- **匹配阶段**：用户发送请求后，Agent 根据 description 判断是否需要某个 Skill。一旦决定使用，`SkillsMiddleware` 将该 Skill 的完整 SKILL.md 正文加载到上下文中。
+- **读取阶段**：用户发送请求后，Agent 根据 description 判断是否需要某个 Skill，再调用文件系统工具 `read_file` 读取对应的 `SKILL.md`。正文通过工具返回进入上下文；`SkillsMiddleware` 提供可用 Skills 列表和读取指引，具体选择与工具调用由模型完成。
 
 - **执行阶段**：Agent 按照正文中的指令工作。如果指令中引用了 `references/` 或 `assets/` 下的文件，Agent 自行决定是否读取——这一步由 LLM 控制，不再由中间件干预。
 
 ### 匹配流程示例
 
-![Progressive Disclosure：启动阶段只读 frontmatter，匹配阶段才加载完整 SKILL.md 内容](../public/imgs/21-flowchart-progressive-disclosure.png)
+![Progressive Disclosure：启动阶段注入元数据，Agent 判断相关后读取 SKILL.md 正文](../public/imgs/21-flowchart-progressive-disclosure.png)
+
+图中的“只读 frontmatter”指启动时仅将元数据放进模型上下文；扫描阶段仍会读取文件以解析元数据。
 
 ```
 用户："帮我查一下 LangGraph 的 interrupt 机制"
@@ -153,7 +155,7 @@ Skills 最关键的设计决策是 **Progressive Disclosure（渐进式披露）
 Agent 思考：
   - 扫描 Skills 列表...
   - langgraph-docs: "Use this skill for requests related to LangGraph..." ← 匹配！
-  - 读取 /skills/langgraph-docs/SKILL.md 完整内容
+  - 调用 read_file 读取 /skills/langgraph-docs/SKILL.md
   - 按照指令执行：fetch_url → 选择文档 → 阅读 → 回答
 ```
 
@@ -196,6 +198,7 @@ result = agent.invoke(
 关键点：
 
 - `skills` 参数接受一个**路径列表**，每个路径指向包含 Skill 子目录的父目录
+- 例如 `skills=["/skills/"]` 对应 `/skills/myskill/SKILL.md`，文件需包含 `name`、`description` frontmatter。`skills=["/skills/myskill.md"]` 不符合目录扫描约定；参数也不会替你创建目录或文件
 - 路径使用正斜杠（`/`），相对于 Backend 的根目录；上例中 `/skills/` 对应本地的 `./my-project/skills/`
 - 本地磁盘后端建议显式传入 `virtual_mode=True`，与第 3 章的路径沙箱说明保持一致
 - 当多个路径中存在同名 Skill 时，**后面的覆盖前面的**（last wins）
@@ -555,7 +558,7 @@ agent = create_deep_agent(
 
 - `/skills/shared/` 路径映射到组织级 Store，写入被 deny，只有管理员能更新。
 - `/skills/personal/` 路径映射到用户级 Store，无写入限制，Agent 可以自由创建和优化个人 Skill。
-- 两个路径都在 `skills` 列表中，Agent 启动时会同时加载两处的 Skill 文件。
+- 两个路径都在 `skills` 列表中，启动时会发现两处的 Skills 并注入元数据，正文仍由 Agent 按需读取。
 
 **同名覆盖规则**：当共享库和个人空间存在同名 Skill 时，采用 last-wins 策略——`skills` 列表中靠后的路径优先级更高。上例中 `/skills/personal/` 排在后面，因此个人版本会覆盖共享版本。这允许用户基于共享 Skill 做个性化调整，而不影响其他用户。
 
@@ -764,7 +767,7 @@ Agent 擅长执行清晰的步骤化指令。Skill 内容应当包含：
 本章我们深入学习了 Deep Agents 的 Skills 机制，核心要点：
 
 1. **Skills 结构**：一个目录 + `SKILL.md` + 可选的 scripts/references/assets，遵循开放的 Agent Skills 规范，可跨框架复用
-2. **Progressive Disclosure 三级加载**：元数据（启动时）→ 指令正文（匹配时）→ 辅助资源（按需），最大化 token 效率
+2. **Progressive Disclosure 三级加载**：元数据（启动时）→ 指令正文（Agent 按需调用 `read_file`）→ 辅助资源（按需）
 3. **三种存储后端**：StateBackend（通过 files 参数注入）、StoreBackend（持久化存储）、FilesystemBackend（直接读磁盘）
 4. **子 Agent 继承规则**：General-purpose 子 Agent 自动继承主 Agent 的 Skills，自定义子 Agent 需显式配置，状态完全隔离
 5. **权限控制**：deny 模式完全禁止、interrupt 模式人工审批，适用于生产环境的安全部署

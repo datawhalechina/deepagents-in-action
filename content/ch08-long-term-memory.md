@@ -1,14 +1,16 @@
 # 第 8 章：长期记忆 — 让 Agent 拥有跨对话的记忆
 
-> 前几章我们学习了 Deep Agents 的核心能力：虚拟文件系统、任务规划、子 Agent、Skills。但这些能力都有一个共同的局限——**对话结束后，一切都丢失了**。本章学习如何让 Agent 拥有跨对话、跨会话的持久化记忆。
+> 前几章我们学习了 Deep Agents 的核心能力：虚拟文件系统、任务规划、子 Agent、Skills。Checkpointer 可以保存同一线程的状态；要让新线程也能访问用户偏好或积累的知识，还需要共享存储。本章学习如何让 Agent 拥有跨对话的记忆。
 
 ## Memory 的工作原理
 
 Deep Agents 将记忆作为**一等公民**——Agent 以文件形式读写记忆，你用 Backend 控制这些文件存储在哪里。整个流程分三步：
 
-1. **指定记忆文件路径**：通过 `memory=` 参数传入文件路径列表，也可以通过 `skills=` 传入程序性记忆（Skills）
-2. **Agent 读取记忆**：启动时加载到系统提示词，或对话过程中按需读取
-3. **Agent 更新记忆（可选）**：学到新信息时，用内置的 `edit_file` 工具更新记忆文件，变更持久化到下次对话
+1. **准备存储与文件**：配置 Backend 和 Store，并预置需要加载的记忆文件
+2. **加载记忆**：`memory=` 指定已有文件的路径，内容进入系统提示词；`skills=` 指定包含 Skill 子目录的目录，先注入元数据，正文由 Agent 按需读取
+3. **更新记忆（可选）**：通过提示词约定何时写入、写到哪个文件，再由 Agent 调用 `edit_file` 等工具更新，供后续对话使用
+
+`memory=["/memories/preferences.md"]` 是**读取配置**。在 Deep Agents 0.7.10 中，缺失的记忆文件会被跳过，不会自动创建，缺失文件的路径也不会作为已加载记忆注入提示词。要固定偏好的写入位置，需要同时约定写入路径；仅声明 `memory=` 不能保证 Agent 使用这个文件名。
 
 最常见的两种模式：**Agent 级记忆**（所有用户共享）和**用户级记忆**（按用户隔离）。
 
@@ -257,7 +259,7 @@ agent = create_deep_agent(
 )
 ```
 
-> `memory=` 参数接受一个路径列表，Agent 启动时会自动将这些文件内容加载到系统提示词中。这是 Deep Agents 0.5.0+ 的新特性——比手动在 system_prompt 里引导 Agent 读文件更优雅。
+> `memory=` 接受**文件路径列表**，框架在加载记忆时将已有文件的路径和内容注入系统提示词。`skills=` 接受的是**目录列表**。两者都需要先在对应 Backend 中准备文件；首次初始化和写入约定见下面的“跨对话访问”示例。
 
 ### 用户级记忆（User-scoped）
 
@@ -303,25 +305,84 @@ write_file("/memories/project/tech-stack.md", "React + TypeScript")
 
 ### 跨对话访问
 
-长期记忆的核心价值在于**跨线程可访问**：
+长期记忆的核心价值在于**跨线程可访问**。下面按“初始化 → 约定写入 → 检查保存结果 → 新线程读取”走完一次流程。
+
+**示意片段**：`model` 沿用第 2 章已配置、支持工具调用的聊天模型，其余初始化和检查步骤包含在代码中。示例按 `deepagents==0.7.10` 的行为编写，两个线程复用同一个 Store 和同一个用户标识。
 
 ```python
-from langchain_core.utils.uuid import uuid7
+from dataclasses import dataclass
+from uuid import uuid4
+
+from deepagents import create_deep_agent
+from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from deepagents.backends.utils import create_file_data
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.store.memory import InMemoryStore
+
+
+@dataclass
+class UserContext:
+    user_id: str
+
+
+store = InMemoryStore()
+user = UserContext(user_id="user-123")
+namespace = (user.user_id, "memories")
+memory_path = "/memories/preferences.md"
+
+# 先创建文件；CompositeBackend 会去掉 /memories/ 路由前缀。
+# 这是新 Store 的首次初始化；已有 Store 应先检查文件，避免覆盖旧偏好。
+store.put(namespace, "/preferences.md", create_file_data("# 用户偏好\n暂无记录。"))
+
+agent = create_deep_agent(
+    model=model,
+    context_schema=UserContext,
+    store=store,
+    checkpointer=InMemorySaver(),
+    backend=CompositeBackend(
+        default=StateBackend(),
+        routes={
+            "/memories/": StoreBackend(
+                namespace=lambda rt: (rt.context.user_id, "memories"),
+            ),
+        },
+    ),
+    memory=[memory_path],
+    system_prompt=(
+        f"当用户明确要求记住偏好时，先读取 {memory_path}，再用 edit_file 更新它。"
+        "逐字保存用户给出的偏好条目，保留其他已有偏好，不要另建偏好文件。"
+        "只有工具写入成功后，才告知用户已记住。"
+    ),
+)
 
 # 对话 1：保存用户偏好
-config1 = {"configurable": {"thread_id": str(uuid7())}}
-agent.invoke({
-    "messages": [{"role": "user", "content": "记住我的偏好：代码注释用中文，变量名用英文"}]
-}, config=config1)
-# Agent 将偏好写入 /memories/preferences.md
+agent.invoke(
+    {"messages": [{"role": "user", "content": "记住我的偏好：代码注释用中文，变量名用英文"}]},
+    context=user,
+    config={"configurable": {"thread_id": str(uuid4())}},
+)
+
+# 从 Store 核对写入结果，不能只看模型是否回复“已记住”。
+saved = store.get(namespace, "/preferences.md")
+assert saved is not None, "偏好文件未保存，请检查工具调用"
+content = saved.value["content"]
+print("保存后的偏好：", content)
+assert "代码注释用中文" in content and "变量名用英文" in content, "偏好未按约定写入，请检查 trace"
 
 # 对话 2（全新的对话！）：读取之前保存的偏好
-config2 = {"configurable": {"thread_id": str(uuid7())}}
-agent.invoke({
-    "messages": [{"role": "user", "content": "帮我写一个排序函数"}]
-}, config=config2)
-# Agent 读取 /memories/preferences.md，用中文注释、英文变量名
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "帮我写一个排序函数"}]},
+    context=user,
+    config={"configurable": {"thread_id": str(uuid4())}},
+)
+print(result["messages"][-1].content)
 ```
+
+验证时分开看两件事：第一轮的 Store 检查说明偏好是否写入；第二轮可在模型调用的 trace 中检查系统提示词是否包含 `/memories/preferences.md` 及已保存的偏好，再观察回答是否遵循偏好。提示词中的写入约定仍依赖模型执行，断言失败时应检查 `read_file` / `edit_file` 的调用和返回值。
+
+每次重新运行整段代码都会创建新的 `InMemoryStore`；它只在当前进程中保留数据。跨线程需复用 Store，跨进程或重启后保留则需要本章后面的持久化 Store。0.7.10 的记忆加载还会复用 state 中已有的 `memory_contents`，因此请使用**新 `thread_id`** 验证新对话加载，不要把同一线程继续对话当成重新加载的证据。
+
+这里用 `create_file_data` 预置一个偏好文件。记忆与 Skills 一起初始化、以及路由前缀和 Store key 的完整对应关系，见后面的“文件存储格式与外部写入”。
 
 ![跨对话记忆工作流程：对话 1 将偏好写入 /memories/，持久化存储保留数据，对话 2 读取之前保存的偏好——不同对话共享持久化文件](../public/imgs/27-flowchart-cross-thread.png)
 
@@ -347,7 +408,7 @@ agent = create_deep_agent(
 )
 ```
 
-Agent 启动时自动加载 `preferences.md`，当用户告诉它新偏好时，用 `edit_file` 更新。
+需要先准备 `preferences.md`，并像上一节那样约定更新路径。框架负责加载已有内容，Agent 根据提示词调用 `edit_file` 保存新偏好。
 
 ### 2. 自我改进的 Agent
 
@@ -761,23 +822,26 @@ Use the fetch_url tool to read https://docs.langchain.com/llms.txt, then fetch r
 /policies/compliance.md             # 组织合规策略（只读）
 ```
 
-### 2. 用 `memory=` 声明而非 System Prompt
+### 2. 用 `memory=` 加载，用提示词约定写入
 
-优先使用 `memory=` 参数声明记忆文件，而不是在 system_prompt 中引导 Agent 手动读取。前者让框架自动管理加载时机：
+用 `memory=` 声明要加载的已有文件，同时在 `system_prompt` 中说明何时更新、更新哪个路径。这两项配置各有作用，可以一起使用。
+
+**示意片段**：`model`、`store`、`backend` 代表应用已配置的模型、存储和后端；文件预置方式见“跨对话访问”。
 
 ```python
-# ✅ 推荐
 agent = create_deep_agent(
+    model=model,
+    store=store,
+    backend=backend,
     memory=["/memories/AGENTS.md", "/memories/preferences.md"],
-    ...
-)
-
-# ❌ 不推荐（旧模式）
-agent = create_deep_agent(
-    system_prompt="启动时先读取 /memories/preferences.md...",
-    ...
+    system_prompt=(
+        "用户明确要求保存偏好时，先读取并更新 /memories/preferences.md，"
+        "保留其他已有偏好，写入成功后再确认。"
+    ),
 )
 ```
+
+如果应用要求严格限制可写路径，应由专用写入工具或 Backend 权限规则执行限制，并由应用检查保存结果；提示词本身不提供这样的保证。
 
 ### 3. 按主题拆分文件
 
@@ -814,7 +878,7 @@ StoreBackend(
 
 本章我们学习了 Deep Agents 的长期记忆能力：
 
-1. **Memory 一等公民**：通过 `memory=` 参数声明记忆路径，Agent 启动时自动加载到系统提示词
+1. **记忆加载与写入**：`memory=` 加载已有记忆文件，首次使用需初始化，更新路径需通过提示词或工具约定
 2. **三种作用域**：Agent 级（共享知识）、用户级（个人偏好）、组织级（合规策略）
 3. **CompositeBackend 路由**：`/memories/` 路径路由到 StoreBackend，namespace lambda 控制隔离粒度
 4. **高级特性**：情景记忆（搜索过去对话）、后台整合（Cron + 整合 Agent）、读写权限控制

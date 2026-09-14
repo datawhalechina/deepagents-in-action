@@ -240,6 +240,8 @@ agent = create_deep_agent(
 
 这是最灵活的方案——**不同路径走不同后端**：
 
+> **v0.7 兼容提醒**：`backend=` 必须直接传入 `CompositeBackend(...)` 等后端实例；`backend=lambda rt: ...` 工厂函数已移除。`StoreBackend(namespace=lambda rt: ...)` 仍然支持，它在运行时计算存储命名空间，不负责创建后端。
+
 ```python
 from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
@@ -464,6 +466,6 @@ class PolicyWrapper(BackendProtocol):
 3. **自动上下文管理**：大结果自动卸载（>20K tokens → 文件 + 引用）、对话历史自动总结（>85% 窗口 → 摘要 + 完整记录保存到文件）
 4. **可插拔后端**：StateBackend（临时）、FilesystemBackend（本地磁盘）、LocalShellBackend（本地 Shell）、StoreBackend（持久化）、CompositeBackend（混合路由）、沙箱后端（安全执行）
 5. **权限控制**：`FilesystemPermission` 声明式权限；`GuardedBackend` 或 `PolicyWrapper` 实现定制策略
-6. **兼容提醒**：工厂函数模式（`lambda rt: StateBackend(rt)`）在 v0.7 已移除，必须直接传入具体 Backend 实例
+6. **兼容提醒**：`backend=` 工厂函数模式在 v0.7 已移除，必须直接传入具体 Backend 实例；`namespace=lambda rt: ...` 仍可用于动态计算存储命名空间
 
 下一章，我们将学习另一个核心能力——任务规划，以及如何在 v0.7 中按任务需要启用 `write_todos`。
