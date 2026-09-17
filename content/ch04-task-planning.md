@@ -13,13 +13,13 @@
 Agent：[调用天气工具] → 今天北京晴，25°C。
 ```
 
-但对于复杂任务，一步到位是不可能的：
+复杂任务通常需要多步执行。例如：
 
 ```
 用户：帮我调研 LangGraph 的技术架构，对比三个竞品，写一份 3000 字的分析报告。
 ```
 
-这个任务涉及：搜索多个信息源、阅读和整理大量资料、对比分析、组织结构、撰写报告。没有规划，Agent 要么遗漏步骤，要么在某个环节陷入死循环。
+这个任务涉及：搜索多个信息源、阅读和整理大量资料、对比分析、组织结构、撰写报告。缺少明确的任务清单时，Agent 更容易遗漏步骤或重复搜索。规划可以帮助它追踪进度，具体效果仍要通过实际任务验证。
 
 ### 没有规划的 Agent 会怎样？
 
@@ -33,6 +33,8 @@ Agent：[调用天气工具] → 今天北京晴，25°C。
 ## 在 v0.7 中显式启用任务规划
 
 `TodoListMiddleware` 会同时注入 `write_todos` 工具、`todos` 状态和规划提示词。v0.7 默认不再安装它，需要时应明确传入：
+
+> **示意片段**：`model` 代表已配置好的聊天模型；模型初始化方式见第 2 章，本章后面的完整示例也包含这部分配置。
 
 ```python
 from deepagents import create_deep_agent
@@ -74,9 +76,11 @@ agent = create_deep_agent(
 |---|---|---|
 | `pending` | 待办 | Agent 刚规划出来，还没开始做 |
 | `in_progress` | 进行中 | Agent 正在执行这个步骤 |
-| `completed` | 已完成 | Agent 确认做完了 |
+| `completed` | 已完成 | Agent 将任务标记为完成 |
 
-状态流转：`pending` → `in_progress` → `completed`
+常见状态流转：`pending` → `in_progress` → `completed`。模型也可以根据新信息调整清单，这不是框架强制执行的流程。
+
+`completed` 是 Agent 写入的进度标记。应用仍需检查产物：例如报告是否生成、引用能否核实，或修改后的代码是否通过测试。仅看清单全部完成，不能判断任务质量。
 
 ### Agent 怎么用 write_todos？
 
@@ -129,12 +133,15 @@ Agent 调用 write_todos 更新列表：
 
 ### 任务清单的持久化
 
-任务清单**持久化在 Agent State 中**，这意味着：
+任务清单保存在 **Agent State 的 `todos` 字段**中，和消息历史分开管理：
 
-- 在同一个对话中，任务清单不会丢失
-- 即使 Agent 的对话历史被总结压缩，任务清单依然完整
+- 同一次运行中，后续步骤可以继续访问这份清单；默认的对话总结不会删除 `todos` 字段
+- 多次 `invoke()` 之间要自动接续清单，需要配置 Checkpointer，并复用同一个 `thread_id`；只添加 `TodoListMiddleware` 不会自动接续上次运行的状态
+- `InMemorySaver` 只在当前进程中保存检查点；进程重启后还要恢复，需要使用数据库等持久化 Checkpointer。部署到 Agent Server 时，由平台提供相应的持久化能力
 - 默认 `general-purpose` 子 Agent 会继承主 Agent 显式传入的 Todo 配置，但仍在自己的状态中维护清单
 - `subagents=[...]` 声明的子 Agent 有独立 Middleware 栈，需要规划能力时必须在自己的 spec 中启用 Todo；它也不会读取主 Agent 的清单
+
+Checkpointer 的配置方式见[第 8 章：短期记忆的基础](../ch08-long-term-memory/#checkpointer短期记忆的基础)。
 
 ## 揭开引擎盖：LangChain 中间件
 
@@ -160,7 +167,7 @@ v0.7 可以从三类来源理解 `create_deep_agent()` 的中间件堆栈：
 **框架默认层**：
 - `FilesystemMiddleware` — 注入 7 个文件工具，并执行 `permissions` 权限规则
 - `SummarizationMiddleware` — 上下文自动压缩，触发阈值可配置
-- `PatchToolCallsMiddleware` — 内部工具调用修补（框架内部使用）
+- `PatchToolCallsMiddleware` — 补齐消息历史中缺失的工具响应
 - Prompt caching 等模型相关能力 — 是否启用取决于模型和 Harness profile
 
 **条件层（按参数自动激活）**：
@@ -182,10 +189,40 @@ v0.7 可以从三类来源理解 `create_deep_agent()` 的中间件堆栈：
 
 其中 `FilesystemMiddleware` 的路径授权不需要另写自定义中间件；`permissions=` 的规则模型、默认允许语义与适用边界见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
 
-![揭开引擎盖：create_deep_agent() 内部分为常驻层（TodoList、Filesystem、Summarization、PatchToolCalls、AnthropicCaching）、条件层（SubAgent、Skills、Memory、HumanInTheLoop 等按参数激活）和用户自定义层](../public/imgs/11-framework-middleware-assembly.png)
+![Deep Agents v0.7 按能力来源组装中间件：框架默认层、条件层和应用选择层共同传入 create_agent；TodoList 需显式加入，Checkpointer 单独属于 LangGraph 运行时](../public/imgs/11-framework-middleware-assembly.png)
 
-> [!NOTE]
-> **v0.7 提醒**：图片中的 TodoList 位于旧版常驻层。当前 Todo 属于应用选择层；同名的 `FilesystemMiddleware` 或 `SummarizationMiddleware` 则会替换默认实例，而且是整实例替换，不是字段合并。
+图中按能力来源分类，连线不代表 Hook 的执行顺序。具体的调用顺序取决于 Hook 类型和中间件在栈中的位置。
+
+### PatchToolCallsMiddleware：补齐哪一种“缺口”？
+
+模型发出工具调用后，消息历史通常还需要一条对应的工具响应。例如，模型请求搜索资料，工具执行后返回搜索结果。响应中的 `tool_call_id` 指向请求中的调用 ID，把两条消息关联起来。
+
+如果这次运行在工具响应写回前被取消，历史里可能只剩下调用请求。下一次 Agent 运行开始前，`PatchToolCallsMiddleware` 会在 `before_agent` Hook 中检查历史，为缺失的响应补上一条 `ToolMessage`，说明这次调用被取消；对于参数损坏或截断的调用，则说明它未能执行。
+
+下面是消息变化的示意，中文说明经过简化：
+
+```text
+模型：调用 internet_search("LangGraph")，调用 ID 为 call_1
+本次运行被取消：历史里没有 call_1 对应的工具响应
+
+下一次运行开始前，PatchToolCalls 补充：
+工具响应（call_1）：这次工具调用已取消，未能完成。
+```
+
+它补齐的是消息记录，不会重新执行搜索，也不会把错误结果改成正确结果。已经有对应工具响应的调用，即使返回的是错误信息，也不属于这种缺口。补上的取消说明也不能证明外部操作已撤销，例如服务端可能已经处理了请求，只是客户端没有拿到结果。
+
+这几个职责很容易混在一起，可以按遇到的问题来区分：
+
+| 遇到什么情况 | 谁来处理 | 需要注意什么 |
+|---|---|---|
+| 历史里有工具调用，却缺少对应响应 | `PatchToolCallsMiddleware` 补充说明消息 | 不重试工具，不验证结果是否正确 |
+| 工具调用遇到可重试的异常 | 应用显式配置的 `ToolRetryMiddleware` | 是否重试、重试次数由策略决定；写操作还要考虑重复执行 |
+| 下一次运行继续上一次的状态 | Checkpointer 配合同一个 `thread_id` | 跨进程恢复需要持久化 Checkpointer |
+| 工具返回了内容，但内容是否正确 | 应用的校验、评测或人工审核 | 调用成功、清单完成都不等于结果正确 |
+
+**Checkpointer 属于 LangGraph 的运行时持久化机制**，通过 `checkpointer=` 配置，不是 `middleware=[...]` 中的一项。恢复也不是回到任意一行代码继续执行：例如 `interrupt()` 恢复时会从当前节点开头重放，因此有副作用的操作需要考虑幂等性。具体规则见[第 9 章：interrupt() 的使用规则](../ch09-human-in-the-loop/#interrupt-的使用规则)。
+
+本节的消息修补行为按 [Deep Agents 0.7.10 的实现](https://github.com/langchain-ai/deepagents/blob/deepagents%3D%3D0.7.10/libs/deepagents/deepagents/middleware/patch_tool_calls.py)核对；示意消息用于解释机制，不是一次真实搜索的运行结果。
 
 ### TodoListMiddleware：write_todos 的真身
 
@@ -220,7 +257,7 @@ agent = create_agent(
 添加 `TodoListMiddleware` 后，Agent 会自动获得：
 
 1. **`write_todos` 工具** — 创建和管理任务清单
-2. **`todos` 状态** — 保存任务及其状态，供同一 Agent 的后续轮次和 UI 使用
+2. **`todos` 状态** — 保存任务及其状态，供后续步骤和 UI 使用；跨次调用的接续由 Checkpointer 负责
 3. **规划指导提示词** — 引导 Agent 在面对复杂任务时先规划再执行
 
 这段代码展示了 LangChain `create_agent()` 的用法。Deep Agents 会提供文件系统、上下文管理和子 Agent 等 Harness 默认能力，但 Todo 仍由应用选择。
@@ -257,15 +294,15 @@ TodoListMiddleware(
 
 ### 任务清单的锚定作用
 
-关键点在于：**即使对话历史被总结压缩了，任务清单依然完整**。
+关键点在于：**默认的对话总结压缩消息历史，不会删除单独保存的 `todos` 字段**。
 
-这意味着 Agent 在总结后仍然知道：
+这份清单可以帮助 Agent 在总结后继续追踪：
 
 - 总共有哪些步骤
 - 哪些已经完成，哪些还在进行
 - 下一步该做什么
 
-任务清单充当了 Agent 的"北极星"——无论中间过程如何压缩，Agent 始终不会迷失方向。
+清单是否及时更新、下一步是否合理，仍取决于模型的实际行为。调试时要把 `todos` 和工具调用记录、最终产物放在一起看，不能只看进度标记。
 
 ### 在 LangChain 中手动组合
 
@@ -347,12 +384,14 @@ result = agent.invoke({
 print(result["messages"][-1].content)
 ```
 
-在这个例子中，Agent 会自动：
+这个例子通过提示词引导 Agent 按下面的过程工作：
 
 1. 调用 `write_todos` 制定研究计划（搜索→对比→写报告）
 2. 逐步执行每个任务，更新状态
 3. 用 `write_file` 保存中间搜索结果到虚拟文件系统
 4. 最终综合所有信息输出报告
+
+这些是期望行为，不是固定执行顺序。运行后应检查实际工具调用、`result.get("todos", [])` 和最终报告，确认它是否完成了调研，以及清单与产物是否一致。
 
 ## LangChain 中间件全景：Deep Agents 的能力版图
 
@@ -364,7 +403,7 @@ print(result["messages"][-1].content)
 |---|---|
 | FilesystemMiddleware | 7 个文件工具 + 权限控制 |
 | SummarizationMiddleware | 对话历史自动总结（触发阈值可配置） |
-| PatchToolCallsMiddleware | 工具调用内部修补（框架内部） |
+| PatchToolCallsMiddleware | 补齐消息历史中缺失的工具响应 |
 | 模型 / Provider 相关 Middleware | 由 Harness profile 和实际模型决定 |
 
 **条件层（按参数激活）**
@@ -390,19 +429,19 @@ print(result["messages"][-1].content)
 | | ModelCallLimitMiddleware | 限制模型调用次数 |
 | **上下文** | ContextEditingMiddleware | 清理旧的工具调用结果 |
 
-![Deep Agents 中间件全景：常驻层（5个始终启用）、条件层（5个按参数激活）、可选层（LangChain 预构建，按需添加），以及不可排除的必要中间件 FilesystemMiddleware + SubAgentMiddleware](../public/imgs/12-infographic-middleware.png)
+![Deep Agents v0.7 中间件职责全景：默认层处理文件操作、上下文压缩和缺失响应；条件层按配置加入；应用选择层包含显式启用的 Todo、重试、降级、调用限制和脱敏；Checkpointer 单独负责状态保存与恢复](../public/imgs/12-infographic-middleware.png)
 
-> [!NOTE]
-> **v0.7 提醒**：图片保留了旧版“5 个常驻层”的结构。当前 Todo 不再常驻；`FilesystemMiddleware` 和 `SubAgentMiddleware` 仍支撑核心工具，但同名自定义实例可以在原位置换默认配置。替换时必须给出完整配置，并重新验证权限、Backend 和子 Agent 行为。
+图中列出常见能力，完整名称见上表。同名默认实例可以原位置换，但配置不会逐字段合并；替换后仍需验证权限、Backend 和子 Agent 行为。
 
 ## 小结
 
 本章我们学习了两件事——Deep Agents 的任务规划能力，以及它背后的 LangChain 中间件机制：
 
-1. **为什么需要规划**：复杂任务需要先拆解再执行，否则 Agent 会遗漏步骤、重复劳动、半途而废
-2. **`write_todos` 工具**：启用 `TodoListMiddleware` 后，任务以 pending → in_progress → completed 三种状态保存在 Agent State 中
+1. **为什么需要规划**：任务清单帮助 Agent 拆解复杂任务、追踪进度；是否减少遗漏和重复劳动，需要通过实际任务验证
+2. **`write_todos` 工具**：启用 `TodoListMiddleware` 后，任务以 pending、in_progress、completed 三种状态保存在 Agent State 中；完成标记仍需结合产物检查
 3. **LangChain 中间件**：Agent 能力的插件机制。`create_deep_agent()` 的本质就是把一组中间件自动组装到 Agent 上
 4. **由表及里**：`write_todos` 的真身是 `TodoListMiddleware`，上下文压缩的真身是 `SummarizationMiddleware`——理解底层，才能自由扩展
 5. **能力版图**：`create_deep_agent()` 组合框架默认层、条件层和应用选择层；v0.7 支持同名 Middleware 原位置换，但不会自动合并新旧配置
+6. **职责边界**：PatchToolCalls 补齐缺失的工具响应，Retry 按策略重试异常，Checkpointer 保存和恢复状态；结果是否正确，需要另外校验
 
 下一章，我们将学习子 Agent 与上下文隔离——让 Agent 学会"委派"，把复杂子任务交给专门的 Agent 处理。
