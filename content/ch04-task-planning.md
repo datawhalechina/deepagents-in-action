@@ -273,7 +273,24 @@ TodoListMiddleware(
 
 ### SummarizationMiddleware：上下文压缩的真身
 
-第 3 章讲的"对话历史自动总结"，底层就是 `SummarizationMiddleware`。它和 `TodoListMiddleware` 一样，也是 LangChain 的预构建中间件之一。
+第 3 章讲的“对话历史自动总结”，由 Deep Agents 的 `SummarizationMiddleware` 负责。LangChain 也有一个同名中间件，Deep Agents 复用了它的摘要逻辑，但两者的执行位置和消息处理方式不同。
+
+| 对比项 | LangChain 版本 | Deep Agents 版本 |
+|---|---|---|
+| 导入位置 | `langchain.agents.middleware` | `deepagents.middleware` |
+| 执行位置 | `before_model` / `abefore_model`，在图中形成独立节点 | `wrap_model_call` / `awrap_model_call`，在 `model` 节点内部执行 |
+| 正常摘要后的消息 | 将当前 `state["messages"]` 中的旧消息替换为摘要，保留近期消息 | 保留原始消息，另外记录摘要和截断位置；本次模型输入使用“摘要 + 近期消息” |
+| 历史保存 | 不负责将旧消息写入 Backend | 将待总结的旧消息写入 Backend，摘要中附上保存路径 |
+
+因此，用 `agent.get_graph()` 查看结构时，LangChain 版本会出现 `SummarizationMiddleware.before_model` 节点；Deep Agents 版本的摘要逻辑位于 `model` 节点内部，不会单独出现摘要节点。图展示的是节点结构，不会把节点内部的包装逻辑全部展开。
+
+Deep Agents 需要在长任务中压缩模型输入，同时保留历史供后续查阅。它通过 `request.override(messages=...)` 调整本次请求，并将摘要记录在单独的状态字段中；这不等于只注入工具和提示词。需要按路径读回历史时，还要配置使用同一 Backend 的 `FilesystemMiddleware`。提供 `compact_conversation` 工具的则是另一个 `SummarizationToolMiddleware`，与这里的自动摘要分开配置。
+
+**手动实例化时要设置 `trigger`。** 两个同名类的默认值都是 `None`，不会按阈值主动摘要。`create_deep_agent()` 会为默认摘要中间件选择触发条件；直接用 `create_agent(middleware=[...])` 组装时，不会自动获得这组默认配置。图中是否有摘要节点，也不能证明摘要已经触发。
+
+想观察摘要，可以给两者都设置 `trigger=("messages", 4)`、`keep=("messages", 2)`，传入几轮消息后调用 Agent，再比较模型实际收到的消息。这里的两个数字只用于小规模演示；实际任务应按上下文大小和信息保留需求设置。
+
+以上按 [Deep Agents 0.7.10 的实现](https://github.com/langchain-ai/deepagents/blob/deepagents%3D%3D0.7.10/libs/deepagents/deepagents/middleware/summarization.py)核对。Deep Agents 还会在模型调用抛出 `ContextOverflowError` 时尝试摘要后重试；这种溢出处理和按 `trigger` 主动摘要是两条触发路径。
 
 ## 任务规划与上下文管理的协同
 
@@ -286,11 +303,11 @@ TodoListMiddleware(
 此时，Deep Agents 的上下文管理机制（第 3 章）会自动介入：
 
 1. **大结果卸载**：前面步骤产生的大量搜索结果已经被卸载到文件系统
-2. **对话总结**：如果上下文仍然超过触发阈值（默认 85%，可通过 `SummarizationMiddleware` 的 `trigger` 参数自定义），旧的对话会被总结压缩
+2. **对话总结**：如果上下文仍然超过配置的触发阈值，旧消息会被总结，本次模型输入改为摘要加近期消息。`create_deep_agent()` 在已知模型窗口大小时默认使用 85%；缺少该信息时使用固定 token 阈值，也可以通过 `trigger` 自定义
 
 ### 任务清单的锚定作用
 
-关键点在于：**默认的对话总结压缩消息历史，不会删除单独保存的 `todos` 字段**。
+关键点在于：**默认的对话总结压缩发给模型的消息，不会删除单独保存的 `todos` 字段**。
 
 这份清单可以帮助 Agent 在总结后继续追踪：
 
@@ -302,31 +319,39 @@ TodoListMiddleware(
 
 ### 在 LangChain 中手动组合
 
-理解了中间件机制后，你就能看懂 Deep Agents 内部是怎么组装的。下面这段代码用 LangChain 的 `create_agent()` 手动组合了任务规划和上下文总结两个能力——这基本就是 `create_deep_agent()` 内部做的事情（的一部分）：
+下面用 LangChain 的 `create_agent()` 手动组合任务规划、文件工具和 Deep Agents 的摘要中间件。文件工具和摘要中间件使用同一个 Backend，这样摘要里保存的历史路径才能通过 `read_file` 读回。
 
 > **示意片段**：复用上一个示例定义的 `model`，并省略与中间件组合无关的自定义工具。
 
 ```python
 from langchain.agents import create_agent
 from langchain.agents.middleware import TodoListMiddleware
+from deepagents.backends import StateBackend
 from deepagents.middleware import FilesystemMiddleware, SummarizationMiddleware
+
+backend = StateBackend()
 
 agent = create_agent(
     model=model,
     tools=[],
     middleware=[
         TodoListMiddleware(),
-        FilesystemMiddleware(),   # read_file / write_file 通过中间件注入
+        FilesystemMiddleware(backend=backend),
         SummarizationMiddleware(
-            model="zai-org/GLM-5.2",  # 总结压缩影响后续推理质量，建议使用能力较强的模型
-            trigger=("tokens", 4000),  # 可自定义：("ratio", 0.85) 或 ("tokens", N)
+            model=model,  # 复用前面已经配置好服务地址和 API Key 的模型
+            backend=backend,
+            trigger=("tokens", 4000),
             keep=("messages", 20),
         ),
     ],
 )
 ```
 
-> 在 Deep Agents 中，`SummarizationMiddleware` 仍属于默认上下文管理能力；`TodoListMiddleware` 则需要通过 `middleware=[...]` 显式加入。
+`trigger` 表示何时开始摘要，`keep` 表示保留多少近期消息；如果没有可被总结的旧消息，就不会生成摘要。这里的 4,000 tokens 和 20 条消息是示例配置。比例阈值写作 `("fraction", 0.85)`，需要模型 profile 提供 `max_input_tokens`；模型窗口未知时使用 `("tokens", N)` 或 `("messages", N)`。
+
+这里的 `StateBackend` 把卸载文件保存在 Agent State 中。跨次调用或进程重启后的保存条件见[第 8 章：Checkpointer](../ch08-long-term-memory/#checkpointer短期记忆的基础)。
+
+> `create_deep_agent()` 默认配置的是 Deep Agents 版本的摘要中间件；`TodoListMiddleware` 仍需通过 `middleware=[...]` 显式加入。
 
 ## 代码实战：让 Agent 规划并执行研究任务
 

@@ -85,7 +85,7 @@ Checkpointer 的工作原理：
 | **Delete（删除）** | 用 `RemoveMessage` 精确删除特定消息 | 需要选择性清理（如删除敏感信息）|
 | **Summarize（总结）** | 用 LLM 将旧消息压缩为摘要 | 需要保留历史语义，是最推荐的方式 |
 
-在 Deep Agents 中，**Summarize 策略已经自动内置**（第 3 章和第 4 章讲过的 `SummarizationMiddleware`）。当上下文达到模型窗口的 85% 时，自动触发总结。
+在 Deep Agents 中，**Summarize 策略已经自动内置**（第 3 章和第 4 章讲过的 `SummarizationMiddleware`）。`create_deep_agent()` 在已知模型窗口大小时，默认到 85% 触发；缺少窗口信息时使用固定 token 阈值。正常摘要时，它压缩的是发给模型的消息，State 中的原始消息仍保留；具体区别见[第 4 章：SummarizationMiddleware](../ch04-task-planning/#summarizationmiddleware上下文压缩的真身)。
 
 v0.7 允许通过同名 `SummarizationMiddleware` 原位置换默认实例。这里的“替换”是整实例替换，不会只覆盖 `trigger` 或摘要模型；自定义时要把 Backend、保留消息数、触发条件和摘要提示词作为一组完整配置重新检查。长期记忆文件也要区分写入方式：`write_file` 会完整覆盖已有内容，追加或局部修订应使用 `edit_file`。
 
