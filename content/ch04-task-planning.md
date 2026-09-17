@@ -199,15 +199,11 @@ LangChain 中间件提供两类执行边界。它们都叫 Hook，但适合解�
 
 如果这次运行在工具响应写回前被取消，历史里可能只剩下调用请求。下一次 Agent 运行开始前，`PatchToolCallsMiddleware` 会在 `before_agent` Hook 中检查历史，为缺失的响应补上一条 `ToolMessage`，说明这次调用被取消；对于参数损坏或截断的调用，则说明它未能执行。
 
-下面是消息变化的示意，中文说明经过简化：
+假设 Agent 准备搜索 LangGraph 的资料：
 
-```text
-模型：调用 internet_search("LangGraph")，调用 ID 为 call_1
-本次运行被取消：历史里没有 call_1 对应的工具响应
-
-下一次运行开始前，PatchToolCalls 补充：
-工具响应（call_1）：这次工具调用已取消，未能完成。
-```
+1. **发起调用**：模型请求执行 `internet_search("LangGraph")`，调用 ID 为 `call_1`。
+2. **运行被取消**：工具响应还没写回，消息历史里缺少 `call_1` 对应的响应。
+3. **补齐响应**：下一次 Agent 运行开始前，`PatchToolCallsMiddleware` 补上一条 `tool_call_id` 为 `call_1` 的 `ToolMessage`，说明上次调用已取消。
 
 它补齐的是消息记录，不会重新执行搜索，也不会把错误结果改成正确结果。已经有对应工具响应的调用，即使返回的是错误信息，也不属于这种缺口。补上的取消说明也不能证明外部操作已撤销，例如服务端可能已经处理了请求，只是客户端没有拿到结果。
 
@@ -222,7 +218,7 @@ LangChain 中间件提供两类执行边界。它们都叫 Hook，但适合解�
 
 **Checkpointer 属于 LangGraph 的运行时持久化机制**，通过 `checkpointer=` 配置，不是 `middleware=[...]` 中的一项。恢复也不是回到任意一行代码继续执行：例如 `interrupt()` 恢复时会从当前节点开头重放，因此有副作用的操作需要考虑幂等性。具体规则见[第 9 章：interrupt() 的使用规则](../ch09-human-in-the-loop/#interrupt-的使用规则)。
 
-本节的消息修补行为按 [Deep Agents 0.7.10 的实现](https://github.com/langchain-ai/deepagents/blob/deepagents%3D%3D0.7.10/libs/deepagents/deepagents/middleware/patch_tool_calls.py)核对；示意消息用于解释机制，不是一次真实搜索的运行结果。
+本节的消息修补行为按 [Deep Agents 0.7.10 的实现](https://github.com/langchain-ai/deepagents/blob/deepagents%3D%3D0.7.10/libs/deepagents/deepagents/middleware/patch_tool_calls.py)核对。
 
 ### TodoListMiddleware：write_todos 的真身
 
