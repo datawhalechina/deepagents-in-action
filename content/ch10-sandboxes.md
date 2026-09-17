@@ -475,5 +475,5 @@ LangSmith traces 可以展示 Agent 在沙箱中运行了哪些 Shell 命令、�
 
 - [Deep Agents Sandboxes](https://docs.langchain.com/oss/python/deepagents/sandboxes)
 - [Deep Agents Backends](https://docs.langchain.com/oss/python/deepagents/backends)
-- [Deep Agents Code — Use remote sandboxes](https://docs.langchain.com/oss/python/deepagents/code/remote-sandboxes)
+- [Deep Agents Code — Use remote sandboxes](https://docs.langchain.com/oss/deepagents/code/remote-sandboxes)
 - [LangSmith Sandboxes](https://docs.langchain.com/langsmith/sandboxes)
