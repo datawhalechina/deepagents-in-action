@@ -162,36 +162,36 @@ LangChain 中间件提供两类执行边界。它们都叫 Hook，但适合解�
 
 第 9 章会用一个完整例子展示[如何在自定义 Middleware 的 Node-style Hook 中直接调用 `interrupt()`](../ch09-human-in-the-loop/#在自定义-middleware-中使用-interrupt)。
 
-v0.7 可以从三类来源理解 `create_deep_agent()` 的中间件堆栈：
+在 v0.7 中，可以按配置方式理解 `create_deep_agent()` 组装的中间件。下面三组说明能力从哪里加入，不代表三个执行层级：
 
-**框架默认层**：
+**默认中间件**：
 - `FilesystemMiddleware` — 注入 7 个文件工具，并执行 `permissions` 权限规则
 - `SummarizationMiddleware` — 上下文自动压缩，触发阈值可配置
 - `PatchToolCallsMiddleware` — 补齐消息历史中缺失的工具响应
 - Prompt caching 等模型相关能力 — 是否启用取决于模型和 Harness profile
 
-**条件层（按参数自动激活）**：
-- `SubAgentMiddleware` — 有子 Agent 时启用，自动加入通用子 Agent；注入 `task` 工具
+**通过专用参数配置**：`skills=`、`memory=`、`interrupt_on=` 等参数用于配置相应能力，由 Deep Agents 组装对应的中间件。
+- `SubAgentMiddleware` — 由 `subagents=` 配置，默认包含 `general-purpose` 子 Agent；提供 `task` 工具
 - `SkillsMiddleware` — 传入 `skills=` 参数时启用，注入技能包
 - `AsyncSubAgentMiddleware` — 传入异步子 Agent 时启用
 - `MemoryMiddleware` — 传入 `memory=` 参数时启用，注入 AGENTS.md 记忆
 - `HumanInTheLoopMiddleware` — 传入 `interrupt_on=` 参数时启用，拦截指定工具调用等待人工审批
 
-**应用选择层**（通过 `middleware=[...]` 传入）：
+**通过 `middleware` 配置**（传入 `middleware=[...]`）：
 - `TodoListMiddleware` 等可选策略可以按需加入
 - 与默认 Middleware 同名的实例会在原位置换默认实例，而不是在末尾再叠加一个
 - 原位置换是完整实例替换，不会把新旧配置按字段合并
 
-理解这三层，你就能：
+理解这些配置方式，你就能：
 - 看懂 Deep Agents 内部是怎么拼装出来的
 - 自己按需添加新能力（PII 脱敏、模型降级、调用次数限制……）
 - 在更底层的 LangChain `create_agent()` 上搭建定制化的 Agent
 
 其中 `FilesystemMiddleware` 的路径授权不需要另写自定义中间件；`permissions=` 的规则模型、默认允许语义与适用边界见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
 
-![Deep Agents v0.7 按能力来源组装中间件：框架默认层、条件层和应用选择层共同传入 create_agent；TodoList 需显式加入，Checkpointer 单独属于 LangGraph 运行时](../public/imgs/11-framework-middleware-assembly.png)
+![Deep Agents v0.7 中间件的配置方式：默认中间件、通过专用参数配置、通过 middleware 配置；TodoList 需显式加入，Checkpointer 单独属于 LangGraph 运行时](../public/imgs/11-framework-middleware-assembly.png)
 
-图中按能力来源分类，连线不代表 Hook 的执行顺序。具体的调用顺序取决于 Hook 类型和中间件在栈中的位置。
+图中按配置方式分类，连线不代表 Hook 的执行顺序。具体的调用顺序取决于 Hook 类型和中间件在栈中的位置。
 
 ### PatchToolCallsMiddleware：补齐哪一种“缺口”？
 
@@ -395,9 +395,9 @@ print(result["messages"][-1].content)
 
 ## LangChain 中间件全景：Deep Agents 的能力版图
 
-现在你已经理解了中间件的来源，让我们看看完整的能力版图。框架提供默认层和条件层，应用可以通过 `create_deep_agent(middleware=[...])` 加入可选策略，或原位置换同名默认实例：
+现在你已经理解了中间件的配置方式，可以用下面的表格查找具体能力：哪些默认提供，哪些通过 `skills=` 等专用参数配置，哪些通过 `middleware=[...]` 加入或替换。
 
-**框架默认层**
+**默认中间件**
 
 | 中间件 | 用途 |
 |---|---|
@@ -406,17 +406,17 @@ print(result["messages"][-1].content)
 | PatchToolCallsMiddleware | 补齐消息历史中缺失的工具响应 |
 | 模型 / Provider 相关 Middleware | 由 Harness profile 和实际模型决定 |
 
-**条件层（按参数激活）**
+**通过专用参数配置**
 
 | 参数 | 中间件 | 用途 |
 |---|---|---|
-| `subagents=` （默认自动包含） | SubAgentMiddleware | `task` 工具 + 子 Agent 委派 |
+| `subagents=`（默认含通用子 Agent） | SubAgentMiddleware | `task` 工具 + 子 Agent 委派 |
 | `skills=` | SkillsMiddleware | 技能包注入 |
 | `subagents=` | AsyncSubAgentMiddleware | 异步子 Agent 任务管理 |
 | `memory=` | MemoryMiddleware | AGENTS.md 记忆注入 |
 | `interrupt_on=` | HumanInTheLoopMiddleware | 人工审批拦截 |
 
-**可选层（via `middleware=[...]`，LangChain 预构建，Deep Agents 不自动内置）**
+**通过 `middleware` 配置**（以下为 LangChain 预构建的常用可选中间件，需应用显式加入）
 
 | 类别 | 中间件 | 用途 |
 |---|---|---|
@@ -429,7 +429,7 @@ print(result["messages"][-1].content)
 | | ModelCallLimitMiddleware | 限制模型调用次数 |
 | **上下文** | ContextEditingMiddleware | 清理旧的工具调用结果 |
 
-![Deep Agents v0.7 中间件职责全景：默认层处理文件操作、上下文压缩和缺失响应；条件层按配置加入；应用选择层包含显式启用的 Todo、重试、降级、调用限制和脱敏；Checkpointer 单独负责状态保存与恢复](../public/imgs/12-infographic-middleware.png)
+![Deep Agents v0.7 中间件职责与配置方式：默认提供文件操作、上下文压缩和缺失响应处理；通过专用参数配置子 Agent、Skills、Memory 和人工审批；通过 middleware 配置 Todo、重试等能力；Checkpointer 单独负责状态保存与恢复](../public/imgs/12-infographic-middleware.png)
 
 图中列出常见能力，完整名称见上表。同名默认实例可以原位置换，但配置不会逐字段合并；替换后仍需验证权限、Backend 和子 Agent 行为。
 
@@ -441,7 +441,7 @@ print(result["messages"][-1].content)
 2. **`write_todos` 工具**：启用 `TodoListMiddleware` 后，任务以 pending、in_progress、completed 三种状态保存在 Agent State 中；完成标记仍需结合产物检查
 3. **LangChain 中间件**：Agent 能力的插件机制。`create_deep_agent()` 的本质就是把一组中间件自动组装到 Agent 上
 4. **由表及里**：`write_todos` 的真身是 `TodoListMiddleware`，上下文压缩的真身是 `SummarizationMiddleware`——理解底层，才能自由扩展
-5. **能力版图**：`create_deep_agent()` 组合框架默认层、条件层和应用选择层；v0.7 支持同名 Middleware 原位置换，但不会自动合并新旧配置
+5. **配置方式**：分清默认中间件、通过专用参数配置的能力，以及通过 `middleware=[...]` 加入或替换的能力；v0.7 的同名实例替换不会自动合并新旧配置
 6. **职责边界**：PatchToolCalls 补齐缺失的工具响应，Retry 按策略重试异常，Checkpointer 保存和恢复状态；结果是否正确，需要另外校验
 
 下一章，我们将学习子 Agent 与上下文隔离——让 Agent 学会"委派"，把复杂子任务交给专门的 Agent 处理。
