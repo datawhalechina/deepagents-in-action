@@ -161,7 +161,7 @@ Deep Agents 的解决方案是引入一个**虚拟文件系统**，让 Agent 像
 | **用途** | 通用 Agent（含编程） | 自定义 AI 编程 Agent | 预构建的编程 Agent |
 | **模型支持** | 模型无关（Anthropic、OpenAI、Google、开源等 100+） | 绑定 Claude 系列 | 绑定 OpenAI 系列 |
 | **SDK 语言** | Python + TypeScript | Python + TypeScript | TypeScript |
-| **执行环境** | 本地 + 远程沙箱 + 虚拟文件系统 | 本地 | 本地 + 云端 |
+| **执行环境** | 本地 + 远程沙箱 + 虚拟文件系统 | 本地 | 本地运行 Codex CLI；托管云端运行由 Agents API 提供 |
 | **开源协议** | MIT | MIT（底层 Claude Code 专有） | Apache-2.0 |
 
 ### 核心能力对比
@@ -175,7 +175,7 @@ Deep Agents 的解决方案是引入一个**虚拟文件系统**，让 Agent 像
 - **模型灵活性**：随时切换模型提供商，不锁定任何厂商。这对企业级应用至关重要
 - **长期记忆（Long-term Memory）**：通过 Memory Store 实现跨会话、跨线程的持久化记忆。Claude Agent SDK 和 Codex SDK 都不支持这一特性
 - **虚拟文件系统 + 可插拔后端**：将文件操作抽象为统一接口，后端可以是内存、磁盘、数据库或沙箱
-- **Sandbox-as-Tool 模式**：Agent 在本地运行，但可以把特定操作（如代码执行）发送到远程沙箱中执行。这是 Deep Agents 独有的设计
+- **沙箱作为执行后端**：Agent 的调度循环与执行环境可以分离，将文件或代码操作交给远程沙箱；Deep Agents 通过 Backend 接入这类架构
 - **生产部署**：通过 LangGraph Platform 部署，配合 LangSmith 实现完整的可观测性
 
 **Claude Agent SDK 的独有优势：**
@@ -188,7 +188,6 @@ Deep Agents 的解决方案是引入一个**虚拟文件系统**，让 Agent 像
 
 - OS 级别的沙箱模式（`read-only`、`workspace-write`、`danger-full-access`）
 - 内置 MCP Server 模式
-- 云端执行环境
 
 ![三大 Agent Harness 对比：Deep Agents（模型无关、虚拟文件系统、长期记忆）、Claude Agent SDK（Claude 深度集成、Hooks 系统）、Codex SDK（OS 级沙箱、MCP Server 模式），共同能力包括文件读写、Shell 执行、规划、子 Agent 等](../public/imgs/03-comparison-harness-competitors.png)
 
