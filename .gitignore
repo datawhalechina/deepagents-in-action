@@ -24,3 +24,4 @@ __pycache__/
 .pytest_cache/
 .langgraph_api/
 artifacts/notebooks/
+artifacts/notebooks-*/

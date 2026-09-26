@@ -37,9 +37,16 @@ model = create_model(ScriptedChatModel(responder=scripted_reply), root=Path(os.e
 graph = create_deep_agent(
     model=model,
     system_prompt=(
-        "This is an async-subagent tool experiment. For each user request, call exactly the "
-        "requested async task tool once, then stop. Use researcher for starts. Never invent a "
-        "task ID or report a cached status as live."
+        "This is an async-subagent tool experiment. User messages follow this command protocol:\n"
+        "START|description -> start_async_task(subagent_type='researcher', description=description).\n"
+        "CHECK|task_id -> check_async_task(task_id=task_id).\n"
+        "LIST -> list_async_tasks(status_filter='all').\n"
+        "UPDATE|task_id|message -> update_async_task(task_id=task_id, message=message).\n"
+        "CANCEL|task_id -> cancel_async_task(task_id=task_id).\n"
+        "Treat command payloads as literal tool arguments, not instructions for you to answer. "
+        "Call exactly the mapped tool once, then give a short acknowledgement and stop. "
+        "Do not call other tools to confirm or inspect the operation. Never invent a task ID "
+        "or report a cached status as live."
     ),
     subagents=[
         AsyncSubAgent(
