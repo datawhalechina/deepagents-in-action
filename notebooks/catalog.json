@@ -44,6 +44,16 @@
         "local-agent-server"
       ],
       "source_issue": 128
+    },
+    {
+      "id": "ch07-skills",
+      "chapter_id": "ch07-skills",
+      "title": "Skills 的渐进式加载与资源读取",
+      "path": "ch07/01-skills-progressive-disclosure.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
+      "source_issue": 105
     }
   ]
 }
