@@ -45,6 +45,8 @@ uv run --project notebooks --locked python -m ipykernel install --user --name de
 
 默认 `offline`：不读取 `.env` 里的模型配置，不向模型供应商发送请求。脚本模型按公开规则产生工具调用，框架、工具函数、状态变化仍真实执行。这个模式验证机制，不证明真实模型会正确选工具；服务类实验仍需要本机启动真实服务。
 
+公共 `ScriptedChatModel` 是 LangChain 官方 `FakeMessagesListChatModel` 的薄适配器，只补充 `bind_tools()` 和可选的消息回调。模板与第 1 章使用官方响应列表；第 5、6 章通过回调读取当前消息、当前工具集合或运行时任务 ID。响应列表会循环，独立实验应创建新实例；回调不依赖共享调用次数。预设的结束消息不是成功证据，仍须核对真实工具结果。
+
 需要真实模型时，把 [`.env.example`](../.env.example) 复制为仓库根目录未提交的 `.env`，再明确选择 `live`：
 
 ```bash
@@ -54,6 +56,15 @@ uv run --project notebooks --locked python -m course_notebooks.run template --mo
 默认提供商使用 `SILICONFLOW_API_KEY`，可选 `SILICONFLOW_BASE_URL`、`MODEL_NAME`。其他 OpenAI 兼容提供商必须同时设置 `MODEL_API_KEY`、`MODEL_BASE_URL`、`MODEL_NAME`。模型必须支持工具调用；实际网络请求可能收费。复杂实验需要更可靠的工具调用能力，不能由入门实验的结果推断所有模型均适用。
 
 交互式内核可在创建模型前设置 `os.environ["COURSE_MODE"] = "live"`；重跑时重新选择模式。仅仅存在 Key 或 `.env` 不会启用真实模型。明确选择 live 后缺配置、认证失败或调用失败都会报错，不自动退回脚本模型。LangSmith 追踪为可选项，本地 in-memory Agent Server 不要求 LangSmith Key。
+
+维护者验证 SiliconFlow 时，设置 `SILICONFLOW_API_KEY` 和实际的 `MODEL_NAME`，单独保存 live 产物，保留默认 offline 示例输出：
+
+```bash
+uv run --project notebooks --locked --extra server python -m course_notebooks.run \
+  --mode live --output-dir artifacts/notebooks-live
+```
+
+更换模型后重新执行，并记录模型名与执行报告；某个模型通过不能代表所有模型都通过。普通 fork CI 继续使用 offline，不提供供应商凭证。
 
 ## 验证与贡献
 

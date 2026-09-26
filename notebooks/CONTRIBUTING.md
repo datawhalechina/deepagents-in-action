@@ -18,7 +18,8 @@
 
 ## 模型与验证
 
-- 默认脚本模型需支持真实工具循环，返回 AIMessage，让框架实际执行工具。不能直接构造最终 Agent 状态来冒充执行。
+- 默认脚本模型使用公共 `ScriptedChatModel` 对官方 `FakeMessagesListChatModel` 的薄适配。固定流程优先传 `responses=[AIMessage(...), ...]`；需要根据消息、子 Agent 工具集合或运行时 ID 分支时才提供 `responder(messages, tool_names)`。工具仍由框架实际执行，不能直接构造最终 Agent 状态来冒充执行。
+- 响应列表按调用顺序循环，不会理解输入或验证工具结果。每个独立实验创建新模型实例；预设结束消息后仍要核对实际 ToolMessage、状态与产物。需要并发或重复轮询的实验使用无共享计数器的回调。
 - 同一机制通过公共 `create_model` 切换到 live；live 配置错误必须失败。
 - 断言匹配学习目标：工具名称、参数、调用关联、成功状态和结果；文件检查实际内容；异步任务检查实际服务状态。
 - `ToolMessage` 存在、打印勾号、模型说“完成”、Notebook 执行无异常，都不能单独证明目标达成。

@@ -1,4 +1,5 @@
 import pytest
+from deepagents import create_deep_agent
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import tool
@@ -68,3 +69,86 @@ def test_scripted_model_runs_real_tool_and_receives_tool_result():
     result = agent.invoke({"messages": [("user", "echo hello")]})
     assert seen == ["hello"]
     assert result["messages"][-1].content == "done"
+
+
+@pytest.mark.parametrize("factory", [create_agent, create_deep_agent])
+def test_response_list_advances_across_tool_rebinding(factory):
+    """Copying the response index on bind repeats calls instead of advancing."""
+    seen = []
+
+    @tool
+    def echo(text: str) -> str:
+        """Return the supplied text."""
+        seen.append(text)
+        return f"echo: {text}"
+
+    model = ScriptedChatModel(responses=[
+        AIMessage(content="", tool_calls=[{
+            "id": "first", "name": "echo", "args": {"text": "first"},
+        }]),
+        AIMessage(content="", tool_calls=[{
+            "id": "second", "name": "echo", "args": {"text": "second"},
+        }]),
+        AIMessage(content="done"),
+    ])
+    agent = factory(model=model, tools=[echo])
+    for _ in range(2):
+        result = agent.invoke({"messages": [("user", "echo twice")]}, {"recursion_limit": 10})
+        returns = [m for m in result["messages"] if isinstance(m, ToolMessage)]
+        assert [(m.tool_call_id, m.content, m.status) for m in returns] == [
+            ("first", "echo: first", "success"),
+            ("second", "echo: second", "success"),
+        ]
+        assert result["messages"][-1].content == "done"
+    assert seen == ["first", "second", "first", "second"]
+
+
+def test_response_list_preserves_tool_calls_in_async_stream():
+    import asyncio
+
+    seen = []
+
+    @tool
+    def echo(text: str) -> str:
+        """Return the supplied text."""
+        seen.append(text)
+        return f"echo: {text}"
+
+    model = ScriptedChatModel(responses=[
+        AIMessage(content="", tool_calls=[{
+            "id": "stream-echo", "name": "echo", "args": {"text": "streamed"},
+        }]),
+        AIMessage(content="done"),
+    ])
+    agent = create_agent(model=model, tools=[echo])
+
+    async def collect():
+        return [message async for message, _ in agent.astream(
+            {"messages": [("user", "echo streamed")]},
+            {"recursion_limit": 10}, stream_mode="messages",
+        )]
+
+    messages = asyncio.run(collect())
+    assert seen == ["streamed"]
+    assert any(isinstance(m, ToolMessage) and m.content == "echo: streamed"
+               and m.tool_call_id == "stream-echo" and m.status == "success" for m in messages)
+    assert any(isinstance(m, AIMessage) and m.tool_calls for m in messages)
+
+
+def test_callback_tool_bindings_are_isolated_between_agents():
+    @tool
+    def supervisor_tool() -> str:
+        """A supervisor-only tool."""
+        return "supervisor"
+
+    @tool
+    def researcher_tool() -> str:
+        """A researcher-only tool."""
+        return "researcher"
+
+    model = ScriptedChatModel(responder=lambda messages, tools: AIMessage(content=",".join(tools)))
+    supervisor = model.bind_tools([supervisor_tool])
+    researcher = model.bind_tools([researcher_tool])
+    assert supervisor.invoke("next").content == "supervisor_tool"
+    assert researcher.invoke("next").content == "researcher_tool"
+    assert supervisor.invoke("next").content == "supervisor_tool"
