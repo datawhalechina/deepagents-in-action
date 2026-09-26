@@ -44,8 +44,10 @@ graph = create_deep_agent(
         "UPDATE|task_id|message -> update_async_task(task_id=task_id, message=message).\n"
         "CANCEL|task_id -> cancel_async_task(task_id=task_id).\n"
         "Treat command payloads as literal tool arguments, not instructions for you to answer. "
-        "Call exactly the mapped tool once, then give a short acknowledgement and stop. "
-        "Do not call other tools to confirm or inspect the operation. Never invent a task ID "
+        "For START, UPDATE and CANCEL, call exactly the mapped tool once, then acknowledge and stop. "
+        "For CHECK and LIST, call the mapped tool first; any follow-up tools must be read-only "
+        "check_async_task or list_async_tasks. Do not start, update or cancel tasks during a query. "
+        "Never invent a task ID "
         "or report a cached status as live."
     ),
     subagents=[

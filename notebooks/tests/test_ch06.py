@@ -2,7 +2,9 @@ import asyncio
 import importlib.util
 from pathlib import Path
 import socket
+from types import SimpleNamespace
 
+import nbformat
 import pytest
 
 
@@ -51,3 +53,53 @@ def test_startup_failure_cleans_temporary_directory(tmp_path):
         asyncio.run(start())
     assert not server.workdir.exists()
     server.log_path.unlink()
+
+
+def validate_exchange(calls, *, expected="list_async_tasks", bad_output=None):
+    """Exercise the notebook's validation against a controlled SDK response."""
+    nb = nbformat.read(Path(__file__).parents[1] / "ch06/01-async-subagent-lifecycle.ipynb", as_version=4)
+    cell = next(c for c in nb.cells if "async def ask(" in c.source)
+    namespace = {"asyncio": asyncio}
+    exec(cell.source, namespace)
+    messages = [{"type": "human", "content": "test command"}]
+    for index, name in enumerate(calls):
+        call_id = f"call-{index}"
+        messages.extend([
+            {"type": "ai", "tool_calls": [{"id": call_id, "name": name, "args": {}}]},
+            {"type": "tool", "tool_call_id": call_id, "name": name,
+             "status": "success", "content": f"result-{index}"},
+        ])
+    if bad_output:
+        messages[2].update(bad_output)
+
+    async def wait(*args, **kwargs):
+        return {"messages": messages, "async_tasks": {}}
+
+    server = SimpleNamespace(parent_id="parent", task_ids=set(),
+                             client=SimpleNamespace(runs=SimpleNamespace(wait=wait)))
+    return asyncio.run(namespace["ask"](server, "test command", expected, show=False))
+
+
+def test_read_request_accepts_successful_status_followup():
+    _, output = validate_exchange(["list_async_tasks", "check_async_task"])
+    assert output == "result-0"
+
+
+@pytest.mark.parametrize("calls", [[], ["check_async_task"],
+                                      ["list_async_tasks", "start_async_task"],
+                                      ["list_async_tasks", "cancel_async_task"]])
+def test_read_request_rejects_missing_action_or_extra_mutation(calls):
+    with pytest.raises(AssertionError):
+        validate_exchange(calls)
+
+
+@pytest.mark.parametrize("bad_output", [{"status": "error"}, {"tool_call_id": "unrelated"},
+                                       {"name": "check_async_task"}])
+def test_read_request_rejects_failed_or_mismatched_result(bad_output):
+    with pytest.raises(AssertionError):
+        validate_exchange(["list_async_tasks"], bad_output=bad_output)
+
+
+def test_mutation_must_remain_one_operation():
+    with pytest.raises(AssertionError):
+        validate_exchange(["start_async_task", "check_async_task"], expected="start_async_task")
