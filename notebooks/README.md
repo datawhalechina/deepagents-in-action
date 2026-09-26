@@ -5,15 +5,17 @@
 ## 实验索引
 
 <!-- course-notebook-index:start -->
-| 实验 | 学习证据 | 模型与服务 |
-|---|---|---|
-| [作者模板](_template/01-minimal-tool.ipynb) | 实际 echo 工具、调用与返回关联 | 默认脚本模型；可选真实模型 |
-| [第 1 章：Agent Harness](ch01/01-agent-harness.ipynb) | echo 成功、消息循环、默认工具差异 | 默认脚本模型；可选真实模型 |
-| [第 5 章：同步子 Agent](ch05/01-subagent-delegation.ipynb) | 消息隔离、文件共享与显式读取 | 默认脚本模型；可选真实模型 |
-| [第 6 章：异步子 Agent](ch06/01-async-subagent-lifecycle.ipynb) | 五个异步工具、服务状态与失败清理 | 默认脚本模型；真实本地 Agent Server；server 依赖组 |
+| 实验 | 阅读与运行 | 学习证据 | 模型与服务 |
+|---|---|---|---|
+| 作者模板 | [Notebook](_template/01-minimal-tool.ipynb) · [Markdown](_template/01-minimal-tool.md) · [HTML](_template/01-minimal-tool.html) | 实际 echo 工具、调用与返回关联 | 默认脚本模型；可选真实模型 |
+| 第 1 章：Agent Harness | [Notebook](ch01/01-agent-harness.ipynb) · [Markdown](ch01/01-agent-harness.md) · [HTML](ch01/01-agent-harness.html) | echo 成功、消息循环、默认工具差异 | 默认脚本模型；可选真实模型 |
+| 第 5 章：同步子 Agent | [Notebook](ch05/01-subagent-delegation.ipynb) · [Markdown](ch05/01-subagent-delegation.md) · [HTML](ch05/01-subagent-delegation.html) | 消息隔离、文件共享与显式读取 | 默认脚本模型；可选真实模型 |
+| 第 6 章：异步子 Agent | [Notebook](ch06/01-async-subagent-lifecycle.ipynb) · [Markdown](ch06/01-async-subagent-lifecycle.md) · [HTML](ch06/01-async-subagent-lifecycle.html) | 五个异步工具、服务状态与失败清理 | 默认脚本模型；真实本地 Agent Server；server 依赖组 |
 <!-- course-notebook-index:end -->
 
 章节共建进度以 [#105](https://github.com/datawhalechina/deepagents-in-action/issues/105) 为准；目录元数据在 [catalog.json](catalog.json)。首波样板分别覆盖入门对比、同步机制和服务生命周期；后续章节按同一入口扩展。
+
+每份实验同时提供三种格式：Notebook 用于逐格运行，Markdown 可直接在 GitHub 阅读，HTML 在克隆或下载仓库后用浏览器打开（GitHub 文件页显示的是 HTML 源码）。三份文件位于同一目录，包含同一次执行的结果；当前提交的示例使用 offline 模式。
 
 ## 安装与运行
 
@@ -72,6 +74,9 @@ uv run --project notebooks --locked --extra server python -m course_notebooks.ru
 uv run --project notebooks --locked --extra server pytest notebooks/tests
 uv run --project notebooks --locked --extra server python -m course_notebooks.run --check-only
 uv run --project notebooks --locked --extra server python -m course_notebooks.run --write-back
+uv run --project notebooks --locked --extra server python -m course_notebooks.run --check-reading
 ```
 
-`--write-back` 只将成功执行的本次输出写回源 Notebook；默认不会改写源文件。保存输出时同时记录模式，真实模型输出与无 Key 结果分别报告。贡献步骤和教学标准见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+`--write-back` 将成功执行的本次输出写回源 Notebook，同时在旁边生成同名 `.html` 和 `.md`；失败不会覆盖这三份文件。阅读副本保留章节内的相对链接，随源码一起提交，不分别手工编辑。`--check-reading` 不调用模型，检查保存的 Notebook 已成功执行、源码指纹一致，以及 HTML/Markdown 和相关图片是否与该 Notebook 的导出内容一致；CI 同样执行此检查。默认运行只写入 `artifacts/notebooks/`。
+
+保存输出时同时记录模式，真实模型输出与无 Key 结果分别报告。贡献步骤和教学标准见 [CONTRIBUTING.md](CONTRIBUTING.md)。

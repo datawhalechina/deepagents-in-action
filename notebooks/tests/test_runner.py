@@ -83,3 +83,41 @@ def test_failed_batch_removes_previous_selected_artifacts(tmp_path):
     assert report["results"][1]["status"] == "not_run"
     assert not (output / "later.html").exists()
     assert not (output / "later.ipynb").exists()
+
+
+def test_write_back_saves_reading_formats_with_executed_output_and_local_links(tmp_path):
+    entries = make_repo(tmp_path, {"ok": "print('visible tool result')"})
+    path = tmp_path / "notebooks/ch01/ok.ipynb"
+    nb = nbformat.read(path, as_version=4)
+    nb.cells.append(nbformat.v4.new_markdown_cell("[helper](helper.py)"))
+    nbformat.write(nb, path)
+    (path.parent / "helper.py").write_text("# Chapter helper\n")
+    report = run_entries(entries, tmp_path, tmp_path / "output", mode="offline", timeout=30, write_back=True)
+    assert report["results"][0]["status"] == "passed"
+    for suffix in (".html", ".md"):
+        reading = path.with_suffix(suffix).read_text()
+        assert "visible tool result" in reading
+        assert "offline" in reading
+    assert "[helper](helper.py)" in path.with_suffix(".md").read_text()
+    assert 'href="helper.py"' in path.with_suffix(".html").read_text()
+    from course_notebooks.run import validate_reading
+    validate_reading(tmp_path, entries)
+    path.with_suffix(".md").write_text("stale reading copy")
+    with pytest.raises(ValueError, match="reading copy"):
+        validate_reading(tmp_path, entries)
+    path.with_suffix(".html").unlink()
+    with pytest.raises(ValueError, match="reading copy"):
+        validate_reading(tmp_path, entries)
+
+
+def test_failed_write_back_preserves_source_and_reading_copies(tmp_path):
+    entries = make_repo(tmp_path, {"bad": "raise ValueError('deliberate failure')"})
+    path = tmp_path / "notebooks/ch01/bad.ipynb"
+    original = path.read_bytes()
+    for suffix in (".html", ".md"):
+        path.with_suffix(suffix).write_text("previous reading copy")
+    report = run_entries(entries, tmp_path, tmp_path / "output", mode="offline", timeout=30, write_back=True)
+    assert report["results"][0]["status"] == "failed"
+    assert path.read_bytes() == original
+    for suffix in (".html", ".md"):
+        assert path.with_suffix(suffix).read_text() == "previous reading copy"

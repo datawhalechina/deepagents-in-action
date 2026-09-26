@@ -85,14 +85,15 @@ def stage_chapter(root, path, stage):
         shutil.copy2(chapter, stage / "content" / chapter.name)
 
 
-def export_reading(nb, path, root, output_dir, notebook_id, commit):
+def export_reading(nb, path, root, output_dir, notebook_id, commit, *, relative_links=False):
     reading = nbformat.reads(nbformat.writes(nb), as_version=4)
     reading.cells.insert(0, nbformat.v4.new_markdown_cell(
-        f"> 本次执行模式：**{nb.metadata.course_run.mode}**。源码指纹：`{nb.metadata.course_run.source_hash[:12]}`。"
+        f"> 本次执行模式：**{nb.metadata.course_run.mode}**。源码指纹：`{nb.metadata.course_run.source_hash[:12]}`。",
+        id="course-run-info",
     ))
     # Exported artifacts are outside the source tree: link back to exact source paths.
     for cell in reading.cells:
-        if cell.cell_type == "markdown":
+        if cell.cell_type == "markdown" and not relative_links:
             def resolve(match):
                 target = match.group(1)
                 url = urlsplit(target)
@@ -115,6 +116,24 @@ def export_reading(nb, path, root, output_dir, notebook_id, commit):
             asset = output_dir / filename
             asset.parent.mkdir(parents=True, exist_ok=True)
             asset.write_bytes(data)
+
+
+def validate_reading(root, entries):
+    """Check committed reading copies against the saved, successfully executed notebook."""
+    for entry in entries:
+        path = root / "notebooks" / entry["path"]
+        nb = nbformat.read(path, as_version=4)
+        run = nb.metadata.get("course_run", {})
+        if run.get("status") != "passed" or run.get("source_hash") != source_hash(nb):
+            raise ValueError(f"Notebook needs a successful --write-back run: {entry['id']}")
+        with tempfile.TemporaryDirectory(prefix="course-reading-check-") as directory:
+            expected = Path(directory)
+            export_reading(nb, path, root, expected, path.stem, None, relative_links=True)
+            for generated in expected.rglob("*"):
+                if generated.is_file():
+                    saved = path.parent / generated.relative_to(expected)
+                    if not saved.is_file() or saved.read_bytes() != generated.read_bytes():
+                        raise ValueError(f"Missing or stale reading copy: {saved}; rerun with --write-back")
 
 
 def execute_one(entry, root, output_dir, *, mode, timeout, write_back=False):
@@ -158,6 +177,7 @@ def execute_one(entry, root, output_dir, *, mode, timeout, write_back=False):
     nbformat.write(nb, output_dir / f"{entry['id']}.ipynb")
     export_reading(nb, path, root, output_dir, entry["id"], git_commit(root))
     if write_back and result["status"] == "passed":
+        export_reading(nb, path, root, path.parent, path.stem, None, relative_links=True)
         nbformat.write(nb, path)
     return result
 
@@ -189,7 +209,8 @@ def main(argv=None):
     parser.add_argument("ids", nargs="*", help="Catalog IDs; omit to run all")
     parser.add_argument("--mode", choices=("offline", "live"), default="offline")
     parser.add_argument("--check-only", action="store_true")
-    parser.add_argument("--write-back", action="store_true", help="Save successful executed outputs into source notebooks")
+    parser.add_argument("--check-reading", action="store_true", help="Check HTML/Markdown copies against saved notebooks without executing")
+    parser.add_argument("--write-back", action="store_true", help="Save successful notebooks and sibling HTML/Markdown reading copies")
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--timeout", type=int, default=180)
     args = parser.parse_args(argv)
@@ -203,6 +224,10 @@ def main(argv=None):
             if unknown:
                 raise ValueError("Unknown notebook IDs: " + ", ".join(sorted(unknown)))
             entries = [e for e in entries if e["id"] in args.ids]
+        if args.check_reading:
+            validate_reading(root, entries)
+            print(f"Validated HTML/Markdown reading copies for {len(entries)} notebooks.")
+            return 0
         if args.check_only:
             print(f"Validated {len(entries)} notebooks and local links.")
             return 0

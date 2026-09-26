@@ -29,10 +29,10 @@
 ## 提交步骤
 
 1. 与 [#105](https://github.com/datawhalechina/deepagents-in-action/issues/105) 及章节认领 issue 对齐范围，在最新 main 上添加章节目录。
-2. 在 `catalog.json` 注册唯一 ID、对应 `scripts/chapters.json` 的 chapter_id、相对路径、依赖组、模型/服务要求和来源 issue；追加 README 条目及正文入口。
+2. 在 `catalog.json` 注册唯一 ID、对应 `scripts/chapters.json` 的 chapter_id、相对路径、依赖组、模型/服务要求和来源 issue；追加 README 的 Notebook / Markdown / HTML 三种格式链接及正文入口。
 3. 沿用锁定环境。需要新依赖时在 `pyproject.toml` 的适当依赖组声明，更新 `uv.lock` 并重跑已收录实验。不要维护多份章节版本清单。
-4. 执行 README 的 pytest、静态检查与全量运行命令。修订计算或依赖后从第一格重跑，用 `--write-back` 保存简短、与当前模式一致的输出。
-5. 打开生成的 HTML 检查阅读顺序、代码密度与输出折行，确认本地链接和图像可阅读。Markdown/HTML 由执行结果生成，不分别手工维护。
+4. 执行 README 的 pytest、静态检查与全量运行命令。修订计算或依赖后从第一格重跑，用 `--write-back` 同时保存 Notebook 输出和同目录、同名的 `.md` / `.html`，相关导出图片也一起提交。
+5. 打开生成的 HTML 检查阅读顺序、代码密度与输出折行，确认本地链接和图像可阅读。Markdown/HTML 由执行结果生成，不分别手工维护；提交前执行 `--check-reading` 确认三种格式同步。
 6. 在 PR 中记录源码版本、执行模式、Python/平台、依赖锁及结果；真实模型另写实际模型和服务范围。未执行写 `not_run`，主动跳过写 `skipped`，不要继承旧输出声称新验证通过。
 
 不得提交 Key、Token、`.env`、本机缓存或临时服务状态。正文从 `content/` 修改，`src/content/chapters/` 是生成目录。公共基础设施由维护者协助建设；贡献者优先完成已认领章节的学习目标。

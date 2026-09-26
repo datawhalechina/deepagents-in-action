@@ -36,6 +36,8 @@ jobs:
         run: uv run --project notebooks --locked --extra server pytest notebooks/tests
       - name: Validate notebooks and links
         run: uv run --project notebooks --locked --extra server python -m course_notebooks.run --check-only
+      - name: Check committed HTML and Markdown copies
+        run: uv run --project notebooks --locked --extra server python -m course_notebooks.run --check-reading
       - name: Execute in isolated kernels and export
         run: uv run --project notebooks --locked --extra server python -m course_notebooks.run
       - name: Preserve execution evidence
