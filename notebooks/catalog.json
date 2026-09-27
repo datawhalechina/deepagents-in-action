@@ -44,6 +44,16 @@
         "local-agent-server"
       ],
       "source_issue": 128
+    },
+    {
+      "id": "ch08-long-term-memory",
+      "chapter_id": "ch08-long-term-memory",
+      "title": "跨线程记忆与文件隔离",
+      "path": "ch08/01-long-term-memory.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
+      "source_issue": 105
     }
   ]
 }
