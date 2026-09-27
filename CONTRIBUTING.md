@@ -21,6 +21,8 @@
 
 ## 快速上手
 
+如果贡献的是章节 Notebook，请先看 [Notebook 索引与运行说明](notebooks/README.md) 和 [Notebook 制作指南](notebooks/CONTRIBUTING.md)。Notebook 使用独立 Python 环境；下方 npm 流程用于网站正文与页面开发。
+
 ### 1. Fork 并克隆仓库
 
 ```bash

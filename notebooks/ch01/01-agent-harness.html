@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>f64e82d71d66</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>366833ffcce5</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7815,8 +7815,9 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="%E7%AC%AC-1-%E7%AB%A0-Notebook%EF%BC%9AAgent-Harness-%E4%B8%8E%E6%9C%80%E5%B0%8F%E8%BF%90%E8%A1%8C%E7%BB%93%E6%9E%84">第 1 章 Notebook：Agent Harness 与最小运行结构<a class="anchor-link" href="#%E7%AC%AC-1-%E7%AB%A0-Notebook%EF%BC%9AAgent-Harness-%E4%B8%8E%E6%9C%80%E5%B0%8F%E8%BF%90%E8%A1%8C%E7%BB%93%E6%9E%84">¶</a></h1><p>对应课程章节：<a href="../../content/ch01-agent-harness.md">第 1 章：从 Agent Framework 到 Agent Harness — Deep Agents 的诞生逻辑</a></p>
-<p>本 Notebook 用一个最小示例，把第 1 章讲的「Agent 三层架构」跑起来：先分别用 LangChain 的 <code>create_agent()</code> 和 Deep Agents 的 <code>create_deep_agent()</code> 创建最小 Agent，注册同一个工具，观察两者默认装配能力的差异，并查看一次完整 <code>invoke</code> 返回的中间状态。</p>
+<h1 id="%E7%AC%AC-1-%E7%AB%A0-Notebook%EF%BC%9AAgent-Harness-%E4%B8%8E%E6%9C%80%E5%B0%8F%E8%BF%90%E8%A1%8C%E7%BB%93%E6%9E%84">第 1 章 Notebook：Agent Harness 与最小运行结构<a class="anchor-link" href="#%E7%AC%AC-1-%E7%AB%A0-Notebook%EF%BC%9AAgent-Harness-%E4%B8%8E%E6%9C%80%E5%B0%8F%E8%BF%90%E8%A1%8C%E7%BB%93%E6%9E%84">¶</a></h1><p>对应课程章节：<a href="../../content/ch01-agent-harness.md">第 1 章：从 Agent Framework 到 Agent Harness — Deep Agents 的诞生逻辑</a>。</p>
+<p>同样给一个模型和一个 <code>echo</code> 工具，普通 Agent 与 Deep Agent 有什么不同？我们用相同输入运行两者，先看真正的工具返回，再比较它们可用的工具。</p>
+<p>你只需基础 Python，不必预先掌握 LangChain 或 LangGraph。若还没见过工具调用，建议先做 <a href="../_template/01-minimal-tool.ipynb">最小工具实验</a>。本章可以单独从第一格运行。</p>
 </div>
 </div>
 </div>
@@ -7841,6 +7842,44 @@ a.anchor-link {
 <li>「Deep Agents 的核心设计理念」：Harness 预置的虚拟文件系统等工具；</li>
 <li>「三层关系一览」：三层不是替代关系，而是自底向上层层构建。</li>
 </ul>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=junior-ch01-layers">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%E5%85%88%E7%90%86%E8%A7%A3%E4%B8%89%E5%B1%82%E5%88%86%E5%88%AB%E8%A7%A3%E5%86%B3%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98">先理解三层分别解决什么问题<a class="anchor-link" href="#%E5%85%88%E7%90%86%E8%A7%A3%E4%B8%89%E5%B1%82%E5%88%86%E5%88%AB%E8%A7%A3%E5%86%B3%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98">¶</a></h3><p>Agent 是一个“调用模型 → 按需执行工具 → 把结果交回模型”的程序。下面三个库帮助我们搭建这个程序：</p>
+<table>
+<thead>
+<tr>
+<th>层次</th>
+<th>用普通话理解</th>
+<th>本例用到的能力</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LangGraph：运行时（Runtime）</td>
+<td>决定下一步执行谁，并传递运行状态</td>
+<td>在模型步骤和工具步骤之间流转</td>
+</tr>
+<tr>
+<td>LangChain：框架（Framework）</td>
+<td>提供统一的模型、消息、工具接口，并组装 Agent</td>
+<td><code>create_agent()</code> 连接我们给出的模型和工具</td>
+</tr>
+<tr>
+<td>Deep Agents：运行套件（Harness）</td>
+<td>在框架上预装适合多步骤任务的工具、提示和处理逻辑</td>
+<td><code>create_deep_agent()</code> 额外提供文件操作、任务委派等能力</td>
+</tr>
+</tbody>
+</table>
+<p><strong>图</strong>（graph）是步骤及其连接关系；<strong>节点</strong>（node）是其中一个步骤，例如调用模型或执行工具。<strong>状态</strong>（state）是步骤之间传递的数据，例如消息列表。先记住这些直观含义，下面会看到对应代码和输出。</p>
 </div>
 </div>
 </div>
@@ -7924,8 +7963,9 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="1.-%E5%88%9D%E5%A7%8B%E5%8C%96%E6%A8%A1%E5%9E%8B%EF%BC%9A%E6%8E%A7%E5%88%B6%E8%B0%83%E7%94%A8%E9%80%89%E6%8B%A9%EF%BC%8C%E4%BF%9D%E7%95%99%E7%9C%9F%E5%AE%9E%E6%89%A7%E8%A1%8C">1. 初始化模型：控制调用选择，保留真实执行<a class="anchor-link" href="#1.-%E5%88%9D%E5%A7%8B%E5%8C%96%E6%A8%A1%E5%9E%8B%EF%BC%9A%E6%8E%A7%E5%88%B6%E8%B0%83%E7%94%A8%E9%80%89%E6%8B%A9%EF%BC%8C%E4%BF%9D%E7%95%99%E7%9C%9F%E5%AE%9E%E6%89%A7%E8%A1%8C">¶</a></h2><p>使用 LangChain 官方 <code>FakeMessagesListChatModel</code> 预设两条响应：先请求 echo，再结束对话。课程的 <code>ScriptedChatModel</code> 继承它，只补上工具绑定和供复杂章节使用的可选回调；本章不需要回调。是否成功由真实工具结果和后续断言判断，不能从预设的最终回复推断。</p>
-<p>响应列表按顺序循环，两种 Agent 各完整运行一次。单独重跑或中途失败后，应从模型初始化格重新开始。切换 live 后，两种 Agent 仍使用同一个真实模型和同一个工具。</p>
+<h2 id="1.-%E5%88%9D%E5%A7%8B%E5%8C%96%E6%A8%A1%E5%9E%8B%EF%BC%9A%E5%85%88%E6%8E%A7%E5%88%B6%E9%80%89%E6%8B%A9%EF%BC%8C%E5%86%8D%E8%A7%82%E5%AF%9F%E6%89%A7%E8%A1%8C">1. 初始化模型：先控制选择，再观察执行<a class="anchor-link" href="#1.-%E5%88%9D%E5%A7%8B%E5%8C%96%E6%A8%A1%E5%9E%8B%EF%BC%9A%E5%85%88%E6%8E%A7%E5%88%B6%E9%80%89%E6%8B%A9%EF%BC%8C%E5%86%8D%E8%A7%82%E5%AF%9F%E6%89%A7%E8%A1%8C">¶</a></h2><p>这里先安排两条固定模型消息：请求 <code>echo</code>，然后结束对话。这样无需 Key，就能专心观察框架怎样执行工具。<code>FakeMessagesListChatModel</code> 是 LangChain 官方提供的固定响应模型，课程的 <code>ScriptedChatModel</code> 为它补充工具绑定。</p>
+<p>下一格只准备消息列表，再下一格调用课程辅助函数 <code>create_model(...)</code>：默认返回这个脚本模型，显式切换 live 时才按配置创建真实模型。这个辅助函数不是 Agent 构造函数，也不会在此执行工具。</p>
+<p>响应列表会循环。两种 Agent 各完整运行一次，正好分别消费“调用、结束”这两条消息；中途失败或想重新实验时，重启内核并从头执行，避免响应位置与预期不一致。脚本最后的回复不是成功证据，后面会核对实际工具返回。</p>
 </div>
 </div>
 </div>
@@ -7936,7 +7976,34 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><code>AIMessage</code> 表示模型发出的消息，<code>tool_calls</code> 保存工具名、参数和调用 ID。<code>ToolMessage</code> 是框架执行 Python 工具后的返回；模型只发出请求，并不亲自执行 Python。</p>
+<p><code>AIMessage</code> 表示模型发出的消息。它可以包含普通文本，也可以通过 <code>tool_calls</code> 请求工具：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>本例</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td><code>echo</code></td>
+<td>选择工具</td>
+</tr>
+<tr>
+<td><code>args</code></td>
+<td><code>{"text": ECHO_TEXT}</code></td>
+<td>传给函数的参数</td>
+</tr>
+<tr>
+<td><code>id</code></td>
+<td><code>ch01-echo</code></td>
+<td>本次调用的编号，用于关联返回结果</td>
+</tr>
+</tbody>
+</table>
+<p>框架执行函数后，把返回值放进 <code>ToolMessage</code>，并用 <code>tool_call_id</code> 标记它属于哪个调用。模型发出请求，框架运行 Python；这两步不是同一件事。<code>content=""</code> 的调用消息没有普通文本，但不表示调用内容缺失。</p>
 </div>
 </div>
 </div>
@@ -8000,8 +8067,8 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2.-%E5%AE%9A%E4%B9%89%E4%B8%80%E4%B8%AA%E6%9C%80%E7%AE%80%E5%8D%95%E7%9A%84%E5%B7%A5%E5%85%B7">2. 定义一个最简单的工具<a class="anchor-link" href="#2.-%E5%AE%9A%E4%B9%89%E4%B8%80%E4%B8%AA%E6%9C%80%E7%AE%80%E5%8D%95%E7%9A%84%E5%B7%A5%E5%85%B7">¶</a></h2><p>工具是 Agent 能调用的外部能力。这里定义一个 <code>echo</code> 工具，输入什么就原样返回什么，便于观察「模型决定调用工具 → 工具执行 → 模型总结结果」这条链路。</p>
-<p><code>@tool</code> 将函数签名中的 <code>text: str</code> 和说明转成工具接口。框架检查参数后调用函数；函数返回的字符串随后进入 ToolMessage。</p>
+<h2 id="2.-%E5%AE%9A%E4%B9%89%E4%B8%80%E4%B8%AA%E6%9C%80%E7%AE%80%E5%8D%95%E7%9A%84%E5%B7%A5%E5%85%B7">2. 定义一个最简单的工具<a class="anchor-link" href="#2.-%E5%AE%9A%E4%B9%89%E4%B8%80%E4%B8%AA%E6%9C%80%E7%AE%80%E5%8D%95%E7%9A%84%E5%B7%A5%E5%85%B7">¶</a></h2><p>工具是 Agent 能请求执行的函数。<code>echo</code> 接收字符串，再加上 <code>echo:</code> 前缀返回，方便我们辨认它确实运行过。</p>
+<p><code>@tool</code> 是 Python 装饰器：它把函数名、<code>text: str</code> 参数类型和三引号说明整理成工具接口。模型用这些信息提出调用；框架检查参数后运行函数，再生成 ToolMessage。这个工具不搜索、不读文件，也不请求网络。</p>
 </div>
 </div>
 </div>
@@ -8032,7 +8099,8 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="3.-%E4%B8%AD%E9%97%B4%E5%B1%82%EF%BC%9A%E7%94%A8-LangChain-%E7%9A%84-create_agent()-%E5%88%9B%E5%BB%BA%E6%9C%80%E5%B0%8F-Agent">3. 中间层：用 LangChain 的 <code>create_agent()</code> 创建最小 Agent<a class="anchor-link" href="#3.-%E4%B8%AD%E9%97%B4%E5%B1%82%EF%BC%9A%E7%94%A8-LangChain-%E7%9A%84-create_agent()-%E5%88%9B%E5%BB%BA%E6%9C%80%E5%B0%8F-Agent">¶</a></h2><p><code>create_agent()</code> 来自 LangChain 框架层。它只装配你显式传入的模型和工具——这是理解「框架层提供什么」的基线。</p>
+<h2 id="3.-%E4%B8%AD%E9%97%B4%E5%B1%82%EF%BC%9A%E7%94%A8-LangChain-%E7%9A%84-create_agent()-%E5%88%9B%E5%BB%BA%E6%9C%80%E5%B0%8F-Agent">3. 中间层：用 LangChain 的 <code>create_agent()</code> 创建最小 Agent<a class="anchor-link" href="#3.-%E4%B8%AD%E9%97%B4%E5%B1%82%EF%BC%9A%E7%94%A8-LangChain-%E7%9A%84-create_agent()-%E5%88%9B%E5%BB%BA%E6%9C%80%E5%B0%8F-Agent">¶</a></h2><p>下面传入三个关键参数：<code>model</code> 决定用哪个模型，<code>tools=[echo]</code> 指定可用工具，<code>system_prompt</code> 给模型一条持续生效的行为说明。它与随后用户提出的具体问题不同。</p>
+<p>这个最小配置没有加入额外工具。<code>create_agent()</code> 返回可运行的图；<code>get_graph().nodes</code> 只查看图的步骤名称，还没有运行用户任务。实际执行从下一节的 <code>invoke()</code> 开始。</p>
 </div>
 </div>
 </div>
@@ -8078,12 +8146,16 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="3.1-%E8%B7%91%E4%B8%80%E6%AC%A1%E5%AE%8C%E6%95%B4-invoke%EF%BC%8C%E8%A7%82%E5%AF%9F%E4%B8%AD%E9%97%B4%E7%8A%B6%E6%80%81">3.1 跑一次完整 invoke，观察中间状态<a class="anchor-link" href="#3.1-%E8%B7%91%E4%B8%80%E6%AC%A1%E5%AE%8C%E6%95%B4-invoke%EF%BC%8C%E8%A7%82%E5%AF%9F%E4%B8%AD%E9%97%B4%E7%8A%B6%E6%80%81">¶</a></h3><p><code>invoke</code> 返回一个字典，<code>result["messages"]</code> 里按顺序记录了整条轨迹：<code>HumanMessage</code>（用户输入）→ <code>AIMessage</code>（可能带 <code>tool_calls</code>）→ <code>ToolMessage</code>（工具返回值）→ <code>AIMessage</code>（最终回答）。</p>
-<div class="highlight"><pre><span></span>用户消息 → 模型产生 tool_calls → 框架运行 echo(text)
-        ← 模型读取 ToolMessage ← 工具返回字符串
-模型最终回复（不再请求工具）
+<h3 id="3.1-%E8%B7%91%E4%B8%80%E6%AC%A1%E5%AE%8C%E6%95%B4-invoke%EF%BC%8C%E8%A7%82%E5%AF%9F%E4%B8%AD%E9%97%B4%E7%8A%B6%E6%80%81">3.1 跑一次完整 invoke，观察中间状态<a class="anchor-link" href="#3.1-%E8%B7%91%E4%B8%80%E6%AC%A1%E5%AE%8C%E6%95%B4-invoke%EF%BC%8C%E8%A7%82%E5%AF%9F%E4%B8%AD%E9%97%B4%E7%8A%B6%E6%80%81">¶</a></h3><p>输入字典里的 <code>messages</code> 是消息列表。每条输入消息的 <code>role="user"</code> 表示用户角色，<code>content</code> 是用户说的话。<code>invoke</code> 执行图并返回状态字典，我们从 <code>lc_result["messages"]</code> 读取运行后的对话。</p>
+<div class="highlight"><pre><span></span>HumanMessage：用户请求
+      ↓
+AIMessage：模型请求 echo(text=...)
+      ↓  框架运行 Python 工具
+ToolMessage：echo: hello deepagents
+      ↓
+AIMessage：本轮结束
 </pre></div>
-<p>LangGraph 负责这些节点之间的执行与状态传递；invoke 返回的是实际运行后的状态。</p>
+<p><code>pretty_print()</code> 只负责把消息打印得便于阅读。offline 模式下应看到上述四步；第一条 AIMessage 的普通文本可以为空，要看它下面的 Tool Calls。重点找到 <code>ToolMessage</code> 中的 <code>echo: hello deepagents</code>，再看下一节如何自动验证。</p>
 </div>
 </div>
 </div>
@@ -8140,7 +8212,9 @@ echo: hello deepagents
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="3.2-%E6%A3%80%E6%9F%A5%E5%8F%AF%E9%AA%8C%E8%AF%81%E7%9A%84%E8%A1%8C%E4%B8%BA">3.2 检查可验证的行为<a class="anchor-link" href="#3.2-%E6%A3%80%E6%9F%A5%E5%8F%AF%E9%AA%8C%E8%AF%81%E7%9A%84%E8%A1%8C%E4%B8%BA">¶</a></h3><p>本实验明确要求成功调用 echo。仅有 ToolMessage 不够，因为参数错误也可能以 ToolMessage 返回。下面核对工具名、参数、调用 ID、成功状态和确切结果；模型最终回答的措辞可以不同。</p>
+<h3 id="3.2-%E6%A3%80%E6%9F%A5%E5%8F%AF%E9%AA%8C%E8%AF%81%E7%9A%84%E8%A1%8C%E4%B8%BA">3.2 检查可验证的行为<a class="anchor-link" href="#3.2-%E6%A3%80%E6%9F%A5%E5%8F%AF%E9%AA%8C%E8%AF%81%E7%9A%84%E8%A1%8C%E4%B8%BA">¶</a></h3><p>参数错误也可能产生 ToolMessage，因此“有返回消息”还不够。下面的 <code>assert_echo</code> 是本章自定义的检查函数，两种 Agent 都会复用它。</p>
+<p>按三步阅读即可：先找名称和参数正确的调用 ID，再找同 ID 且状态为 <code>success</code> 的工具结果，最后确认模型已结束工具调用。<code>assert</code> 不满足时会停止并显示原因；列表和集合推导式只是从消息里筛出符合条件的项目。</p>
+<p>通过时应打印“已验证 echo 的参数、调用关联、成功状态与返回值”。模型最终回答的措辞可以不同，实际工具返回必须符合约定。</p>
 </div>
 </div>
 </div>
@@ -8197,7 +8271,8 @@ echo: hello deepagents
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="4.-%E4%B8%8A%E5%B1%82%EF%BC%9A%E7%94%A8-create_deep_agent()-%E5%88%9B%E5%BB%BA%E6%9C%80%E5%B0%8F-Deep-Agent">4. 上层：用 <code>create_deep_agent()</code> 创建最小 Deep Agent<a class="anchor-link" href="#4.-%E4%B8%8A%E5%B1%82%EF%BC%9A%E7%94%A8-create_deep_agent()-%E5%88%9B%E5%BB%BA%E6%9C%80%E5%B0%8F-Deep-Agent">¶</a></h2><p><code>create_deep_agent()</code> 来自 Deep Agents（Harness 层）。传入完全相同的模型和工具，但它会额外预置一套经过验证的工具——这正是第 1 章所说的「开箱即用的 Agent 套件」。</p>
+<h2 id="4.-%E4%B8%8A%E5%B1%82%EF%BC%9A%E7%94%A8-create_deep_agent()-%E5%88%9B%E5%BB%BA%E6%9C%80%E5%B0%8F-Deep-Agent">4. 上层：用 <code>create_deep_agent()</code> 创建最小 Deep Agent<a class="anchor-link" href="#4.-%E4%B8%8A%E5%B1%82%EF%BC%9A%E7%94%A8-create_deep_agent()-%E5%88%9B%E5%BB%BA%E6%9C%80%E5%B0%8F-Deep-Agent">¶</a></h2><p>保持模型、<code>echo</code> 工具和行为说明相同，只把构造函数换为 Deep Agents 的 <code>create_deep_agent()</code>。它会额外预装文件操作、任务委派等工具及配套处理逻辑。</p>
+<p>我们要观察的是“程序默认装配了什么”，不是比较两种模型谁更聪明。下一节先列出可用工具，再运行同一个 echo 任务。</p>
 </div>
 </div>
 </div>
@@ -8243,7 +8318,9 @@ echo: hello deepagents
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="4.1-%E5%AF%B9%E6%AF%94%E4%B8%A4%E5%B1%82%E9%BB%98%E8%AE%A4%E8%A3%85%E9%85%8D%E7%9A%84%E5%B7%A5%E5%85%B7">4.1 对比两层默认装配的工具<a class="anchor-link" href="#4.1-%E5%AF%B9%E6%AF%94%E4%B8%A4%E5%B1%82%E9%BB%98%E8%AE%A4%E8%A3%85%E9%85%8D%E7%9A%84%E5%B7%A5%E5%85%B7">¶</a></h3><p>读取编译后图中 <code>tools</code> 节点绑定的工具名，是观察「框架层 vs Harness 层」差异的确定手段——不依赖模型输出。</p>
+<h3 id="4.1-%E5%AF%B9%E6%AF%94%E4%B8%A4%E5%B1%82%E9%BB%98%E8%AE%A4%E8%A3%85%E9%85%8D%E7%9A%84%E5%B7%A5%E5%85%B7">4.1 对比两层默认装配的工具<a class="anchor-link" href="#4.1-%E5%AF%B9%E6%AF%94%E4%B8%A4%E5%B1%82%E9%BB%98%E8%AE%A4%E8%A3%85%E9%85%8D%E7%9A%84%E5%B7%A5%E5%85%B7">¶</a></h3><p><strong>工具已注册</strong>表示模型可以选择它；<strong>工具已调用</strong>表示本次任务真的执行了它。这一格只比较注册清单，不要求模型使用额外工具。</p>
+<p><code>list_tools</code> 是本章的观察辅助函数：在图的 <code>tools</code> 节点里读取工具名，再排序打印。它使用本课程锁定版本的图内部结构，第一次学习可先关注三行输出，不需要记住内部属性路径。</p>
+<p>预期：基础 Agent 的清单只有 <code>echo</code>；Deep Agent 包含 <code>echo</code>，还包含 <code>write_file</code>、<code>read_file</code> 等。这里的文件工具默认操作 Agent 状态中的虚拟文件，不等于可以随意读取你电脑上的文件。</p>
 </div>
 </div>
 </div>
@@ -8302,7 +8379,7 @@ Harness 额外提供的工具        : ['delete', 'edit_file', 'execute', 'glob'
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="4.2-%E7%94%A8-Deep-Agent-%E8%B7%91%E5%90%8C%E6%A0%B7%E7%9A%84%E4%BB%BB%E5%8A%A1">4.2 用 Deep Agent 跑同样的任务<a class="anchor-link" href="#4.2-%E7%94%A8-Deep-Agent-%E8%B7%91%E5%90%8C%E6%A0%B7%E7%9A%84%E4%BB%BB%E5%8A%A1">¶</a></h3>
+<h3 id="4.2-%E7%94%A8-Deep-Agent-%E8%B7%91%E5%90%8C%E6%A0%B7%E7%9A%84%E4%BB%BB%E5%8A%A1">4.2 用 Deep Agent 跑同样的任务<a class="anchor-link" href="#4.2-%E7%94%A8-Deep-Agent-%E8%B7%91%E5%90%8C%E6%A0%B7%E7%9A%84%E4%BB%BB%E5%8A%A1">¶</a></h3><p>问题、文本和检查函数都不变。即使 Deep Agent 多了很多工具，本轮仍只需要 <code>echo</code>。比较两次 ToolMessage：实际返回内容应相同；变化的是可用工具集合。</p>
 </div>
 </div>
 </div>
@@ -8360,33 +8437,29 @@ echo: hello deepagents
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="5.-%E4%B8%89%E5%B1%82%E6%9E%B6%E6%9E%84%E5%9C%A8%E7%A4%BA%E4%BE%8B%E4%B8%AD%E7%9A%84%E4%BD%8D%E7%BD%AE">5. 三层架构在示例中的位置<a class="anchor-link" href="#5.-%E4%B8%89%E5%B1%82%E6%9E%B6%E6%9E%84%E5%9C%A8%E7%A4%BA%E4%BE%8B%E4%B8%AD%E7%9A%84%E4%BD%8D%E7%BD%AE">¶</a></h2><table>
+<h2 id="5.-%E7%94%A8%E6%9C%AC%E6%AC%A1%E8%AF%81%E6%8D%AE%E5%9B%9E%E7%9C%8B%E4%B8%89%E5%B1%82%E6%9E%B6%E6%9E%84">5. 用本次证据回看三层架构<a class="anchor-link" href="#5.-%E7%94%A8%E6%9C%AC%E6%AC%A1%E8%AF%81%E6%8D%AE%E5%9B%9E%E7%9C%8B%E4%B8%89%E5%B1%82%E6%9E%B6%E6%9E%84">¶</a></h2><table>
 <thead>
 <tr>
-<th>层次</th>
-<th>代表</th>
-<th>本 Notebook 中的体现</th>
+<th>看到的现象</th>
+<th>它说明什么</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Runtime（底层）</td>
-<td>LangGraph</td>
-<td><code>create_agent()</code> 和 <code>create_deep_agent()</code> 返回的是可运行的图；<code>get_graph().nodes</code> 里的 <code>model</code>、<code>tools</code> 节点就是 LangGraph 的执行引擎</td>
+<td>图中有模型、工具等节点，消息按执行顺序返回</td>
+<td>LangGraph 驱动这些步骤，并传递状态；节点名称本身不是执行引擎</td>
 </tr>
 <tr>
-<td>Framework（中间层）</td>
-<td>LangChain</td>
-<td><code>from langchain.agents import create_agent</code>，以及统一的模型/工具接口（<code>ChatOpenAI</code>、<code>@tool</code>）</td>
+<td><code>create_agent()</code> 能连接模型和 <code>echo</code></td>
+<td>LangChain 提供基础 Agent 组装及统一接口</td>
 </tr>
 <tr>
-<td>Harness（上层）</td>
-<td>Deep Agents</td>
-<td><code>from deepagents import create_deep_agent</code>，在框架之上额外预置虚拟文件系统等工具</td>
+<td><code>create_deep_agent()</code> 还暴露文件、委派等工具</td>
+<td>Deep Agents 在下层能力上提供预先装配的运行套件</td>
 </tr>
 </tbody>
 </table>
-<p>可以看到：传入相同的模型和工具时，<code>create_agent()</code> 只暴露你给的工具；<code>create_deep_agent()</code> 还会自动补齐 <code>write_file</code>、<code>read_file</code>、<code>grep</code>、<code>task</code> 等工具。这说明三层是<strong>层层构建</strong>而不是互相替代——Harness 复用了下面两层的运行时和框架能力。</p>
+<p>这次没有测试长期记忆、规划质量或复杂任务效果，不能从一次 echo 实验推出这些结论。你已经观察到的是：相同工具都能执行，默认装配的能力不同，三层可以共同工作。</p>
 </div>
 </div>
 </div>
@@ -8397,12 +8470,12 @@ echo: hello deepagents
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="5.1-%E5%9B%9E%E7%9C%8B%E8%AF%81%E6%8D%AE%E4%B8%8E%E5%B0%8F%E7%BB%83%E4%B9%A0">5.1 回看证据与小练习<a class="anchor-link" href="#5.1-%E5%9B%9E%E7%9C%8B%E8%AF%81%E6%8D%AE%E4%B8%8E%E5%B0%8F%E7%BB%83%E4%B9%A0">¶</a></h2><ol>
-<li>两种 Agent 均应出现用户消息、带工具调用的 AIMessage、成功 ToolMessage、最终 AIMessage。</li>
-<li>两次工具实际返回相同的 <code>echo: hello deepagents</code>；默认工具集合不同。</li>
-<li>未调用、错误参数、错误返回或错误调用关联都不能通过成功验证。</li>
+<h2 id="5.1-%E5%85%88%E9%A2%84%E6%B5%8B%EF%BC%8C%E5%86%8D%E5%8A%A8%E6%89%8B">5.1 先预测，再动手<a class="anchor-link" href="#5.1-%E5%85%88%E9%A2%84%E6%B5%8B%EF%BC%8C%E5%86%8D%E5%8A%A8%E6%89%8B">¶</a></h2><ol>
+<li>把 <code>ECHO_TEXT</code> 改为 <code>"hello junior"</code>，重启内核并全部运行。预测：两种 Agent 都应返回 <code>echo: hello junior</code>，可用工具清单不变。</li>
+<li>仅在 offline 模式，把 <code>offline_responses</code> 第一条的 <code>args</code> 改成 <code>{}</code>。先找工具消息里的错误，再看 <code>assert_echo</code> 在哪一步停止。</li>
+<li>恢复正确参数，从头运行。核对思路：<code>echo(text)</code> 必须有 <code>text</code>；预设的最终 AIMessage 即使出现，也不能替代成功的工具结果。</li>
 </ol>
-<p><strong>改一个变量</strong>：修改 ECHO_TEXT，从第一格重跑，观察两种 Agent 的结果如何一起变化。随后在 offline_responses 第一条中把 args 改为 <code>{}</code>，预期工具返回参数错误，成功断言失败。恢复正确参数再执行；无需为此调用真实模型。</p>
+<p>再试着用自己的话回答：为什么 Deep Agent 有 <code>write_file</code>，本次对话却没有调用它？因为可用工具清单与本轮实际调用记录是两回事。</p>
 </div>
 </div>
 </div>
@@ -8413,13 +8486,34 @@ echo: hello deepagents
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="6.-%E5%B8%B8%E8%A7%81%E6%8A%A5%E9%94%99%E3%80%81%E6%88%90%E6%9C%AC%E4%B8%8E%E6%B8%85%E7%90%86">6. 常见报错、成本与清理<a class="anchor-link" href="#6.-%E5%B8%B8%E8%A7%81%E6%8A%A5%E9%94%99%E3%80%81%E6%88%90%E6%9C%AC%E4%B8%8E%E6%B8%85%E7%90%86">¶</a></h2><ul>
-<li>offline 不需要 API Key；live 缺 Key 会在创建模型时失败，按统一 README 配置。</li>
-<li>真实模型出现 401、网络错误或超时，检查凭证、端点和网络；模型不调用 echo 时实验应失败，不能把直接回答当成调用成功。</li>
-<li>本示例的 Agent 状态在内存中；重启内核后从头运行即可清理。</li>
-<li>不提交 <code>.env</code>、Key 或未经检查的输出；本次模式以开头和执行报告为准。</li>
-</ul>
-<p>下一步阅读 <a href="../../content/ch02-quickstart.md">第 2 章：快速上手</a>。</p>
+<h2 id="6.-%E5%B8%B8%E8%A7%81%E6%8A%A5%E9%94%99%E4%B8%8E%E6%B8%85%E7%90%86">6. 常见报错与清理<a class="anchor-link" href="#6.-%E5%B8%B8%E8%A7%81%E6%8A%A5%E9%94%99%E4%B8%8E%E6%B8%85%E7%90%86">¶</a></h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>先检查什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ModuleNotFoundError</code></td>
+<td>是否完成安装，是否选择 <code>notebooks/.venv</code> 的项目内核；见 <a href="../README.md">统一安装说明</a></td>
+</tr>
+<tr>
+<td><code>NameError</code>，例如 <code>model</code> 未定义</td>
+<td>是否跳过了前面的代码格；重启内核并从头运行</td>
+</tr>
+<tr>
+<td>echo 检查失败</td>
+<td>对照调用参数、ToolMessage 的 <code>status</code> 和 <code>tool_call_id</code>，不要只看最后一句模型回复</td>
+</tr>
+<tr>
+<td>live 缺 Key、401 或网络超时</td>
+<td>检查根目录 <code>.env</code>、模型端点与网络；offline 无需这些凭证</td>
+</tr>
+</tbody>
+</table>
+<p>本例状态保存在内存中，重启内核即可清理；重启后变量也会消失。不要提交 <code>.env</code>、Key 或未经检查的输出。</p>
+<p>继续学习课程可读 <a href="../../content/ch02-quickstart.md">第 2 章：快速上手</a>；想继续做本批实验，可打开 <a href="../ch05/01-subagent-delegation.ipynb">第 5 章 Notebook</a>。</p>
 </div>
 </div>
 </div>

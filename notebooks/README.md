@@ -2,6 +2,8 @@
 
 正文解释概念，Notebook 用小实验观察机制，AgentSeek 模板提供完整应用。每份 Notebook 从第一格独立运行，不依赖另一章留下的内核状态。
 
+这里默认你会 Python 的变量、函数、列表、字典和循环，不要求先学过 LangChain / LangGraph。先保持默认的 **offline** 模式：不需要模型 Key，也不会请求付费模型；实验中的 Python 工具仍真实运行。
+
 ## 实验索引
 
 <!-- course-notebook-index:start -->
@@ -13,18 +15,32 @@
 | 第 6 章：异步子 Agent | [Notebook](ch06/01-async-subagent-lifecycle.ipynb) · [Markdown](ch06/01-async-subagent-lifecycle.md) · [HTML](ch06/01-async-subagent-lifecycle.html) | 五个异步工具、服务状态与失败清理 | 默认脚本模型；真实本地 Agent Server；server 依赖组 |
 <!-- course-notebook-index:end -->
 
-章节共建进度以 [#105](https://github.com/datawhalechina/deepagents-in-action/issues/105) 为准；目录元数据在 [catalog.json](catalog.json)。首波样板分别覆盖入门对比、同步机制和服务生命周期；后续章节按同一入口扩展。
-
 每份实验同时提供三种格式：Notebook 用于逐格运行，Markdown 可直接在 GitHub 阅读，HTML 在克隆或下载仓库后用浏览器打开（GitHub 文件页显示的是 HTML 源码）。三份文件位于同一目录，包含同一次执行的结果；当前提交的示例使用 offline 模式。
 
-## 安装与运行
+## 第一次学习，从哪里开始？
 
-本波使用 Python 3.12 和独立的 Python 子项目。先安装 [uv](https://docs.astral.sh/uv/getting-started/installation/)，在仓库根目录运行模板确认基础环境：
+建议按 **最小工具实验（作者模板）→ 第 1 章 → 第 5 章 → 第 6 章** 的顺序。先理解“模型请求、工具执行、结果返回”，再看默认工具、同步委派，最后看后台任务。章节编号沿用课程正文，不表示中间章节已经有 Notebook。
+
+| 你现在想做什么 | 入口 |
+|---|---|
+| 先看看实验讲什么 | 点上表的 Markdown，阅读代码、已保存的输出和解释，无需安装环境 |
+| 自己逐格实验 | 完成下面的环境准备，在 VS Code / Jupyter 打开 `.ipynb`，选择项目内核 |
+| 一次验证整个实验能否运行 | 在终端运行下方 `python -m course_notebooks.run ...` 命令 |
+
+Notebook 中，**Markdown 格**用于说明，**代码格**会执行 Python。**内核（kernel）**是运行这些代码的 Python 进程，保存前面定义的变量；重启内核会清空变量。`assert` 是检查条件的语句，失败时停止并解释哪项预期没有满足；练习中的预期失败也是学习结果。
+
+## 准备环境，完成第一次运行
+
+下载或克隆仓库后，在终端进入仓库根目录，也就是同时包含 `notebooks/`、`content/`、`scripts/` 的文件夹。下方标为 `bash` 的命令都在**终端**运行，不要粘贴进 Python 代码格。
+
+使用 Python 3.12 和独立的 Python 子项目。先安装 [uv](https://docs.astral.sh/uv/getting-started/installation/)；它会准备项目的 Python 环境与依赖。下面第一条命令安装锁定的依赖，第二条完整执行最小实验：
 
 ```bash
 uv sync --project notebooks --locked
 uv run --project notebooks --locked python -m course_notebooks.run template
 ```
+
+成功时，终端最后会显示 `template: passed (offline)`。打开 `artifacts/notebooks/template.html`，应看到实际工具返回 `echo: hello course`，以及“已验证：调用请求 → Python 工具执行 → 工具结果 → 最终回复”。仅看到模型回复“完成”还不够。
 
 `uv.lock` 锁定实际依赖；基础版本是 deepagents 0.7.15、langchain 1.4.2、langgraph 1.2.11、langchain-openai 1.6.2。服务类实验另外安装：
 
@@ -42,6 +58,26 @@ uv run --project notebooks --locked --extra server python -m course_notebooks.ru
 ```bash
 uv run --project notebooks --locked python -m ipykernel install --user --name deepagents-course --display-name "Deep Agents course"
 ```
+
+安装并选择内核后：
+
+1. 在 VS Code（需 Python / Jupyter 扩展）或已有的 Jupyter 界面打开一份 `.ipynb`。
+2. 从第一格依次运行；通常可用 `Shift+Enter`。定义函数或变量的代码格没有打印内容也可能正常完成。
+3. 对照每节的预期输出，再做结尾的单变量练习。不要同时修改模型、数据和工具，否则难以知道变化来自哪里。
+4. 需要恢复时，先撤销练习修改，再选择“重启内核并运行全部”。这一操作会重新建立所有变量，避免跳格执行留下旧状态。
+
+`course_notebooks` 是本仓库的辅助包，安装时一并提供。Notebook 中常见的 `show_runtime` 打印版本，`show_text` 整理输出换行，`create_model` 选择运行模式；真正的工具定义、Agent 组装与关键检查仍在各章代码格中。
+
+### 常见卡点
+
+| 现象 | 下一步 |
+|---|---|
+| 找不到 `uv` | 先完成上方 uv 安装，再打开终端 |
+| 找不到 `langchain` / `course_notebooks` | 重新确认安装已完成，并选择本仓库 `notebooks/.venv` 的内核 |
+| 提示从课程仓库目录运行 | 回到包含 `scripts/chapters.json` 的仓库目录，重新打开/执行 Notebook |
+| `NameError`，变量未定义 | 从第一格依次运行，不要只执行后面的结果检查格 |
+| 没改代码却与保存输出不同 | 先核对开头的 offline/live 模式；任务 ID 和部分平台信息本就会变化 |
+| 实验中的断言失败 | 读断言说明并检查前面的实际工具结果；如果正在做失败练习，按该节的恢复步骤重跑 |
 
 ## 脚本模型与真实模型
 
@@ -68,7 +104,9 @@ uv run --project notebooks --locked --extra server python -m course_notebooks.ru
 
 更换模型后重新执行，并记录模型名与执行报告；某个模型通过不能代表所有模型都通过。普通 fork CI 继续使用 offline，不提供供应商凭证。
 
-## 验证与贡献
+## 维护者与贡献者：验证并更新三种格式
+
+章节共建进度见 [#105](https://github.com/datawhalechina/deepagents-in-action/issues/105)，目录元数据在 [catalog.json](catalog.json)。下面的命令用于验证和提交实验；初次学习不需要先理解这些维护步骤。
 
 ```bash
 uv run --project notebooks --locked --extra server pytest notebooks/tests

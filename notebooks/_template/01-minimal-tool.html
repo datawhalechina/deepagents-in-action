@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>e6eda366327c</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>edec4739e74e</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7815,8 +7815,9 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="%E6%9C%80%E5%B0%8F%E5%B7%A5%E5%85%B7%E5%AE%9E%E9%AA%8C%EF%BC%9A%E8%B0%81%E6%89%A7%E8%A1%8C%E4%BA%86-echo%EF%BC%9F">最小工具实验：谁执行了 echo？<a class="anchor-link" href="#%E6%9C%80%E5%B0%8F%E5%B7%A5%E5%85%B7%E5%AE%9E%E9%AA%8C%EF%BC%9A%E8%B0%81%E6%89%A7%E8%A1%8C%E4%BA%86-echo%EF%BC%9F">¶</a></h1><p>学习目标：区分模型发出的工具调用、框架执行的 Python 函数与工具返回。模板只需基础 Python；复制后替换为本章的问题和正文入口。</p>
-<p><strong>预期现象</strong>：模型产生一次 echo 调用，工具返回 <code>echo: hello course</code>，最终回复在工具返回之后。默认脚本模型控制调用选择，实际框架和工具仍执行；它不证明真实模型的决策能力。</p>
+<h1 id="%E6%9C%80%E5%B0%8F%E5%B7%A5%E5%85%B7%E5%AE%9E%E9%AA%8C%EF%BC%9A%E8%B0%81%E6%89%A7%E8%A1%8C%E4%BA%86-echo%EF%BC%9F">最小工具实验：谁执行了 echo？<a class="anchor-link" href="#%E6%9C%80%E5%B0%8F%E5%B7%A5%E5%85%B7%E5%AE%9E%E9%AA%8C%EF%BC%9A%E8%B0%81%E6%89%A7%E8%A1%8C%E4%BA%86-echo%EF%BC%9F">¶</a></h1><p>模型可以提出“请调用这个工具”，但谁真正运行 Python 函数？这份实验用一个只返回文本的工具，把这个过程拆开观察。</p>
+<p>你只需会写 Python 函数、列表、字典和 <code>for</code> 循环，不需要先学 LangChain。第一次使用 Notebook，先看 <a href="../README.md">入门与运行说明</a>。这份最小实验也供后续章节作者复制。</p>
+<p><strong>预期现象</strong>：工具实际返回 <code>echo: hello course</code>，随后出现模型回复。默认使用无需 Key 的脚本模型；它预先安排模型消息，工具函数和框架仍真实执行。</p>
 </div>
 </div>
 </div>
@@ -7827,7 +7828,8 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">1. 环境与模式<a class="anchor-link" href="#1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">¶</a></h2><p>先按 <a href="../README.md">统一安装说明</a> 准备 Python 3.12 环境。默认 offline 不需要 API Key；真实模型需显式选择 live。</p>
+<h2 id="1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">1. 环境与模式<a class="anchor-link" href="#1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">¶</a></h2><p>按 <a href="../README.md">统一安装说明</a> 准备 Python 3.12 环境，在项目内核中从第一格依次运行。代码格左侧出现执行编号，表示该格运行过；没有打印内容的定义格也可能正常完成。</p>
+<p>下一格的 <code>show_runtime()</code> 打印环境，<code>TEXT</code> 是我们准备交给工具的文本。<code>course_notebooks</code> 是随课程安装的辅助包：<code>create_model()</code> 选择 offline 或 live，<code>ScriptedChatModel</code> 提供离线响应。先保持默认 offline，学会观察结果后再切换真实模型。</p>
 </div>
 </div>
 </div>
@@ -7870,14 +7872,55 @@ langchain-openai==1.6.2
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=junior-template-loop">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%E5%85%88%E8%AE%A4%E6%B8%85%E5%9B%9B%E4%B8%AA%E8%A7%92%E8%89%B2">先认清四个角色<a class="anchor-link" href="#%E5%85%88%E8%AE%A4%E6%B8%85%E5%9B%9B%E4%B8%AA%E8%A7%92%E8%89%B2">¶</a></h3><table>
+<thead>
+<tr>
+<th>名称</th>
+<th>在本实验中做什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>模型</td>
+<td>产生回复，或者提出带参数的工具调用</td>
+</tr>
+<tr>
+<td>工具</td>
+<td>普通 Python 函数；这里是 <code>echo(text)</code></td>
+</tr>
+<tr>
+<td>框架</td>
+<td>接收调用请求，运行工具，再把结果交回模型</td>
+</tr>
+<tr>
+<td>Agent</td>
+<td>把模型和工具连接起来、反复执行上述步骤的程序</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span>用户提出请求 → 模型提出 echo 调用 → 框架执行 Python 函数
+                                      ↓
+用户得到回复 ← 模型读取结果 ← ToolMessage 保存工具返回值
+</pre></div>
+<p>LangChain 提供本例使用的 Agent 构造函数。<code>AIMessage</code> 是模型消息，<code>ToolMessage</code> 是工具执行结果；两者承担不同的工作。</p>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c27e40ab">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2.-%E5%AE%9A%E4%B9%89%E5%B7%A5%E5%85%B7%E4%B8%8E%E8%84%9A%E6%9C%AC%E5%93%8D%E5%BA%94">2. 定义工具与脚本响应<a class="anchor-link" href="#2.-%E5%AE%9A%E4%B9%89%E5%B7%A5%E5%85%B7%E4%B8%8E%E8%84%9A%E6%9C%AC%E5%93%8D%E5%BA%94">¶</a></h2><p><code>@tool</code> 把带类型和说明的 Python 函数注册为模型可选择的工具。AIMessage 的 tool_calls 只是调用请求；框架执行函数后才生成 ToolMessage。</p>
-<p>这里使用 LangChain 官方 <code>FakeMessagesListChatModel</code> 的响应列表：第一条请求工具，第二条结束对话。课程的 <code>ScriptedChatModel</code> 只补上 Agent 所需的工具绑定；预设的最终回复不代表工具成功，仍须检查真实 ToolMessage。</p>
+<h2 id="2.-%E5%AE%9A%E4%B9%89%E5%B7%A5%E5%85%B7%E4%B8%8E%E8%84%9A%E6%9C%AC%E5%93%8D%E5%BA%94">2. 定义工具与脚本响应<a class="anchor-link" href="#2.-%E5%AE%9A%E4%B9%89%E5%B7%A5%E5%85%B7%E4%B8%8E%E8%84%9A%E6%9C%AC%E5%93%8D%E5%BA%94">¶</a></h2><p><code>@tool</code> 是装饰器：它把函数的名称、参数类型和说明整理成模型可用的工具接口。<code>text: str</code> 表示参数是字符串，三引号里的说明帮助模型理解工具用途。函数实际返回的是加上 <code>echo:</code> 前缀的文本，便于我们辨认。</p>
+<p>为了先观察机制，使用 LangChain 官方 <code>FakeMessagesListChatModel</code> 的响应列表：第一条要求调用工具，第二条结束对话。课程的 <code>ScriptedChatModel</code> 为它补充 Agent 需要的工具绑定。它不会推理，也不会检查工具是否成功；成功与否要看实际返回值。</p>
 </div>
 </div>
 </div>
@@ -7909,13 +7952,52 @@ langchain-openai==1.6.2
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=junior-template-call-fields">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%E7%9C%8B%E6%87%82%E8%BF%99%E4%B8%80%E6%9D%A1%E8%B0%83%E7%94%A8%E8%AF%B7%E6%B1%82">看懂这一条调用请求<a class="anchor-link" href="#%E7%9C%8B%E6%87%82%E8%BF%99%E4%B8%80%E6%9D%A1%E8%B0%83%E7%94%A8%E8%AF%B7%E6%B1%82">¶</a></h3><p>第一条 <code>AIMessage</code> 的 <code>tool_calls</code> 是一个列表，其中的字典描述一次调用：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>本例的值</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td><code>echo</code></td>
+<td>选择哪个工具</td>
+</tr>
+<tr>
+<td><code>args</code></td>
+<td><code>{"text": TEXT}</code></td>
+<td>把什么参数传给函数</td>
+</tr>
+<tr>
+<td><code>id</code></td>
+<td><code>template-echo</code></td>
+<td>给调用编号，让返回消息能找到对应请求</td>
+</tr>
+</tbody>
+</table>
+<p><code>content=""</code> 表示这次没有普通文本回复，真正的请求在 <code>tool_calls</code> 中。创建这条消息尚未执行 <code>echo</code>；下一步启动 Agent 循环才会执行工具。</p>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2858b4c9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="3.-%E8%BF%90%E8%A1%8C%E5%AE%9E%E9%99%85-Agent-%E5%BE%AA%E7%8E%AF">3. 运行实际 Agent 循环<a class="anchor-link" href="#3.-%E8%BF%90%E8%A1%8C%E5%AE%9E%E9%99%85-Agent-%E5%BE%AA%E7%8E%AF">¶</a></h2><p><code>create_agent</code> 连接模型和工具；<code>invoke</code> 接收消息，循环执行到模型不再请求工具。下面的状态由实际框架产生。</p>
+<h2 id="3.-%E8%BF%90%E8%A1%8C%E5%AE%9E%E9%99%85-Agent-%E5%BE%AA%E7%8E%AF">3. 运行实际 Agent 循环<a class="anchor-link" href="#3.-%E8%BF%90%E8%A1%8C%E5%AE%9E%E9%99%85-Agent-%E5%BE%AA%E7%8E%AF">¶</a></h2><p><code>create_agent(model=..., tools=[echo])</code> 组装模型和工具。<code>invoke(...)</code> 才开始执行，直到模型不再请求工具。</p>
+<p>输入里的 <code>messages</code> 是对话列表，<code>("user", 文本)</code> 是用户消息的简写。返回的 <code>result</code> 是字典，<code>result["messages"]</code> 保存运行后的消息记录。下一格逐条打印消息类型、工具名和内容；只打印前 120 个字符是为了方便阅读。</p>
 </div>
 </div>
 </div>
@@ -7933,6 +8015,11 @@ langchain-openai==1.6.2
 <span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">"messages"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"user"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"调用 echo，原样返回 </span><span class="si">{</span><span class="n">TEXT</span><span class="si">}</span><span class="s2">"</span><span class="p">)]})</span>
 <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]:</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">content</span><span class="p">)[:</span><span class="mi">120</span><span class="p">])</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"  请求工具:"</span><span class="p">,</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"参数:"</span><span class="p">,</span> <span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">],</span> <span class="s2">"调用 ID:"</span><span class="p">,</span> <span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">])</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  对应调用 ID:"</span><span class="p">,</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_call_id</span><span class="p">,</span> <span class="s2">"执行状态:"</span><span class="p">,</span> <span class="n">message</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -7947,10 +8034,55 @@ langchain-openai==1.6.2
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>human  调用 echo，原样返回 hello course
 ai  
+  请求工具: echo 参数: {'text': 'hello course'} 调用 ID: template-echo
 tool echo echo: hello course
+  对应调用 ID: template-echo 执行状态: success
 ai  工具调用流程结束；请检查实际 ToolMessage。
 </pre>
 </div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=junior-template-read-output">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%E8%BE%93%E5%87%BA%E5%BA%94%E8%AF%A5%E6%80%8E%E6%A0%B7%E8%AF%BB%EF%BC%9F">输出应该怎样读？<a class="anchor-link" href="#%E8%BE%93%E5%87%BA%E5%BA%94%E8%AF%A5%E6%80%8E%E6%A0%B7%E8%AF%BB%EF%BC%9F">¶</a></h3><p>offline 模式下，应依次看到四条消息：</p>
+<table>
+<thead>
+<tr>
+<th>打印的类型</th>
+<th>含义</th>
+<th>重点观察</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>human</code></td>
+<td>用户输入</td>
+<td>要交给工具的文本</td>
+</tr>
+<tr>
+<td><code>ai</code></td>
+<td>模型提出调用</td>
+<td>普通文本可为空；下方明细打印工具名、参数和调用 ID</td>
+</tr>
+<tr>
+<td><code>tool echo</code></td>
+<td>工具真正返回了</td>
+<td>内容应为 <code>echo: hello course</code></td>
+</tr>
+<tr>
+<td><code>ai</code></td>
+<td>本轮结束</td>
+<td>这句是预设回复，不能单独作为成功证据</td>
+</tr>
+</tbody>
+</table>
+<p>真实模型的措辞和调用次数可能不同；仍需检查工具执行的内容。</p>
 </div>
 </div>
 </div>
@@ -7961,7 +8093,8 @@ ai  工具调用流程结束；请检查实际 ToolMessage。
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="4.-%E6%A3%80%E6%9F%A5%E5%AD%A6%E4%B9%A0%E7%9B%AE%E6%A0%87">4. 检查学习目标<a class="anchor-link" href="#4.-%E6%A3%80%E6%9F%A5%E5%AD%A6%E4%B9%A0%E7%9B%AE%E6%A0%87">¶</a></h2><p>我们检查确切参数、关联调用 ID、成功状态和结果，而不是只检查消息数量。</p>
+<h2 id="4.-%E6%A3%80%E6%9F%A5%E5%AD%A6%E4%B9%A0%E7%9B%AE%E6%A0%87">4. 检查学习目标<a class="anchor-link" href="#4.-%E6%A3%80%E6%9F%A5%E5%AD%A6%E4%B9%A0%E7%9B%AE%E6%A0%87">¶</a></h2><p>下面先从消息中收集调用请求（<code>calls</code>）和工具结果（<code>returns</code>），再逐项核对。列表推导式中的两个 <code>for</code> 表示“遍历每条模型消息，再遍历其中的工具调用”。<code>isinstance</code> 判断消息类型，<code>any(...)</code> 检查是否至少有一项满足条件。</p>
+<p><code>assert 条件</code> 是自动检查：条件不成立就报错并停止。这里需要同时满足：调用名称和参数正确；结果的 <code>tool_call_id</code> 能对应请求的 <code>id</code>；工具状态成功；返回文本准确。最后再确认出现模型回复。</p>
 </div>
 </div>
 </div>
@@ -8006,8 +8139,13 @@ ai  工具调用流程结束；请检查实际 ToolMessage。
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="%E6%94%B9%E4%B8%80%E4%B8%AA%E5%8F%98%E9%87%8F%E5%86%8D%E8%A7%82%E5%AF%9F">改一个变量再观察<a class="anchor-link" href="#%E6%94%B9%E4%B8%80%E4%B8%AA%E5%8F%98%E9%87%8F%E5%86%8D%E8%A7%82%E5%AF%9F">¶</a></h2><p>把 TEXT 改为另一段文本，从第一格重跑，预测工具结果会如何改变。若删除响应列表第一条中的 text 参数，框架会产生错误工具结果，成功断言应失败。</p>
-<p>本实验不启动外部进程；重启内核即可清理内存状态。制作章节时按 <a href="../CONTRIBUTING.md">贡献指南</a> 添加与该章有关的失败分支、清理说明和下一步。</p>
+<h2 id="%E6%94%B9%E4%B8%80%E4%B8%AA%E5%8F%98%E9%87%8F%E5%86%8D%E8%A7%82%E5%AF%9F">改一个变量再观察<a class="anchor-link" href="#%E6%94%B9%E4%B8%80%E4%B8%AA%E5%8F%98%E9%87%8F%E5%86%8D%E8%A7%82%E5%AF%9F">¶</a></h2><ol>
+<li>把 <code>TEXT</code> 改为 <code>"hello junior"</code>，先预测工具输出，再从第一格重跑。应看到 <code>echo: hello junior</code>，成功断言仍通过。</li>
+<li>仅在 offline 模式，把响应列表第一条的 <code>args</code> 改成 <code>{}</code>。运行后检查工具错误和失败断言：<code>echo</code> 缺少必需的 <code>text</code> 参数，即使预设的模型回复照常出现，也不能算成功。</li>
+<li>恢复 <code>{"text": TEXT}</code>，重启内核并全部运行，确认实验重新通过。重启会清空变量，不能只运行最后一格。</li>
+</ol>
+<p><strong>回顾</strong>：模型负责提出请求，框架执行函数，ToolMessage 保存结果；一次可靠验证必须把三者对应起来。本实验不启动外部进程，重启内核即可清理内存状态。</p>
+<p>接着运行 <a href="../ch01/01-agent-harness.ipynb">第 1 章 Notebook</a>，比较基础 Agent 和 Deep Agent。章节作者再参考 <a href="../CONTRIBUTING.md">贡献指南</a>。</p>
 </div>
 </div>
 </div>

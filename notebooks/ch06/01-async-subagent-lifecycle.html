@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>a4054c55a3a2</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>e3d0c0ffb48c</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7815,9 +7815,9 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="%E7%AC%AC-6-%E7%AB%A0%EF%BD%9C%E5%BC%82%E6%AD%A5%E5%AD%90-Agent-%E7%9A%84%E5%AE%8C%E6%95%B4%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F">第 6 章｜异步子 Agent 的完整生命周期<a class="anchor-link" href="#%E7%AC%AC-6-%E7%AB%A0%EF%BD%9C%E5%BC%82%E6%AD%A5%E5%AD%90-Agent-%E7%9A%84%E5%AE%8C%E6%95%B4%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F">¶</a></h1><p>对应 <a href="../../content/ch06-async-subagents.md">第 6 章正文</a>。本实验从 Notebook 启动真实本地 Agent Server，观察 supervisor 通过 ASGI 委派后的后台任务。</p>
-<p><strong>学习目标</strong>：说明主任务返回与后台任务完成的区别；使用五个异步工具；通过 task/thread/run ID 和真实服务状态验证完成、更新与取消。</p>
-<p><strong>预期现象</strong>：启动返回时子任务尚在运行；更新保留 task ID 并创建新 run；取消后主 Agent 记录 cancelled，服务端 run 进入 interrupted。</p>
+<h1 id="%E7%AC%AC-6-%E7%AB%A0%EF%BD%9C%E5%BC%82%E6%AD%A5%E5%AD%90-Agent-%E7%9A%84%E5%AE%8C%E6%95%B4%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F">第 6 章｜异步子 Agent 的完整生命周期<a class="anchor-link" href="#%E7%AC%AC-6-%E7%AB%A0%EF%BD%9C%E5%BC%82%E6%AD%A5%E5%AD%90-Agent-%E7%9A%84%E5%AE%8C%E6%95%B4%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F">¶</a></h1><p>对应 <a href="../../content/ch06-async-subagents.md">第 6 章正文</a>。第 5 章的主 Agent 要等子 Agent 返回，这一章观察另一种方式：先拿到任务编号，工作继续在后台运行，随后查询、更新或取消它。</p>
+<p>建议先理解 <a href="../ch05/01-subagent-delegation.ipynb">第 5 章的同步委派</a>。本章会解释服务、图和 <code>await</code>，不要求你预先掌握异步框架；但内容比前面的 echo 实验复杂。所有状态都从本章第一格创建，不依赖其他 Notebook 的内核。</p>
+<p><strong>预期现象</strong>：主 Agent 返回启动结果时子任务尚未完成；更新后 task ID 不变而 run ID 改变；取消后主 Agent 与服务端分别给出跟踪状态和执行终态。我们会读取两边的真实数据验证这些现象。</p>
 </div>
 </div>
 </div>
@@ -7828,11 +7828,14 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">1. 环境与模式<a class="anchor-link" href="#1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">¶</a></h2><p>按 <a href="../README.md">统一安装说明</a> 使用 Python 3.12 和 server 依赖组：</p>
+<h2 id="1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E9%98%85%E8%AF%BB%E9%A1%BA%E5%BA%8F">1. 环境与阅读顺序<a class="anchor-link" href="#1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E9%98%85%E8%AF%BB%E9%A1%BA%E5%BA%8F">¶</a></h2><p>本例会启动一个只在本机访问的 <strong>Agent Server</strong>：它是独立运行的服务进程，负责保存任务状态、调度后台执行。Notebook 通过 <strong>SDK</strong>（封装服务请求的 Python 客户端）与它交互。</p>
+<p>先按 <a href="../README.md">统一安装说明</a> 准备 Python 3.12，再在终端安装 <code>server</code> 可选依赖组并运行：</p>
 <div class="highlight"><pre><span></span>uv<span class="w"> </span>sync<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>--extra<span class="w"> </span>server
 uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>--extra<span class="w"> </span>server<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>course_notebooks.run<span class="w"> </span>ch06-async-subagents
 </pre></div>
-<p>默认 offline 用脚本模型规定 supervisor 选择哪个工具，服务、中间件、SDK 和后台图都真实执行。随附输出来自本次 offline 运行；它不证明真实模型的选工具能力。切换真实模型需按 README 配置并显式添加 <code>--mode live</code>，可能产生模型费用。无需远程部署，也不要求 LangSmith Key。</p>
+<p>逐格学习时，先运行各个定义格，最后在第 7 节一起执行三个阶段。<strong>定义 <code>async def</code> 函数不会启动任务</strong>，直到后面 <code>await</code> 调用它才执行。第 3 节的检查函数第一次可先理解输入输出，核心观察在第 4～7 节。</p>
+<p>默认 offline 仅替换模型选择工具的方式，服务、SDK 和后台任务都真实运行。无需模型 Key、远程部署或 LangSmith Key；live 才请求真实模型，可能产生费用。</p>
+<p>下一格定位仓库目录，并把本章目录加入 Python 模块搜索路径，以便导入章内辅助类 <code>LocalAgentServer</code>。它负责启动和清理进程，不是需要另行安装的第三方包。</p>
 </div>
 </div>
 </div>
@@ -7888,12 +7891,13 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2.-Notebook%E3%80%81%E6%9C%8D%E5%8A%A1%E4%B8%8E%E4%B8%A4%E4%B8%AA%E5%9B%BE%E6%98%AF%E4%BB%80%E4%B9%88%E5%85%B3%E7%B3%BB%EF%BC%9F">2. Notebook、服务与两个图是什么关系？<a class="anchor-link" href="#2.-Notebook%E3%80%81%E6%9C%8D%E5%8A%A1%E4%B8%8E%E4%B8%A4%E4%B8%AA%E5%9B%BE%E6%98%AF%E4%BB%80%E4%B9%88%E5%85%B3%E7%B3%BB%EF%BC%9F">¶</a></h2><div class="highlight"><pre><span></span>Notebook（SDK 客户端）
-  └─ 本地 Agent Server
-       ├─ supervisor：主 Agent，选择异步工具
-       └─ researcher：后台图，等待后返回结果
-            ↑ AsyncSubAgent 通过同部署的 ASGI 路径调用
+<h2 id="2.-Notebook%E3%80%81%E6%9C%8D%E5%8A%A1%E4%B8%8E%E4%B8%A4%E4%B8%AA%E5%9B%BE%E6%98%AF%E4%BB%80%E4%B9%88%E5%85%B3%E7%B3%BB%EF%BC%9F">2. Notebook、服务与两个图是什么关系？<a class="anchor-link" href="#2.-Notebook%E3%80%81%E6%9C%8D%E5%8A%A1%E4%B8%8E%E4%B8%A4%E4%B8%AA%E5%9B%BE%E6%98%AF%E4%BB%80%E4%B9%88%E5%85%B3%E7%B3%BB%EF%BC%9F">¶</a></h2><p><strong>图</strong>（graph）是一组执行步骤及其连接；<strong>节点</strong>（node）是其中一个步骤；<strong>状态</strong>（state）是步骤传递的数据，例如消息列表。我们在一个服务中注册两个图：</p>
+<div class="highlight"><pre><span></span>Notebook：发送命令、读取状态
+  └─ Agent Server：保存会话、安排执行
+       ├─ supervisor：主 Agent 图，模型选择异步工具
+       └─ researcher：子图，等待后返回输入文本
 </pre></div>
+<p>Notebook 通过 SDK 请求本机服务。<code>AsyncSubAgent</code> 把主图里的“researcher”名称连接到服务已注册的子图。内部使用同部署的 ASGI 调用路径；ASGI 是 Python 异步服务接口，此处无需手写接口或启动第二个服务。</p>
 <table>
 <thead>
 <tr>
@@ -7904,29 +7908,29 @@ langchain-openai==1.6.2
 </thead>
 <tbody>
 <tr>
-<td>graph_id</td>
-<td>服务器中注册的图，如 researcher</td>
+<td><code>graph_id</code></td>
+<td>工作流程的名称，如 <code>researcher</code></td>
+<td>使用同一个图</td>
+</tr>
+<tr>
+<td><code>thread_id</code></td>
+<td>保存消息与状态的一段会话</td>
+<td>保留子会话</td>
+</tr>
+<tr>
+<td><code>task_id</code></td>
+<td>主 Agent 跟踪子任务的编号；本例等于子 thread_id</td>
 <td>保持不变</td>
 </tr>
 <tr>
-<td>thread_id</td>
-<td>一段有状态的会话</td>
-<td>子 thread 不变</td>
-</tr>
-<tr>
-<td>task_id</td>
-<td>主 Agent 跟踪的子任务 ID，本例等于子 thread_id</td>
-<td>保持不变</td>
-</tr>
-<tr>
-<td>run_id</td>
-<td>在该 thread 上的一次执行</td>
-<td>创建新的 run</td>
+<td><code>run_id</code></td>
+<td>这段会话上的某一次执行编号</td>
+<td>换成新的 run</td>
 </tr>
 </tbody>
 </table>
-<p><code>async def</code> 定义可等待的函数，<code>await</code> 在等待网络或后台结果时让出执行权。真正的后台任务由 Agent Server 调度，不是 Notebook 自己创建一个 Python await 就模拟出来的。</p>
-<p>服务注册见 <a href="langgraph.json">langgraph.json</a>，主图见 <a href="graphs/supervisor.py">supervisor.py</a>。下面直接展示当前文件中的核心构造，避免维护第二份实现。</p>
+<p>例如，任务 T1 可以先有执行 R1，追加要求后仍是 T1，但执行变成 R2。T1/R1 只是说明用的代号；真正运行时，代码会从返回状态中取出生成的 ID，不能硬编码上次输出的编号。</p>
+<p>服务注册见 <a href="langgraph.json">langgraph.json</a>。下一格展示 <a href="graphs/supervisor.py">supervisor.py</a> 的真实构造：<code>model</code> 是主模型，<code>system_prompt</code> 解释命令，<code>subagents</code> 注册 <code>AsyncSubAgent</code>；其中 <code>name</code> 供主 Agent 选择，<code>graph_id</code> 定位服务中的子图。英文提示里的五种命令会在第 3 节用中文逐项说明。</p>
 </div>
 </div>
 </div>
@@ -8064,7 +8068,47 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%E4%B8%80%E4%B8%AA%E5%8F%AF%E8%A7%82%E5%AF%9F%E7%9A%84%E5%90%8E%E5%8F%B0%E5%9B%BE">一个可观察的后台图<a class="anchor-link" href="#%E4%B8%80%E4%B8%AA%E5%8F%AF%E8%A7%82%E5%AF%9F%E7%9A%84%E5%90%8E%E5%8F%B0%E5%9B%BE">¶</a></h3><p>researcher 故意等待 8 秒后回传输入，给查询、更新和取消留出窗口。它是固定教学图，不进行真实研究，也不用于比较研究质量或远程部署性能。</p>
+<h3 id="%E4%B8%80%E4%B8%AA%E5%8F%AF%E8%A7%82%E5%AF%9F%E7%9A%84%E5%90%8E%E5%8F%B0%E5%9B%BE">一个可观察的后台图<a class="anchor-link" href="#%E4%B8%80%E4%B8%AA%E5%8F%AF%E8%A7%82%E5%AF%9F%E7%9A%84%E5%90%8E%E5%8F%B0%E5%9B%BE">¶</a></h3><p>researcher 故意等待 8 秒，再返回收到的文本，给查询、更新和取消留出观察窗口。输出里的 <code>Research completed</code> 只是教学图的固定前缀，<strong>不是完成了真实研究的证据</strong>。</p>
+<p>按下面的顺序读下一格源码：</p>
+<table>
+<thead>
+<tr>
+<th>写法</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MessagesState</code></td>
+<td>约定状态中有 <code>messages</code> 消息列表</td>
+</tr>
+<tr>
+<td><code>research(state)</code></td>
+<td>读取最后一条用户消息，返回新增消息</td>
+</tr>
+<tr>
+<td><code>await asyncio.sleep(8)</code></td>
+<td>异步等待；等待时让出执行机会，服务仍可处理别的请求</td>
+</tr>
+<tr>
+<td><code>StateGraph(MessagesState)</code></td>
+<td>创建遵循这份状态约定的图</td>
+</tr>
+<tr>
+<td><code>add_node("research", research)</code></td>
+<td>注册名为 research 的处理步骤</td>
+</tr>
+<tr>
+<td><code>add_edge(START, "research")</code> / <code>add_edge("research", END)</code></td>
+<td>定义从开始到处理步骤，再到结束的顺序</td>
+</tr>
+<tr>
+<td><code>compile()</code></td>
+<td>把定义变成可运行对象；此时尚未处理某个任务</td>
+</tr>
+</tbody>
+</table>
+<p><code>async def</code> 定义可等待的函数，<code>await</code> 等待这一次调用返回。后台任务能继续运行，是因为 Agent Server 在调度它，不是仅写一个 <code>await</code> 就自动创建了后台服务。</p>
 </div>
 </div>
 </div>
@@ -8196,8 +8240,17 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="3.-%E5%A6%82%E4%BD%95%E6%A3%80%E6%9F%A5%E4%B8%80%E6%AC%A1%E5%B7%A5%E5%85%B7%E8%B0%83%E7%94%A8%EF%BC%9F">3. 如何检查一次工具调用？<a class="anchor-link" href="#3.-%E5%A6%82%E4%BD%95%E6%A3%80%E6%9F%A5%E4%B8%80%E6%AC%A1%E5%B7%A5%E5%85%B7%E8%B0%83%E7%94%A8%EF%BC%9F">¶</a></h2><p><code>ask</code> 向服务端 supervisor 发送消息，再读取本轮的真实工具调用和返回。两种模式共用 <code>START|说明</code>、<code>CHECK|task_id</code> 等命令协议：offline 回调负责解析；live 的系统提示明确列出命令与工具参数的映射。</p>
-<p>返回 state 是服务端运行后的状态。启动、更新和取消必须只执行一次指定操作；列举和查询允许模型追加只读状态查询，但不能夹带启动、更新或取消。每条结果都要核对工具名、调用 ID 和成功状态；不能只相信模型说“已完成”。实际工具序列会在出现额外查询时显示。轮询只在状态改变时打印，并设置截止时间。</p>
+<h2 id="3.-%E5%90%91%E4%B8%BB-Agent-%E5%8F%91%E5%91%BD%E4%BB%A4%EF%BC%8C%E5%86%8D%E8%AF%BB%E5%8F%96%E5%B7%A5%E5%85%B7%E7%BB%93%E6%9E%9C">3. 向主 Agent 发命令，再读取工具结果<a class="anchor-link" href="#3.-%E5%90%91%E4%B8%BB-Agent-%E5%8F%91%E5%91%BD%E4%BB%A4%EF%BC%8C%E5%86%8D%E8%AF%BB%E5%8F%96%E5%B7%A5%E5%85%B7%E7%BB%93%E6%9E%9C">¶</a></h2><p>下面这些 <code>START|...</code> 字符串是<strong>课程定义的简短命令，不是 LangGraph 内置 API</strong>。offline 回调把它们转成工具请求；live 的系统提示告诉真实模型使用相同映射。</p>
+<p>| 命令 | 请求的工具 | 参数与用途 |
+|---|---|---|
+| <code>START|任务说明</code> | <code>start_async_task</code> | 给 researcher 一段说明，拿到 task ID |
+| <code>LIST</code> | <code>list_async_tasks</code> | 列出主 Agent 已跟踪的任务 |
+| <code>CHECK|task_id</code> | <code>check_async_task</code> | 查询某个任务，成功后读取结果 |
+| <code>UPDATE|task_id|追加要求</code> | <code>update_async_task</code> | 在同一个子会话里追加要求，产生新 run |
+| <code>CANCEL|task_id</code> | <code>cancel_async_task</code> | 请求取消该任务，再核实服务端状态 |</p>
+<p>关键调用是 <code>server.client.runs.wait(server.parent_id, "supervisor", input=...)</code>：把消息发给<strong>主图的这一次执行</strong>，等待它返回状态。它不会自动等 researcher 完成；这就是后面还要查询子任务的原因。<code>asyncio.wait_for(..., timeout=30)</code> 给这次等待设置上限，避免一直挂着。</p>
+<p><code>ask(server, text, expected_tool)</code> 是本章的辅助函数，返回 <code>(state, output)</code>：前者是主图状态，后者是与本次请求对应的实际工具返回。代码按三个步骤阅读即可：发送消息；只取最后一条用户消息之后的调用；核对工具结果。JSON 是服务返回结构化数据的文本格式，<code>json.loads</code> 把它变回 Python 字典。</p>
+<p>首次学习可先运行定义，带着这个接口去看第 4 节。想细读检查逻辑时，再看调用 <code>id</code> 与结果 <code>tool_call_id</code> 怎样配对：修改操作只允许一次，查询可追加只读操作，但不能夹带修改；返回结果还要匹配请求的任务或筛选条件。</p>
 </div>
 </div>
 </div>
@@ -8257,9 +8310,54 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
             <span class="nb">print</span><span class="p">(</span><span class="s2">"本轮工具序列（包含只读状态查询）："</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span>
         <span class="n">show_tool_output</span><span class="p">(</span><span class="n">expected_tool</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">state</span><span class="p">,</span> <span class="n">output</span>
-
-
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">wait_task</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">40</span><span class="p">):</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=junior-ch06-wait-guide">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="3.1-%E8%BD%AE%E8%AF%A2%EF%BC%9A%E9%9A%94%E4%B8%80%E4%BC%9A%E5%84%BF%E5%86%8D%E9%97%AE%E4%B8%80%E6%AC%A1">3.1 轮询：隔一会儿再问一次<a class="anchor-link" href="#3.1-%E8%BD%AE%E8%AF%A2%EF%BC%9A%E9%9A%94%E4%B8%80%E4%BC%9A%E5%84%BF%E5%86%8D%E9%97%AE%E4%B8%80%E6%AC%A1">¶</a></h3><p><strong>轮询</strong>就是反复 CHECK，直到任务成功、失败或超过截止时间。<code>wait_task</code> 默认最多等 40 秒，每轮查询后暂停 1 秒，只在状态变化时打印，避免刷屏。它等待的是子任务，与上一格等待主图本轮返回不同。</p>
+<p>两处都出现“状态”，但来源不同：</p>
+<table>
+<thead>
+<tr>
+<th>字段来源</th>
+<th>常见值</th>
+<th>怎么理解</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主图 <code>state["async_tasks"][task_id]["status"]</code></td>
+<td><code>running</code>、<code>success</code>、<code>cancelled</code></td>
+<td>主 Agent 对这项任务的跟踪记录</td>
+</tr>
+<tr>
+<td>服务端 <code>runs.get(...)["status"]</code></td>
+<td><code>pending</code>、<code>running</code>、<code>success</code>、<code>interrupted</code></td>
+<td>具体某次 run 的执行状态</td>
+</tr>
+</tbody>
+</table>
+<p>主 Agent 标为 running 时，服务端可能还在 pending（等待调度）；取消后，主记录可为 cancelled，服务端终态可为 interrupted。它们描述不同层次，不要求字符串完全相同。最终以本例的明确状态断言和结果内容共同判断。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=junior-ch06-wait-code">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">wait_task</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">40</span><span class="p">):</span>
     <span class="n">deadline</span><span class="p">,</span> <span class="n">last_status</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">+</span> <span class="n">timeout</span><span class="p">,</span> <span class="kc">None</span>
     <span class="k">while</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">deadline</span><span class="p">:</span>
         <span class="n">state</span><span class="p">,</span> <span class="n">output</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ask</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"CHECK|</span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"check_async_task"</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -8285,7 +8383,14 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="4.-%E5%90%AF%E5%8A%A8%E3%80%81%E5%88%97%E4%B8%BE%E5%B9%B6%E7%AD%89%E5%BE%85%E5%AE%8C%E6%88%90">4. 启动、列举并等待完成<a class="anchor-link" href="#4.-%E5%90%AF%E5%8A%A8%E3%80%81%E5%88%97%E4%B8%BE%E5%B9%B6%E7%AD%89%E5%BE%85%E5%AE%8C%E6%88%90">¶</a></h2><p>启动应立即给出 task ID。随后读服务端 run 状态，证明后台任务仍在执行；查询成功后核对实际结果。先定义每个阶段，最后在同一生命周期中执行，确保任何阶段失败都能清理。</p>
+<h2 id="4.-%E5%90%AF%E5%8A%A8%E3%80%81%E5%88%97%E4%B8%BE%E5%B9%B6%E7%AD%89%E5%BE%85%E5%AE%8C%E6%88%90">4. 启动、列举并等待完成<a class="anchor-link" href="#4.-%E5%90%AF%E5%8A%A8%E3%80%81%E5%88%97%E4%B8%BE%E5%B9%B6%E7%AD%89%E5%BE%85%E5%AE%8C%E6%88%90">¶</a></h2><p>这一格<strong>定义</strong>第一个阶段，还不会打印运行结果。按顺序读四个动作：</p>
+<ol>
+<li>START 返回后，从 <code>state["async_tasks"]</code> 找到新 task 和 run ID。</li>
+<li>用 SDK 直接查服务端，确认 run 仍是 pending 或 running。这是“主 Agent 已返回、子任务尚未完成”的证据。</li>
+<li>LIST 应包含这个 task ID；随后 <code>wait_task</code> 轮询直到成功。</li>
+<li>核对返回文本和服务端 success，再把本阶段观察结果存进字典。</li>
+</ol>
+<p>第 7 节执行时，应先看到后台尚未完成的状态，稍后看到 <code>Research completed: 总结异步任务的状态变化</code>。只拿到一个 task ID，还不能算研究任务完成。</p>
 </div>
 </div>
 </div>
@@ -8294,7 +8399,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">observe_completion</span><span class="p">(</span><span class="n">server</span><span class="p">):</span>
@@ -8325,7 +8430,9 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="5.-%E6%9B%B4%E6%96%B0%EF%BC%9A%E5%90%8C%E4%B8%80%E4%B8%AA-task%EF%BC%8C%E6%96%B0%E7%9A%84-run">5. 更新：同一个 task，新的 run<a class="anchor-link" href="#5.-%E6%9B%B4%E6%96%B0%EF%BC%9A%E5%90%8C%E4%B8%80%E4%B8%AA-task%EF%BC%8C%E6%96%B0%E7%9A%84-run">¶</a></h2><p>另起一个任务，再追加要求。验证 task ID 没变、run ID 已变，并核对实际发送的追加指令进入了子图结果。真实模型可以改写措辞，因此检查工具实际参数，不要求逐字复述用户提示。</p>
+<h2 id="5.-%E6%9B%B4%E6%96%B0%EF%BC%9A%E5%90%8C%E4%B8%80%E4%B8%AA-task%EF%BC%8C%E6%96%B0%E7%9A%84-run">5. 更新：同一个 task，新的 run<a class="anchor-link" href="#5.-%E6%9B%B4%E6%96%B0%EF%BC%9A%E5%90%8C%E4%B8%80%E4%B8%AA-task%EF%BC%8C%E6%96%B0%E7%9A%84-run">¶</a></h2><p>第二个阶段另起一个任务，再追加要求。<code>previous</code> 保存已有任务 ID；对新旧 ID 集合做差，得到刚启动的任务，避免误操作上一阶段的任务。</p>
+<p>我们记住 <code>old_run</code>，发送 UPDATE，再比较：task ID 应保持不变，run ID 应改变。最后从主图的实际工具调用中取出 <code>message</code> 参数，并确认它出现在子图返回文本里。这样验证的是追加指令真的传到了后台，不只是一句“已更新”。</p>
+<p>本例的 researcher 只回显最近的用户文本，不会真正生成三条摘要。offline 预期返回 <code>Research completed: 追加要求：使用三条要点</code>；真实模型若调整了工具参数的措辞，则与实际发出的参数核对。</p>
 </div>
 </div>
 </div>
@@ -8334,7 +8441,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">observe_update</span><span class="p">(</span><span class="n">server</span><span class="p">):</span>
@@ -8367,7 +8474,8 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="6.-%E5%8F%96%E6%B6%88%EF%BC%9A%E6%A0%B8%E5%AF%B9%E4%B8%BB-Agent-%E5%92%8C%E6%9C%8D%E5%8A%A1%E7%AB%AF%E4%B8%A4%E4%BE%A7">6. 取消：核对主 Agent 和服务端两侧<a class="anchor-link" href="#6.-%E5%8F%96%E6%B6%88%EF%BC%9A%E6%A0%B8%E5%AF%B9%E4%B8%BB-Agent-%E5%92%8C%E6%9C%8D%E5%8A%A1%E7%AB%AF%E4%B8%A4%E4%BE%A7">¶</a></h2><p>取消第三个任务后，主 Agent 的跟踪状态为 cancelled；服务端确认 run 进入 interrupted 或 cancelled 后才算验证完成。</p>
+<h2 id="6.-%E5%8F%96%E6%B6%88%EF%BC%9A%E6%A0%B8%E5%AF%B9%E4%B8%BB-Agent-%E5%92%8C%E6%9C%8D%E5%8A%A1%E7%AB%AF%E4%B8%A4%E4%BE%A7">6. 取消：核对主 Agent 和服务端两侧<a class="anchor-link" href="#6.-%E5%8F%96%E6%B6%88%EF%BC%9A%E6%A0%B8%E5%AF%B9%E4%B8%BB-Agent-%E5%92%8C%E6%9C%8D%E5%8A%A1%E7%AB%AF%E4%B8%A4%E4%BE%A7">¶</a></h2><p>第三个阶段启动新任务，然后 CANCEL。先确认主 Agent 将任务记为 <code>cancelled</code>，再每隔 0.25 秒查询服务端，最多等 10 秒，直到对应 run 进入 <code>interrupted</code> 或 <code>cancelled</code>。</p>
+<p>为什么要查两边？“已发出取消请求”与“服务端已经停止执行”之间可能有时间差。最后再 LIST 一次，确认三个任务都在本次跟踪记录中。真正执行这些步骤仍在第 7 节。</p>
 </div>
 </div>
 </div>
@@ -8376,7 +8484,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">observe_cancellation</span><span class="p">(</span><span class="n">server</span><span class="p">):</span>
@@ -8410,8 +8518,9 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="7.-%E5%9C%A8%E4%B8%80%E4%B8%AA%E5%8F%97%E4%BF%9D%E6%8A%A4%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E5%86%85%E8%BF%90%E8%A1%8C">7. 在一个受保护的生命周期内运行<a class="anchor-link" href="#7.-%E5%9C%A8%E4%B8%80%E4%B8%AA%E5%8F%97%E4%BF%9D%E6%8A%A4%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E5%86%85%E8%BF%90%E8%A1%8C">¶</a></h2><p><code>async with</code> 进入时启动服务并等待就绪；正常完成或抛出异常，退出时都会清理。辅助代码只管理本次创建的资源，见 <a href="local_server.py">local_server.py</a>。核心工具调用与断言仍在上面的阶段函数中。</p>
-<p>下面的输出按三个阶段排列。只绑定本机地址；所有实验状态在临时服务目录，不污染仓库。</p>
+<h2 id="7.-%E5%9C%A8%E4%B8%80%E4%B8%AA%E5%8F%97%E4%BF%9D%E6%8A%A4%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E5%86%85%E8%BF%90%E8%A1%8C">7. 在一个受保护的生命周期内运行<a class="anchor-link" href="#7.-%E5%9C%A8%E4%B8%80%E4%B8%AA%E5%8F%97%E4%BF%9D%E6%8A%A4%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E5%86%85%E8%BF%90%E8%A1%8C">¶</a></h2><p>前面只定义了函数，现在才依次执行三个阶段。<code>await observe_...</code> 表示等待这个阶段的观察完成，再进入下一阶段。</p>
+<p><code>async with LocalAgentServer(...)</code> 是异步上下文管理器：进入时启动服务并创建主会话，正常结束或抛出 Python 异常时退出并清理资源。不要把三个阶段挪到 <code>async with</code> 外面执行，退出后服务已关闭。进程和会话管理细节见 <a href="local_server.py">local_server.py</a>。</p>
+<p>预期最后有清理提示和三行汇总：完成 → success、更新 → success、取消 → interrupted（服务也可能返回 cancelled）。中间还应看到 task ID、run 状态和实际结果，不能只凭这三行文字判断成功。服务只绑定本机地址，临时服务状态不会写入仓库。</p>
 </div>
 </div>
 </div>
@@ -8420,7 +8529,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="n">LocalAgentServer</span><span class="p">(</span><span class="n">CHAPTER_DIR</span><span class="p">,</span> <span class="n">ROOT</span><span class="p">)</span> <span class="k">as</span> <span class="n">server</span><span class="p">:</span>
@@ -8455,7 +8564,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 start_async_task
-Launched async subagent. task_id: 01a0dd0f-7b31-7020-9377-d7ebd983eedf
+Launched async subagent. task_id: 01a0e2b5-184f-7390-ac75-da1660cd1b24
 主 Agent 已返回，后台 run 仍为： pending
 </pre>
 </div>
@@ -8466,7 +8575,7 @@ Launched async subagent. task_id: 01a0dd0f-7b31-7020-9377-d7ebd983eedf
 <pre>
 list_async_tasks
 1 tracked task(s):
-- task_id: 01a0dd0f-7b31-7020-9377-d7ebd983eedf  agent: researcher  status:
+- task_id: 01a0e2b5-184f-7390-ac75-da1660cd1b24  agent: researcher  status:
   running
 </pre>
 </div>
@@ -8477,7 +8586,7 @@ list_async_tasks
 <pre>
 check_async_task
 status: running
-thread_id: 01a0dd0f-7b31-7020-9377-d7ebd983eedf
+thread_id: 01a0e2b5-184f-7390-ac75-da1660cd1b24
 </pre>
 </div>
 </div>
@@ -8487,7 +8596,7 @@ thread_id: 01a0dd0f-7b31-7020-9377-d7ebd983eedf
 <pre>
 check_async_task
 status: success
-thread_id: 01a0dd0f-7b31-7020-9377-d7ebd983eedf
+thread_id: 01a0e2b5-184f-7390-ac75-da1660cd1b24
 result: Research completed: 总结异步任务的状态变化
 
 阶段二：更新 → 新 run → 读取新结果
@@ -8499,7 +8608,7 @@ result: Research completed: 总结异步任务的状态变化
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 start_async_task
-Launched async subagent. task_id: 01a0dd0f-a63b-7bc3-b9ed-338b44d053ac
+Launched async subagent. task_id: 01a0e2b5-4354-7980-9457-c126340a0816
 </pre>
 </div>
 </div>
@@ -8508,7 +8617,7 @@ Launched async subagent. task_id: 01a0dd0f-a63b-7bc3-b9ed-338b44d053ac
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 update_async_task
-Updated async subagent. task_id: 01a0dd0f-a63b-7bc3-b9ed-338b44d053ac
+Updated async subagent. task_id: 01a0e2b5-4354-7980-9457-c126340a0816
 </pre>
 </div>
 </div>
@@ -8518,7 +8627,7 @@ Updated async subagent. task_id: 01a0dd0f-a63b-7bc3-b9ed-338b44d053ac
 <pre>
 check_async_task
 status: running
-thread_id: 01a0dd0f-a63b-7bc3-b9ed-338b44d053ac
+thread_id: 01a0e2b5-4354-7980-9457-c126340a0816
 </pre>
 </div>
 </div>
@@ -8528,7 +8637,7 @@ thread_id: 01a0dd0f-a63b-7bc3-b9ed-338b44d053ac
 <pre>
 check_async_task
 status: success
-thread_id: 01a0dd0f-a63b-7bc3-b9ed-338b44d053ac
+thread_id: 01a0e2b5-4354-7980-9457-c126340a0816
 result: Research completed: 追加要求：使用三条要点
 已验证：task ID 不变、run ID 更新、追加指令传递成功。
 
@@ -8541,7 +8650,7 @@ result: Research completed: 追加要求：使用三条要点
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 start_async_task
-Launched async subagent. task_id: 01a0dd0f-d162-7021-ba70-5ee53b40ad71
+Launched async subagent. task_id: 01a0e2b5-6e63-7f11-b774-3495f850286e
 </pre>
 </div>
 </div>
@@ -8550,7 +8659,7 @@ Launched async subagent. task_id: 01a0dd0f-d162-7021-ba70-5ee53b40ad71
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 cancel_async_task
-Cancelled async subagent task: 01a0dd0f-d162-7021-ba70-5ee53b40ad71
+Cancelled async subagent task: 01a0e2b5-6e63-7f11-b774-3495f850286e
 </pre>
 </div>
 </div>
@@ -8560,19 +8669,13 @@ Cancelled async subagent task: 01a0dd0f-d162-7021-ba70-5ee53b40ad71
 <pre>
 list_async_tasks
 3 tracked task(s):
-- task_id: 01a0dd0f-7b31-7020-9377-d7ebd983eedf  agent: researcher  status:
+- task_id: 01a0e2b5-184f-7390-ac75-da1660cd1b24  agent: researcher  status:
   success
-- task_id: 01a0dd0f-a63b-7bc3-b9ed-338b44d053ac  agent: researcher  status:
+- task_id: 01a0e2b5-4354-7980-9457-c126340a0816  agent: researcher  status:
   success
-- task_id: 01a0dd0f-d162-7021-ba70-5ee53b40ad71  agent: researcher  status:
+- task_id: 01a0e2b5-6e63-7f11-b774-3495f850286e  agent: researcher  status:
   cancelled
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>本次创建的任务、thread、服务进程与临时状态已清理。
+本次创建的任务、thread、服务进程与临时状态已清理。
 
 生命周期验证结果：
 完成 → success
@@ -8590,15 +8693,52 @@ list_async_tasks
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="%E8%A7%82%E5%AF%9F%E7%BB%93%E8%AE%BA%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%95%85%E9%9A%9C%E5%AE%9A%E4%BD%8D">观察结论、练习与故障定位<a class="anchor-link" href="#%E8%A7%82%E5%AF%9F%E7%BB%93%E8%AE%BA%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%95%85%E9%9A%9C%E5%AE%9A%E4%BD%8D">¶</a></h2><ul>
-<li>五个工具通过真实 supervisor 调用；task ID 对应子 thread，run ID 标识一次执行。</li>
-<li>更新保留 task ID 并创建新 run；取消同时检查主 Agent 状态和服务端终态。</li>
-<li>本例只验证本地服务、ASGI 与生命周期；脚本模型不验证真实模型选择工具，固定 researcher 不验证研究质量。</li>
-<li><strong>练习</strong>：在最后一格首个阶段之后主动 <code>raise ValueError("练习：提前退出")</code>，观察清理仍发生，失败日志保留；恢复后重跑。章内回归测试也覆盖后台任务运行时失败的清理。</li>
-<li>找不到 CLI 时安装 server 依赖组；启动失败或超时会报告临时日志路径。live 的认证、网络或工具选择失败需要按实际错误处理。</li>
-<li>8 秒是为了观察后台运行的教学窗口；真实模型响应很慢时可能错过窗口，可增加 researcher 中的等待时间后重跑，不应删除状态断言冒充已观察到异步执行。</li>
-</ul>
-<p>清理成功时删除日志；失败时保留诊断日志。无需手动启动或关闭服务。下一步可回看 <a href="../../content/ch05-subagents.md">同步子 Agent 的消息与文件边界</a>，区分进程内委派与服务端后台任务。</p>
+<h2 id="%E5%9B%9E%E9%A1%BE%EF%BC%9A%E6%9C%AC%E6%AC%A1%E5%88%B0%E5%BA%95%E9%AA%8C%E8%AF%81%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%9F">回顾：本次到底验证了什么？<a class="anchor-link" href="#%E5%9B%9E%E9%A1%BE%EF%BC%9A%E6%9C%AC%E6%AC%A1%E5%88%B0%E5%BA%95%E9%AA%8C%E8%AF%81%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%9F">¶</a></h2><p>启动时拿到 task ID 不等于后台完成；更新保留任务但新建 run；取消需要确认实际执行已停止。五个工具通过真实 supervisor 调用，服务状态和结果来自实际本地 Agent Server。</p>
+<p>脚本模型不证明真实模型会选对工具，固定 researcher 不证明研究质量，本机服务实验也不代表远程部署性能。</p>
+<h3 id="%E7%BB%83%E4%B9%A0%EF%BC%9A%E4%BB%BB%E5%8A%A1%E8%BF%98%E5%9C%A8%E5%90%8E%E5%8F%B0%E6%97%B6%E5%8F%91%E7%94%9F%E5%BC%82%E5%B8%B8">练习：任务还在后台时发生异常<a class="anchor-link" href="#%E7%BB%83%E4%B9%A0%EF%BC%9A%E4%BB%BB%E5%8A%A1%E8%BF%98%E5%9C%A8%E5%90%8E%E5%8F%B0%E6%97%B6%E5%8F%91%E7%94%9F%E5%BC%82%E5%B8%B8">¶</a></h3><p>先预测：如果 Notebook 在子任务尚未完成时抛出异常，服务和会话是否还会被清理？保持 offline，在<strong>新的代码格</strong>运行以下练习；前面的函数定义应已执行。</p>
+<div class="highlight"><pre><span></span><span class="k">async</span> <span class="k">with</span> <span class="n">LocalAgentServer</span><span class="p">(</span><span class="n">CHAPTER_DIR</span><span class="p">,</span> <span class="n">ROOT</span><span class="p">)</span> <span class="k">as</span> <span class="n">server</span><span class="p">:</span>
+    <span class="n">state</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="n">ask</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="s2">"START|清理练习"</span><span class="p">,</span> <span class="s2">"start_async_task"</span><span class="p">)</span>
+    <span class="n">task_id</span><span class="p">,</span> <span class="n">task</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">"async_tasks"</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
+    <span class="n">run</span> <span class="o">=</span> <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">runs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">task</span><span class="p">[</span><span class="s2">"run_id"</span><span class="p">])</span>
+    <span class="k">assert</span> <span class="n">run</span><span class="p">[</span><span class="s2">"status"</span><span class="p">]</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"pending"</span><span class="p">,</span> <span class="s2">"running"</span><span class="p">}</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"练习：后台任务未完成就退出"</span><span class="p">)</span>
+</pre></div>
+<p>这次红色 <code>ValueError</code> 是预期现象，不是安装失败。观察清理提示和“失败诊断日志”的临时路径：异常会触发退出清理，同时保留日志供排查。不要删除后台状态断言来强行通过练习。恢复时删除这格练习，重启内核并全部运行原始 Notebook；新的正常运行只删除它自己的日志；这次失败练习留下的旧日志不会被重跑删除，查看后可手动删除报错中列出的那个日志文件。</p>
+<h3 id="%E9%81%87%E5%88%B0%E9%97%AE%E9%A2%98%E5%85%88%E6%A3%80%E6%9F%A5%E5%93%AA%E9%87%8C">遇到问题先检查哪里<a class="anchor-link" href="#%E9%81%87%E5%88%B0%E9%97%AE%E9%A2%98%E5%85%88%E6%A3%80%E6%9F%A5%E5%93%AA%E9%87%8C">¶</a></h3><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>检查与恢复</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>定义阶段没有输出</td>
+<td><code>async def</code> 尚未执行，继续到第 7 节；不是后台卡住</td>
+</tr>
+<tr>
+<td>缺少 <code>langgraph</code> CLI 或 server 依赖</td>
+<td>回到第 1 节的 <code>uv sync ... --extra server</code>，确认项目内核</td>
+</tr>
+<tr>
+<td>服务提前退出 / 启动超时</td>
+<td>查看报错给出的临时日志路径，确认本机允许绑定端口；修复后重跑完整生命周期</td>
+</tr>
+<tr>
+<td>启动时 run 已经 success，异步观察断言失败</td>
+<td>live 模型响应可能错过 8 秒观察窗口；可增加 researcher 的等待时间后重跑，不应删除断言</td>
+</tr>
+<tr>
+<td>CHECK 超时或任务 error</td>
+<td>先看实际状态与结果；40 秒是观察上限，不表示所有任务必定在此时间内完成</td>
+</tr>
+<tr>
+<td>live 的 401、网络错误或选错工具</td>
+<td>检查模型配置与调用记录；不会自动退回 offline</td>
+</tr>
+</tbody>
+</table>
+<p>无需手动预先启动服务。正常 Python 异常由上下文管理器清理；强制结束整个内核或进程不属于这个异常清理实验。下一步回看 <a href="../ch05/01-subagent-delegation.ipynb">同步委派中的消息与文件边界</a>，比较同步等待与后台任务的区别。</p>
 </div>
 </div>
 </div>
