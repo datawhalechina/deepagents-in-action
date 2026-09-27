@@ -2,6 +2,8 @@
 
 > 前几章我们学习了 Deep Agents 的核心能力：虚拟文件系统、任务规划、子 Agent、Skills。Checkpointer 可以保存同一线程的状态；要让新线程也能访问用户偏好或积累的知识，还需要共享存储。本章学习如何让 Agent 拥有跨对话的记忆。
 
+配套实验：[第 8 章 Notebook：跨线程记忆与文件隔离](../notebooks/ch08/01-long-term-memory.ipynb)（也可直接阅读 [Markdown](../notebooks/ch08/01-long-term-memory.md)）。实验会检查实际文件工具结果、Store 内容与模型请求，而不只看最终回复。
+
 ## Memory 的工作原理
 
 Deep Agents 将记忆作为**一等公民**——Agent 以文件形式读写记忆，你用 Backend 控制这些文件存储在哪里。整个流程分三步：
@@ -24,9 +26,9 @@ Deep Agents 将记忆作为**一等公民**——Agent 以文件形式读写记�
 
 - 同一个对话线程（thread）内持久化
 - 多轮对话不丢失（通过 Checkpointer 机制）
-- **对话结束后消失**——换一个 thread_id，之前的文件就没了
+- **按 thread_id 隔离**——新线程不能读取旧线程的 State 文件；只要 Checkpointer 仍保存旧线程状态，返回旧线程仍可读取
 
-这就像你的工作桌面——当前任务的资料都摊在上面，但下班清理后就干净了。
+这就像给每段对话分配一张工作桌：新线程有自己的桌面；只要旧线程的状态还在，回到旧桌仍能找到之前的文件。
 
 ### 长期记忆：Cross-thread
 
@@ -292,7 +294,7 @@ agent = create_deep_agent(
 配置好 `CompositeBackend` 后，Agent 的文件操作会根据路径**自动路由**：
 
 ```python
-# 临时文件 → StateBackend（对话结束后丢失）
+# 线程内文件 → StateBackend（新线程看不到）
 write_file("/workspace/draft.txt", "草稿内容...")
 write_file("/notes.txt", "临时笔记...")
 
