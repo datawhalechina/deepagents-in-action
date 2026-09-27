@@ -2,7 +2,7 @@
 
 > 工具（Tools）是原子操作——搜索一次、读一个文件、调一次 API。但有些能力需要的不是一次操作，而是**多步骤工作流 + 领域知识 + 模板资源**的组合。比如"按照团队规范做代码审查"、"查阅 LangGraph 最新文档并据此回答"、"生成符合公司格式的技术报告"——这些需要的不是一个工具，而是一整套流程指导。这就是 Skills 要解决的问题。
 
-配套实验：[第 7 章 Notebook：Skills 的渐进式加载与资源读取](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch07/01-skills-progressive-disclosure.ipynb)。
+配套实验：[第 7 章 Notebook：Skill 的说明何时进入模型上下文？](../notebooks/ch07/01-skills-progressive-disclosure.ipynb)（也可直接阅读 [Markdown](../notebooks/ch07/01-skills-progressive-disclosure.md)）。
 
 ## Skills 是什么？
 
