@@ -13,6 +13,7 @@
 | 第 1 章：Agent Harness | [Notebook](ch01/01-agent-harness.ipynb) · [Markdown](ch01/01-agent-harness.md) · [HTML](ch01/01-agent-harness.html) | echo 成功、消息循环、默认工具差异 | 默认脚本模型；可选真实模型 |
 | 第 5 章：同步子 Agent | [Notebook](ch05/01-subagent-delegation.ipynb) · [Markdown](ch05/01-subagent-delegation.md) · [HTML](ch05/01-subagent-delegation.html) | 消息隔离、文件共享与显式读取 | 默认脚本模型；可选真实模型 |
 | 第 6 章：异步子 Agent | [Notebook](ch06/01-async-subagent-lifecycle.ipynb) · [Markdown](ch06/01-async-subagent-lifecycle.md) · [HTML](ch06/01-async-subagent-lifecycle.html) | 五个异步工具、服务状态与失败清理 | 默认脚本模型；真实本地 Agent Server；server 依赖组 |
+| 第 10 章：沙箱执行 | [Notebook](ch10/01-sandbox-execution-and-files.ipynb) · [Markdown](ch10/01-sandbox-execution-and-files.md) · [HTML](ch10/01-sandbox-execution-and-files.html) | 真实容器执行、文件传输、退出码与资源回收 | 默认脚本模型；可选真实模型；Docker Engine；首次下载镜像需网络 |
 <!-- course-notebook-index:end -->
 
 每份实验同时提供三种格式：Notebook 用于逐格运行，Markdown 可直接在 GitHub 阅读，HTML 在克隆或下载仓库后用浏览器打开（GitHub 文件页显示的是 HTML 源码）。三份文件位于同一目录，包含同一次执行的结果；当前提交的示例使用 offline 模式。
@@ -78,6 +79,10 @@ uv run --project notebooks --locked python -m ipykernel install --user --name de
 | `NameError`，变量未定义 | 从第一格依次运行，不要只执行后面的结果检查格 |
 | 没改代码却与保存输出不同 | 先核对开头的 offline/live 模式；任务 ID 和部分平台信息本就会变化 |
 | 实验中的断言失败 | 读断言说明并检查前面的实际工具结果；如果正在做失败练习，按该节的恢复步骤重跑 |
+
+### 第 10 章另需 Docker
+
+第 10 章在真实 Docker 容器中运行代码；默认 offline 也需要可用的 Docker Engine。安装并启动 Docker Desktop（或 Docker Engine）后，在终端先确认 `docker info` 成功，再运行 `python -m course_notebooks.run ch10-sandboxes`。首次会下载章内适配文件指定的 Python 镜像，后续使用缓存；失败不会改用宿主 Shell。容器不挂载宿主目录，不继承模型密钥，并关闭网络；模型循环和 live 的 API 请求仍在宿主上运行。所有容器操作放在同一 `with` 生命周期内，成功或 Python 异常时回收，镜像缓存保留。Docker 容器不等于远程托管 Provider，本例的范围见 [第 10 章 Notebook](ch10/01-sandbox-execution-and-files.ipynb)。
 
 ## 脚本模型与真实模型
 
