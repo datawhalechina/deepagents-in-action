@@ -13,6 +13,7 @@
 | 第 1 章：Agent Harness | [Notebook](ch01/01-agent-harness.ipynb) · [Markdown](ch01/01-agent-harness.md) · [HTML](ch01/01-agent-harness.html) | echo 成功、消息循环、默认工具差异 | 默认脚本模型；可选真实模型 |
 | 第 5 章：同步子 Agent | [Notebook](ch05/01-subagent-delegation.ipynb) · [Markdown](ch05/01-subagent-delegation.md) · [HTML](ch05/01-subagent-delegation.html) | 消息隔离、文件共享与显式读取 | 默认脚本模型；可选真实模型 |
 | 第 6 章：异步子 Agent | [Notebook](ch06/01-async-subagent-lifecycle.ipynb) · [Markdown](ch06/01-async-subagent-lifecycle.md) · [HTML](ch06/01-async-subagent-lifecycle.html) | 五个异步工具、服务状态与失败清理 | 默认脚本模型；真实本地 Agent Server；server 依赖组 |
+| 第 9 章：Human-in-the-Loop | [Notebook](ch09/01-tool-approval-and-resume.ipynb) · [Markdown](ch09/01-tool-approval-and-resume.md) · [HTML](ch09/01-tool-approval-and-resume.html) | 四种决策、审批前零执行、参数修改与批量校验 | 默认脚本模型；可选真实模型；无需外部服务 |
 <!-- course-notebook-index:end -->
 
 每份实验同时提供三种格式：Notebook 用于逐格运行，Markdown 可直接在 GitHub 阅读，HTML 在克隆或下载仓库后用浏览器打开（GitHub 文件页显示的是 HTML 源码）。三份文件位于同一目录，包含同一次执行的结果；当前提交的示例使用 offline 模式。
@@ -20,6 +21,8 @@
 ## 第一次学习，从哪里开始？
 
 建议按 **最小工具实验（作者模板）→ 第 1 章 → 第 5 章 → 第 6 章** 的顺序。先理解“模型请求、工具执行、结果返回”，再看默认工具、同步委派，最后看后台任务。章节编号沿用课程正文，不表示中间章节已经有 Notebook。
+
+理解最小工具循环后，也可以独立运行第 9 章，观察工具执行前的人工审批与恢复；它不需要先启动第 6 章的服务。
 
 | 你现在想做什么 | 入口 |
 |---|---|
