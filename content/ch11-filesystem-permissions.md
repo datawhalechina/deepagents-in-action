@@ -2,6 +2,8 @@
 
 > 文件系统让 Agent 能把上下文写进文件，也把真实的副作用带进运行时。权限配置要明确三件事：可以执行的操作、可以访问的路径，以及必须由人确认的动作。本章使用 `FilesystemPermission` 把这些边界写成可审查的声明式规则。
 
+配套实验：[文件系统权限 Notebook](../notebooks/ch11/01-filesystem-permissions.ipynb)（[Markdown 阅读版](../notebooks/ch11/01-filesystem-permissions.md) · [HTML 阅读版](../notebooks/ch11/01-filesystem-permissions.html)）。在自动清理的教学临时目录中，对照规则顺序、默认允许、拒绝后的实际文件与审批前后写入；默认无需模型 Key 或外部服务。
+
 本章基于当前 Deep Agents 官方 Permissions 文档，涉及两个最低版本：
 
 - `allow` / `deny` 基础权限需要 `deepagents>=0.5.2`
@@ -57,6 +59,8 @@ agent = create_deep_agent(
 | Backend 的业务级校验 | 不足以表达 | Policy Hook 或 `PolicyWrapper` |
 
 因此，“禁止 `write_file` 写入 `/secrets/`”不等于“Agent 无法通过其他工具接触 `/secrets/`”。如果 Agent 还能调用一个自定义上传工具、MCP 文件工具或 Shell，就必须分别约束这些入口。MCP 工具的连接、加载与安全边界见[第 12 章：MCP](../ch12-mcp/)。
+
+在配套实验锁定的 `deepagents==0.7.15` 中，将权限规则直接用于支持 `execute` 的 Backend 通常会在构造时抛出 `NotImplementedError`。`CompositeBackend` 中所有规则路径都以已配置路由前缀开头时，这项检查有例外，但仍不保护 `execute`。本章实验使用无命令执行能力的 `FilesystemBackend`，不能把文件工具权限当成 Shell 权限。
 
 ## 2. 一条规则的三个字段
 
