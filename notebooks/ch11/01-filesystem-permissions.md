@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`1506d3019279`。
+> 本次执行模式：**offline**。源码指纹：`40460db5d04b`。
 
 # 第 11 章实验：允许写工作区，为什么还会写到别处？
 
@@ -9,7 +9,7 @@
 | 实验 | 预期现象 |
 |---|---|
 | 全局拒绝写入 | 读取成功，覆盖写入被拒绝，原笔记保留 |
-| 只写工作区 allow | 工作区外的教学文件仍能写入，因为未匹配默认允许 |
+| 仅配置工作区 `allow` | 工作区外的教学文件仍能写入，因为未匹配默认允许 |
 | allow 后追加全局 deny | 工作区写入成功，工作区外写入失败 |
 | 交换规则顺序 | 全局 deny 先命中，工作区也不能写 |
 | 先保护私有文件 | 私有文件读取失败；把目录 allow 放在前面则会暴露它 |
@@ -113,7 +113,7 @@ show_text("初始教学文件：", json.dumps(SEED, ensure_ascii=False, indent=2
 
 ### 用同一套运行步骤比较规则
 
-`make_agent()` 将模型、Backend 和权限组装成可执行的图（Graph），即模型提出请求、工具返回结果的循环。`invoke()` 启动这个循环，返回的 `result["messages"]` 是 Agent State（运行数据）中的消息历史。
+`make_agent()` 将模型、Backend 和权限组装成可执行的图（Graph），即模型提出请求、工具返回结果的循环。图中的节点负责具体步骤，例如调用模型或执行工具。`invoke()` 启动这个循环，返回的 `result["messages"]` 是 Agent State（运行数据）中的消息历史。
 
 每个实验创建新模型。offline 响应列表按 `calls` 依次提出请求，最后给出结束回复；它不会理解权限或根据错误调整任务。live 使用公共 `create_model()` 的模型配置，收到同样的工具名、参数和顺序要求。
 
@@ -144,6 +144,8 @@ def task_input(calls):
 `check_calls()` 从模型消息中提取实际请求，核对名称、参数、顺序与结果关联，并分行展示返回内容。嵌套推导式先遍历模型消息，再取出各条消息中的工具调用；`zip()` 将请求与结果逐项配对。
 
 `run_case()` 为一次比较创建临时目录，准备文件、调用 Agent、读取文件副本。所有需要目录的操作都在同一个 `with TemporaryDirectory()` 中：正常结束或抛出 Python 异常都会清理。它不判断某项权限应该放行还是拒绝，具体实验的断言负责检查这一点。
+
+准备文件时，`lstrip("/")` 去掉虚拟路径开头的斜杠，再用 `root / ...` 拼接到临时根目录下。例如 `/workspace/notes.txt` 对应临时目录里的 `workspace/notes.txt`；Agent 工具访问时则由 Backend 完成路径映射。
 
 
 ```python
@@ -393,7 +395,11 @@ print("同一个文件，仅改变规则顺序，读取结果就发生了变化�
 
 对 `/review/**` 的写入使用 `mode="interrupt"`。框架会根据权限规则配置工具审批，本例不另写 `interrupt_on`。
 
-`InMemorySaver` 是内存 Checkpointer，用于保存 Agent 的状态与待恢复执行进度。`thread_id` 标识这条会话；恢复必须使用相同配置。我们用 `version="v2"` 返回接口：`paused.value` 是 State，`paused.interrupts` 是中断列表。它不是暂停在某一行的 Python 调用栈；恢复会重新进入被中断的节点，节点中的其他副作用仍需考虑幂等性。
+`InMemorySaver` 是内存 Checkpointer，用于保存 Agent 的状态与待恢复执行进度。`thread_id` 标识这条会话；恢复必须使用相同配置。
+
+本例指定 `version="v2"` 选择返回格式：`paused.value` 是 State，`paused.interrupts` 是中断列表。
+
+Checkpointer 不会保存暂停在某一行的 Python 调用栈；恢复时会重新进入被中断的节点。如果这个节点中还有发送请求等操作，需要避免重复执行带来的影响。
 
 下一格在同一临时目录生命周期内完成暂停与批准：先检查待审批动作、实际文件未变、尚无写入 ToolMessage；再用 `Command(resume=...)` 提交 approve，核对工具结果与新文件。`get_state(config)` 读取已保存的快照，`next` 表示还有待继续执行的节点。更完整的决策与恢复说明见[第 9 章正文](../../content/ch09-human-in-the-loop.md)。
 
@@ -444,6 +450,8 @@ print("审批实验目录已清理。")
 
     
     待审批动作：
+
+    
     [
       {
         "name": "write_file",
@@ -457,6 +465,8 @@ print("审批实验目录已清理。")
     
     审批前实际文件：
     尚未发布的旧报告
+
+
     请求工具： write_file
     
     参数：

@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>1506d3019279</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>40460db5d04b</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7830,7 +7830,7 @@ a.anchor-link {
 <td>读取成功，覆盖写入被拒绝，原笔记保留</td>
 </tr>
 <tr>
-<td>只写工作区 allow</td>
+<td>仅配置工作区 <code>allow</code></td>
 <td>工作区外的教学文件仍能写入，因为未匹配默认允许</td>
 </tr>
 <tr>
@@ -8002,7 +8002,7 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%E7%94%A8%E5%90%8C%E4%B8%80%E5%A5%97%E8%BF%90%E8%A1%8C%E6%AD%A5%E9%AA%A4%E6%AF%94%E8%BE%83%E8%A7%84%E5%88%99">用同一套运行步骤比较规则<a class="anchor-link" href="#%E7%94%A8%E5%90%8C%E4%B8%80%E5%A5%97%E8%BF%90%E8%A1%8C%E6%AD%A5%E9%AA%A4%E6%AF%94%E8%BE%83%E8%A7%84%E5%88%99">¶</a></h3><p><code>make_agent()</code> 将模型、Backend 和权限组装成可执行的图（Graph），即模型提出请求、工具返回结果的循环。<code>invoke()</code> 启动这个循环，返回的 <code>result["messages"]</code> 是 Agent State（运行数据）中的消息历史。</p>
+<h3 id="%E7%94%A8%E5%90%8C%E4%B8%80%E5%A5%97%E8%BF%90%E8%A1%8C%E6%AD%A5%E9%AA%A4%E6%AF%94%E8%BE%83%E8%A7%84%E5%88%99">用同一套运行步骤比较规则<a class="anchor-link" href="#%E7%94%A8%E5%90%8C%E4%B8%80%E5%A5%97%E8%BF%90%E8%A1%8C%E6%AD%A5%E9%AA%A4%E6%AF%94%E8%BE%83%E8%A7%84%E5%88%99">¶</a></h3><p><code>make_agent()</code> 将模型、Backend 和权限组装成可执行的图（Graph），即模型提出请求、工具返回结果的循环。图中的节点负责具体步骤，例如调用模型或执行工具。<code>invoke()</code> 启动这个循环，返回的 <code>result["messages"]</code> 是 Agent State（运行数据）中的消息历史。</p>
 <p>每个实验创建新模型。offline 响应列表按 <code>calls</code> 依次提出请求，最后给出结束回复；它不会理解权限或根据错误调整任务。live 使用公共 <code>create_model()</code> 的模型配置，收到同样的工具名、参数和顺序要求。</p>
 </div>
 </div>
@@ -8049,6 +8049,7 @@ langchain-openai==1.6.2
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><code>check_calls()</code> 从模型消息中提取实际请求，核对名称、参数、顺序与结果关联，并分行展示返回内容。嵌套推导式先遍历模型消息，再取出各条消息中的工具调用；<code>zip()</code> 将请求与结果逐项配对。</p>
 <p><code>run_case()</code> 为一次比较创建临时目录，准备文件、调用 Agent、读取文件副本。所有需要目录的操作都在同一个 <code>with TemporaryDirectory()</code> 中：正常结束或抛出 Python 异常都会清理。它不判断某项权限应该放行还是拒绝，具体实验的断言负责检查这一点。</p>
+<p>准备文件时，<code>lstrip("/")</code> 去掉虚拟路径开头的斜杠，再用 <code>root / ...</code> 拼接到临时根目录下。例如 <code>/workspace/notes.txt</code> 对应临时目录里的 <code>workspace/notes.txt</code>；Agent 工具访问时则由 Backend 完成路径映射。</p>
 </div>
 </div>
 </div>
@@ -8415,7 +8416,9 @@ Error: permission denied for read on /workspace/private.txt
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p>拒绝结果不包含私有文件正文；错误顺序下，真实返回中能读到它。规则需要按“具体保护路径 → 业务放行目录 → 全局兜底”组织。这些检查证明的是本次工具调用的边界，不是对模型推理质量的评价。</p>
 <h2 id="6.-interrupt%EF%BC%9A%E5%85%88%E6%9A%82%E5%81%9C%EF%BC%8C%E6%89%B9%E5%87%86%E5%90%8E%E5%86%99%E5%85%A5">6. interrupt：先暂停，批准后写入<a class="anchor-link" href="#6.-interrupt%EF%BC%9A%E5%85%88%E6%9A%82%E5%81%9C%EF%BC%8C%E6%89%B9%E5%87%86%E5%90%8E%E5%86%99%E5%85%A5">¶</a></h2><p>对 <code>/review/**</code> 的写入使用 <code>mode="interrupt"</code>。框架会根据权限规则配置工具审批，本例不另写 <code>interrupt_on</code>。</p>
-<p><code>InMemorySaver</code> 是内存 Checkpointer，用于保存 Agent 的状态与待恢复执行进度。<code>thread_id</code> 标识这条会话；恢复必须使用相同配置。我们用 <code>version="v2"</code> 返回接口：<code>paused.value</code> 是 State，<code>paused.interrupts</code> 是中断列表。它不是暂停在某一行的 Python 调用栈；恢复会重新进入被中断的节点，节点中的其他副作用仍需考虑幂等性。</p>
+<p><code>InMemorySaver</code> 是内存 Checkpointer，用于保存 Agent 的状态与待恢复执行进度。<code>thread_id</code> 标识这条会话；恢复必须使用相同配置。</p>
+<p>本例指定 <code>version="v2"</code> 选择返回格式：<code>paused.value</code> 是 State，<code>paused.interrupts</code> 是中断列表。</p>
+<p>Checkpointer 不会保存暂停在某一行的 Python 调用栈；恢复时会重新进入被中断的节点。如果这个节点中还有发送请求等操作，需要避免重复执行带来的影响。</p>
 <p>下一格在同一临时目录生命周期内完成暂停与批准：先检查待审批动作、实际文件未变、尚无写入 ToolMessage；再用 <code>Command(resume=...)</code> 提交 approve，核对工具结果与新文件。<code>get_state(config)</code> 读取已保存的快照，<code>next</code> 表示还有待继续执行的节点。更完整的决策与恢复说明见<a href="../../content/ch09-human-in-the-loop.md">第 9 章正文</a>。</p>
 </div>
 </div>
@@ -8482,7 +8485,13 @@ Error: permission denied for read on /workspace/private.txt
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
-待审批动作：
+待审批动作：</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>
 [
   {
     "name": "write_file",
@@ -8496,7 +8505,13 @@ Error: permission denied for read on /workspace/private.txt
 
 审批前实际文件：
 尚未发布的旧报告
-请求工具： write_file
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>请求工具： write_file
 
 参数：
 {
