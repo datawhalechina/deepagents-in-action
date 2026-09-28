@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>94de032adb94</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>efac4ed82069</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7816,7 +7816,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h1 id="%E7%AC%AC-9-%E7%AB%A0%E5%AE%9E%E9%AA%8C%EF%BC%9A%E5%B7%A5%E5%85%B7%E5%AE%A1%E6%89%B9%E5%89%8D%EF%BC%8CAgent-%E5%88%B0%E5%BA%95%E6%9A%82%E5%81%9C%E5%9C%A8%E5%93%AA%E9%87%8C%EF%BC%9F">第 9 章实验：工具审批前，Agent 到底暂停在哪里？<a class="anchor-link" href="#%E7%AC%AC-9-%E7%AB%A0%E5%AE%9E%E9%AA%8C%EF%BC%9A%E5%B7%A5%E5%85%B7%E5%AE%A1%E6%89%B9%E5%89%8D%EF%BC%8CAgent-%E5%88%B0%E5%BA%95%E6%9A%82%E5%81%9C%E5%9C%A8%E5%93%AA%E9%87%8C%EF%BC%9F">¶</a></h1><p>对应<a href="../../content/ch09-human-in-the-loop.md">第 9 章正文</a>。假设 Agent 准备发送一封上线通知：我们想先检查收件人，必要时修改或拒绝。模型已经提出工具调用，是否意味着邮件已经发送？暂停后如何接着执行？</p>
-<p>本实验用只写入内存列表的教学工具回答这些问题，<strong>不会发送真实邮件，也不删除文件</strong>。</p>
+<p>这种在执行过程中请人参与决策的方式叫 <strong>Human-in-the-Loop（HITL，人工介入）</strong>。本实验用只写入内存列表的教学工具观察审批流程，<strong>不会发送真实邮件</strong>。</p>
 <table>
 <thead>
 <tr>
@@ -7927,13 +7927,20 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%E5%85%88%E8%AE%A4%E6%B8%85%E6%B6%88%E6%81%AF%E3%80%81%E7%8A%B6%E6%80%81%E4%B8%8E%E6%89%A7%E8%A1%8C%E4%BD%8D%E7%BD%AE">先认清消息、状态与执行位置<a class="anchor-link" href="#%E5%85%88%E8%AE%A4%E6%B8%85%E6%B6%88%E6%81%AF%E3%80%81%E7%8A%B6%E6%80%81%E4%B8%8E%E6%89%A7%E8%A1%8C%E4%BD%8D%E7%BD%AE">¶</a></h3><p><code>AIMessage</code> 是模型消息，其中的 <code>tool_calls</code> 表示“请求调用”，尚不代表工具执行。<code>ToolMessage</code> 是工具执行或审批反馈产生的消息；<code>tool_call_id</code> 对应请求的 <code>id</code>，便于核对两者是否属于同一次调用。</p>
-<p>Deep Agent 本身是一张 LangGraph <strong>图（Graph）</strong>，内部的**节点（Node）**负责模型调用、工具执行和中间件逻辑。一次用户请求可以循环经过这些节点：</p>
-<div class="highlight"><pre><span></span>用户输入 → model：提出工具调用 → after_model：人工审批
-                                          ↓ 批准后
-用户得到回复 ← model：读取工具结果 ← tools：运行函数
+<h3 id="%E5%85%88%E8%AE%A4%E6%B8%85%E6%B6%88%E6%81%AF%E3%80%81%E7%8A%B6%E6%80%81%E4%B8%8E%E6%89%A7%E8%A1%8C%E4%BD%8D%E7%BD%AE">先认清消息、状态与执行位置<a class="anchor-link" href="#%E5%85%88%E8%AE%A4%E6%B8%85%E6%B6%88%E6%81%AF%E3%80%81%E7%8A%B6%E6%80%81%E4%B8%8E%E6%89%A7%E8%A1%8C%E4%BD%8D%E7%BD%AE">¶</a></h3><p><code>AIMessage</code> 是模型消息，其中的 <code>tool_calls</code> 表示“请求调用”，尚不代表工具已经执行。执行结果或审批反馈会写成 <code>ToolMessage</code>；它的 <code>tool_call_id</code> 对应请求的 <code>id</code>，用来关联同一次调用的请求与结果。</p>
+<p>Deep Agent 本身是一张 LangGraph <strong>图（Graph）</strong>。图里的**节点（Node）**各自执行一步工作，例如调用模型、处理审批或运行工具。以下以批准邮件为例，一次用户请求会经过两个模型步骤：</p>
+<div class="highlight"><pre><span></span>用户输入
+  ↓
+model：模型提出邮件工具调用
+  ↓
+after_model：暂停，等待人工审批
+  ↓ 批准后继续
+tools：执行邮件工具，记录参数并返回结果
+  ↓
+model：读取工具结果，给出最终回复
 </pre></div>
-<p><strong>State</strong> 是这条执行流程当前的数据，包括消息等字段。<strong>Checkpointer</strong> 是 LangGraph 的存档组件，保存 State 与恢复所需的执行进度；<code>thread_id</code> 是逻辑会话 ID，不是操作系统线程。同一个图可以服务多个会话，恢复时必须用原来的 ID。这里使用 <code>InMemorySaver</code>，只在当前内核的内存里保存存档。</p>
+<p><strong>State</strong> 是这条流程当前的数据，本例主要读取其中的消息。<strong>Checkpointer</strong> 是 LangGraph 的存档组件，保存 State 和恢复所需的执行进度；每次保存的快照叫 <strong>Checkpoint（检查点）</strong>。</p>
+<p><code>thread_id</code> 标识一条逻辑会话。同一张图可以处理多个会话，恢复时用原来的 ID 找到相应存档；这里的 thread 不是操作系统线程。本例用 <code>InMemorySaver</code> 保存快照，数据只存在于当前内核的内存中。</p>
 </div>
 </div>
 </div>
@@ -7944,8 +7951,12 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2.-%E5%AE%9A%E4%B9%89%E4%B8%A4%E4%B8%AA%E5%8F%AF%E8%A7%82%E5%AF%9F%E7%9A%84%E6%95%99%E5%AD%A6%E5%B7%A5%E5%85%B7">2. 定义两个可观察的教学工具<a class="anchor-link" href="#2.-%E5%AE%9A%E4%B9%89%E4%B8%A4%E4%B8%AA%E5%8F%AF%E8%A7%82%E5%AF%9F%E7%9A%84%E6%95%99%E5%AD%A6%E5%B7%A5%E5%85%B7">¶</a></h2><p><code>@tool</code> 把普通 Python 函数的名称、参数和说明提供给 Agent。<code>send_email</code> 在这里<strong>只记录参数并返回 JSON</strong>；<code>ask_user</code> 是等人工回答的占位工具。如果 <code>respond</code> 正确跳过了它，执行记录中就不应有 <code>ask_user</code>。</p>
-<p><code>make_tools(records)</code> 接收一个空列表。内部函数会继续引用这个列表，所以每个实验可以拥有自己的执行记录，不会混入上一次的结果。JSON 只是把字典变成可核对的文本，不涉及网络。</p>
+<h2 id="2.-%E5%AE%9A%E4%B9%89%E4%B8%A4%E4%B8%AA%E5%8F%AF%E8%A7%82%E5%AF%9F%E7%9A%84%E6%95%99%E5%AD%A6%E5%B7%A5%E5%85%B7">2. 定义两个可观察的教学工具<a class="anchor-link" href="#2.-%E5%AE%9A%E4%B9%89%E4%B8%A4%E4%B8%AA%E5%8F%AF%E8%A7%82%E5%AF%9F%E7%9A%84%E6%95%99%E5%AD%A6%E5%B7%A5%E5%85%B7">¶</a></h2><p>先定义工具，稍后再交给 Agent 使用。<code>@tool</code> 把普通 Python 函数包装成 Agent 可调用的工具，并提供函数名称、参数和说明。</p>
+<ul>
+<li><code>send_email</code> <strong>只记录参数并返回 JSON</strong>，便于检查是否执行、执行了几次，以及最终用了哪个收件人。</li>
+<li><code>ask_user</code> 是询问用户的占位工具。后面用 <code>respond</code> 提交人的回答，应该跳过这个函数，因此执行记录中不应出现 <code>ask_user</code>。</li>
+</ul>
+<p><code>make_tools(records)</code> 接收一个空列表，返回上述两个工具。内部函数会继续引用这个列表，每次调用都往其中追加记录；各实验传入各自的列表，记录就不会混在一起。<code>json.dumps()</code> 把参数字典转成文本，<code>ensure_ascii=False</code> 让中文保持可读。</p>
 </div>
 </div>
 </div>
@@ -8009,13 +8020,12 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="3.-%E7%BB%84%E8%A3%85-Agent%EF%BC%8C%E5%B9%B6%E9%85%8D%E7%BD%AE%E5%AE%A1%E6%89%B9%E7%AD%96%E7%95%A5">3. 组装 Agent，并配置审批策略<a class="anchor-link" href="#3.-%E7%BB%84%E8%A3%85-Agent%EF%BC%8C%E5%B9%B6%E9%85%8D%E7%BD%AE%E5%AE%A1%E6%89%B9%E7%AD%96%E7%95%A5">¶</a></h2><p>为了比较不同决策，<code>new_experiment()</code> 每次创建新的执行列表、模型和 <code>InMemorySaver</code>。<code>planned_calls</code> 是公开的实验计划：offline 的第一条模型消息提出这些请求，第二条结束；它不会理解工具结果。列表会循环，因此每个独立实验都使用新模型，后面还要核对工具是否真的运行。</p>
-<p>live 时，<code>create_model()</code> 改用 README 配置的真实模型；同一份任务要求会作为用户输入发给模型，实际请求由模型生成。如果没有按要求提出调用，断言会解释未满足的目标。</p>
-<p><code>interrupt_on</code> 按工具名设置策略：邮件仅允许批准、修改或拒绝；问用户的工具仅允许人工回答。<code>ModelRequestRecorder</code> 是只读回调：框架每次真正调用模型时，它记录输入消息，用于判断恢复时是否沿用了已有工具请求。</p>
+<h2 id="3.-%E7%BB%84%E8%A3%85-Agent%EF%BC%8C%E5%B9%B6%E9%85%8D%E7%BD%AE%E5%AE%A1%E6%89%B9%E7%AD%96%E7%95%A5">3. 组装 Agent，并配置审批策略<a class="anchor-link" href="#3.-%E7%BB%84%E8%A3%85-Agent%EF%BC%8C%E5%B9%B6%E9%85%8D%E7%BD%AE%E5%AE%A1%E6%89%B9%E7%AD%96%E7%95%A5">¶</a></h2><p>本节创建 Agent，暂不发起任务。关键配置是 <code>interrupt_on</code>：按工具名指定是否需要审批，以及允许哪几种决定。本例的邮件工具允许 <code>approve</code>、<code>edit</code>、<code>reject</code>；询问工具只允许 <code>respond</code>。</p>
+<p>后面还要观察模型实际被调用了几次。<code>ModelRequestRecorder</code> 是一个回调：每次框架开始调用模型时，自动执行 <code>on_chat_model_start()</code>，把输入消息记入 <code>inputs</code>。它只观察，不修改模型输入或回复。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs celltag_ch09-agent" id="cell-id=57497bf6">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs celltag_ch09-agent" id="cell-id=d998f675">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8029,9 +8039,64 @@ langchain-openai==1.6.2
 
     <span class="k">def</span><span class="w"> </span><span class="nf">on_chat_model_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">serialized</span><span class="p">,</span> <span class="n">messages</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">messages</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">new_experiment</span><span class="p">(</span><span class="n">planned_calls</span><span class="p">,</span> <span class="n">thread_id</span><span class="p">):</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e42fd245">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p><code>new_experiment(planned_calls, thread_id)</code> 把重复的组装步骤放在一个函数里。输入分别是本次要提出的工具请求和会话 ID；每次调用都创建新的 Agent、执行记录、模型和内存存档，避免不同审批实验互相影响。</p>
+<p>默认 offline 下，<code>ScriptedChatModel</code> 按 <code>responses</code> 列表返回两条预设消息：第一次提出 <code>planned_calls</code> 中的工具请求，第二次给出结束回复。它不会理解输入或判断工具结果，所以结束回复不能证明工具成功。这个响应列表会循环，每个独立实验都要使用新模型。</p>
+<p><code>create_model()</code> 负责选择运行模式。live 下，任务要求会作为用户输入交给真实模型，工具请求由模型生成；没有满足要求时，后面的断言会报错。<code>deepcopy()</code> 复制请求字典，避免一个实验修改另一个实验的数据。</p>
+<p>函数返回一个字典，后面按字段取出所需对象：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>本实验中的用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent</code></td>
+<td>发起任务、恢复审批、读取状态</td>
+</tr>
+<tr>
+<td><code>records</code></td>
+<td>核对工具实际执行次数与参数</td>
+</tr>
+<tr>
+<td><code>recorder</code></td>
+<td>查看模型实际收到的输入消息</td>
+</tr>
+<tr>
+<td><code>plan</code></td>
+<td>生成本次用户任务，并核对待审批请求</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>保存 <code>thread_id</code> 和记录模型输入的回调；启动与恢复共用它</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs celltag_ch09-agent" id="cell-id=57497bf6">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">new_experiment</span><span class="p">(</span><span class="n">planned_calls</span><span class="p">,</span> <span class="n">thread_id</span><span class="p">):</span>
     <span class="n">records</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">recorder</span> <span class="o">=</span> <span class="n">ModelRequestRecorder</span><span class="p">()</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="n">ScriptedChatModel</span><span class="p">(</span><span class="n">responses</span><span class="o">=</span><span class="p">[</span>
@@ -8071,24 +8136,27 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="4.-%E5%90%AF%E5%8A%A8%E4%BB%BB%E5%8A%A1%EF%BC%8C%E7%A1%AE%E8%AE%A4%E5%B7%A5%E5%85%B7%E8%BF%98%E6%B2%A1%E6%9C%89%E6%89%A7%E8%A1%8C">4. 启动任务，确认工具还没有执行<a class="anchor-link" href="#4.-%E5%90%AF%E5%8A%A8%E4%BB%BB%E5%8A%A1%EF%BC%8C%E7%A1%AE%E8%AE%A4%E5%B7%A5%E5%85%B7%E8%BF%98%E6%B2%A1%E6%9C%89%E6%89%A7%E8%A1%8C">¶</a></h2><p><code>invoke()</code> 启动一次图执行。本实验沿用正文的 <code>version="v2"</code>：<code>result.value</code> 是 State，<code>result.interrupts</code> 是中断列表。<strong>v2 不是 HITL 的必要条件</strong>；默认接口也支持中断，只是用字典中的 <code>__interrupt__</code> 返回中断信息。</p>
-<p>下面的函数为各场景复用启动代码。它展示两组审批字段：<code>action_requests</code> 是待审的工具及参数，<code>review_configs</code> 是各工具允许的决策。<code>zip()</code> 按顺序配对展示；后面提交的决策也必须保持这个顺序。</p>
-<p><code>assert</code> 在条件不成立时停止实验。这里同时检查实际模型请求、实际中断和空执行记录，防止把预设调用误认为已完成操作。</p>
+<h2 id="4.-%E5%90%AF%E5%8A%A8%E4%BB%BB%E5%8A%A1%EF%BC%8C%E7%A1%AE%E8%AE%A4%E5%B7%A5%E5%85%B7%E8%BF%98%E6%B2%A1%E6%9C%89%E6%89%A7%E8%A1%8C">4. 启动任务，确认工具还没有执行<a class="anchor-link" href="#4.-%E5%90%AF%E5%8A%A8%E4%BB%BB%E5%8A%A1%EF%BC%8C%E7%A1%AE%E8%AE%A4%E5%B7%A5%E5%85%B7%E8%BF%98%E6%B2%A1%E6%9C%89%E6%89%A7%E8%A1%8C">¶</a></h2><p><code>invoke()</code> 启动一次图执行。本例传入用户消息；遇到审批中断时，它会返回当前结果，让调用方查看并提交决定。</p>
+<p>本实验沿用正文的 <code>version="v2"</code>：<code>paused.value</code> 是 State，<code>paused.interrupts</code> 是中断列表。v2 不是 HITL 的必要条件；默认接口也支持中断，只是返回字典，并在 <code>__interrupt__</code> 中放中断信息。</p>
+<p><code>start_experiment()</code> 为后面的场景复用启动与检查步骤：先把 <code>plan</code> 转成用户任务并调用 <code>invoke()</code>，再读取中断内容。<code>action_requests</code> 列出待审批的工具及参数，<code>review_configs</code> 列出相应工具允许的决定；<code>zip()</code> 按位置配对展示。后面提交决定时也要保持这个顺序。</p>
+<p><code>assert</code> 在条件不成立时停止实验。这里检查待审批请求符合任务要求，且 <code>records</code> 仍为空。这样才能确认“模型已提出调用，工具尚未执行”。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch09-start" id="cell-id=c93f0bbc">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs celltag_ch09-start" id="cell-id=c93f0bbc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">start_experiment</span><span class="p">(</span><span class="n">experiment</span><span class="p">):</span>
     <span class="n">requested</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span>
                  <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"plan"</span><span class="p">]]</span>
-    <span class="n">instruction</span> <span class="o">=</span> <span class="s2">"请执行以下教学工具任务：</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">requested</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">instruction</span> <span class="o">=</span> <span class="s2">"请执行以下教学工具任务：</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+        <span class="n">requested</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">paused</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"agent"</span><span class="p">]</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
         <span class="p">{</span><span class="s2">"messages"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"user"</span><span class="p">,</span> <span class="n">instruction</span><span class="p">)]},</span>
         <span class="n">config</span><span class="o">=</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"config"</span><span class="p">],</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">,</span>
@@ -8112,8 +8180,31 @@ langchain-openai==1.6.2
         <span class="nb">print</span><span class="p">(</span><span class="s2">"  允许决策："</span><span class="p">,</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">review</span><span class="p">[</span><span class="s2">"allowed_decisions"</span><span class="p">]))</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"工具执行次数："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"records"</span><span class="p">]))</span>
     <span class="k">return</span> <span class="n">paused</span>
-
-<span class="n">approve_case</span> <span class="o">=</span> <span class="n">new_experiment</span><span class="p">([</span><span class="n">EMAIL_CALL</span><span class="p">],</span> <span class="s2">"ch09-approve"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=934ea663">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>现在创建一封邮件的实验，使用会话 ID <code>ch09-approve</code>。<code>new_experiment()</code> 完成组装，<code>start_experiment()</code> 才真正发起任务；返回值 <code>paused</code> 留待下面检查。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch09-first-pause" id="cell-id=1db28f30">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">approve_case</span> <span class="o">=</span> <span class="n">new_experiment</span><span class="p">([</span><span class="n">EMAIL_CALL</span><span class="p">],</span> <span class="s2">"ch09-approve"</span><span class="p">)</span>
 <span class="n">paused</span> <span class="o">=</span> <span class="n">start_experiment</span><span class="p">(</span><span class="n">approve_case</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -8151,9 +8242,9 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>上面应看到 <code>send_email</code> 的收件人、主题、正文，以及三种允许决策。执行次数仍是 <strong>0</strong>：模型提出了请求，中间件已暂停，工具函数尚未运行。</p>
-<h3 id="%E6%A3%80%E6%9F%A5-Checkpoint%EF%BC%9A%E6%9A%82%E5%81%9C%E5%9C%A8%E5%93%AA%E4%B8%AA%E8%8A%82%E7%82%B9%EF%BC%9F">检查 Checkpoint：暂停在哪个节点？<a class="anchor-link" href="#%E6%A3%80%E6%9F%A5-Checkpoint%EF%BC%9A%E6%9A%82%E5%81%9C%E5%9C%A8%E5%93%AA%E4%B8%AA%E8%8A%82%E7%82%B9%EF%BC%9F">¶</a></h3><p><code>get_state(config)</code> 读取这条会话最新的状态快照。<code>values</code> 是 State；<code>next</code> 是待继续执行的节点；<code>interrupts</code> 是待解决的中断。下面只展示有关字段，避免打印完整提示词。</p>
-<p>在锁定版本中，<code>next</code> 应指向 <code>HumanInTheLoopMiddleware.after_model</code>。模型节点已经结束，待审批的 <code>AIMessage.tool_calls</code> 已保存在 State 中。因此恢复审批时，通常复用这条模型结果，不必重新让模型选择同一个工具。</p>
+<p>上面输出了 <code>send_email</code> 的收件人、主题、正文，以及允许的三种决定。工具执行次数仍是 <strong>0</strong>：模型提出了请求，中间件已暂停，工具函数尚未运行。</p>
+<h3 id="%E6%A3%80%E6%9F%A5-Checkpoint%EF%BC%9A%E6%9A%82%E5%81%9C%E5%9C%A8%E5%93%AA%E4%B8%AA%E8%8A%82%E7%82%B9%EF%BC%9F">检查 Checkpoint：暂停在哪个节点？<a class="anchor-link" href="#%E6%A3%80%E6%9F%A5-Checkpoint%EF%BC%9A%E6%9A%82%E5%81%9C%E5%9C%A8%E5%93%AA%E4%B8%AA%E8%8A%82%E7%82%B9%EF%BC%9F">¶</a></h3><p><code>get_state(config)</code> 读取这条会话最新的快照。下面查看三个字段：<code>values</code> 是保存的 State，<code>next</code> 是待继续执行的节点，<code>interrupts</code> 是待解决的中断。</p>
+<p>在锁定版本中，<code>next</code> 应指向 <code>HumanInTheLoopMiddleware.after_model</code>。我们还要检查最后一条消息：模型提出的邮件请求是否已经保存在 State 中？这决定了恢复时能否沿用已有请求。</p>
 </div>
 </div>
 </div>
@@ -8162,7 +8253,7 @@ langchain-openai==1.6.2
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">snapshot</span> <span class="o">=</span> <span class="n">approve_case</span><span class="p">[</span><span class="s2">"agent"</span><span class="p">]</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">approve_case</span><span class="p">[</span><span class="s2">"config"</span><span class="p">])</span>
@@ -8200,14 +8291,54 @@ State 已保存的调用： send_email
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="5.-%E6%81%A2%E5%A4%8D%E5%B9%B6%E6%A0%B8%E5%AF%B9%E5%9B%9B%E7%A7%8D%E5%86%B3%E7%AD%96">5. 恢复并核对四种决策<a class="anchor-link" href="#5.-%E6%81%A2%E5%A4%8D%E5%B9%B6%E6%A0%B8%E5%AF%B9%E5%9B%9B%E7%A7%8D%E5%86%B3%E7%AD%96">¶</a></h2><p><code>Command(resume={"decisions": [...]})</code> 提交人工决定；恢复必须使用原来的 <code>config</code>，从而找到同一 <code>thread_id</code> 的存档。<code>decisions</code> 是按待审批动作顺序排列的列表。</p>
-<p>下面的检查函数核对三类证据：</p>
-<ol>
-<li>工具实际执行记录是否与预期相同，包含执行次数和参数。</li>
-<li>每个待审调用是否只有一个对应结果，且工具名、调用 ID、状态和内容正确。</li>
-<li>恢复后的实际模型请求是否包含这些结果，避免把结束回复当作成功证据。</li>
-</ol>
-<p>两个 <code>for</code> 的列表推导式是在“遍历模型消息，再取出每条消息的工具调用”。结果与请求通过 <code>tool_call_id</code> 关联；<code>edit</code> 的工具结果会带有人工改参说明；原始消息保留在 <code>result.value["messages"]</code> 中。输出用 <code>json.loads()</code> 将末行的教学邮件 JSON 还原为字典，核对并逐字段展示实际参数，避免框架说明中的 Unicode 转义干扰阅读。</p>
+<p>上面显示待执行节点是审批中间件，且 State 已保存 <code>send_email</code> 请求；审批前模型实际调用了一次。模型步骤已经结束，暂停的是后面的审批步骤。第 5 节会继续检查恢复后模型收到的消息，确认它读取了工具结果，而没有重新生成待审批请求。</p>
+<h2 id="5.-%E6%81%A2%E5%A4%8D%E5%B9%B6%E6%A0%B8%E5%AF%B9%E5%9B%9B%E7%A7%8D%E5%86%B3%E7%AD%96">5. 恢复并核对四种决策<a class="anchor-link" href="#5.-%E6%81%A2%E5%A4%8D%E5%B9%B6%E6%A0%B8%E5%AF%B9%E5%9B%9B%E7%A7%8D%E5%86%B3%E7%AD%96">¶</a></h2><p><code>Command(resume={"decisions": [...]})</code> 用来提交人工决定。把它作为新的 <code>invoke()</code> 输入，并使用原来的 Agent 和 <code>config</code>，就能找到同一 <code>thread_id</code> 的存档并继续执行。<code>decisions</code> 列表要与待审批动作一一对应。</p>
+<p>下面的决定直接写在代码中，代表用户已经看过请求并做出选择；本例没有另外搭建审批界面。</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d10f2491">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="5.1-approve%EF%BC%9A%E6%8C%89%E5%8E%9F%E5%8F%82%E6%95%B0%E6%89%A7%E8%A1%8C">5.1 approve：按原参数执行<a class="anchor-link" href="#5.1-approve%EF%BC%9A%E6%8C%89%E5%8E%9F%E5%8F%82%E6%95%B0%E6%89%A7%E8%A1%8C">¶</a></h3><p>先批准第 4 节暂停的邮件任务。预期 <code>send_email</code> 按原参数执行一次，收件人仍是 <code>all@example.com</code>；工具返回结果后，模型给出结束回复。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs celltag_ch09-approve" id="cell-id=89be7007">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">approved</span> <span class="o">=</span> <span class="n">approve_case</span><span class="p">[</span><span class="s2">"agent"</span><span class="p">]</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
+    <span class="n">Command</span><span class="p">(</span><span class="n">resume</span><span class="o">=</span><span class="p">{</span><span class="s2">"decisions"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"approve"</span><span class="p">}]}),</span>
+    <span class="n">config</span><span class="o">=</span><span class="n">approve_case</span><span class="p">[</span><span class="s2">"config"</span><span class="p">],</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9a87d29d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>恢复结果保存在 <code>approved</code> 中。它包含完整消息历史，可以通过 <code>approved.value["messages"]</code> 查看；但最后一条模型回复不能单独证明邮件工具运行成功。</p>
+<p>为四种决定复用同一套检查，下面定义 <code>check_outcome()</code>。它只读取结果、核对并打印，不发起任务或调用工具。调用时提供两组预期值：</p>
+<ul>
+<li><code>expected_records</code>：工具应实际执行哪些操作；空列表表示不应执行工具。</li>
+<li><code>expected_feedback</code>：模型应收到什么反馈，每项是 <code>(状态, 内容)</code>，按原工具请求顺序排列。</li>
+</ul>
+<p>函数依次检查执行记录、工具结果和恢复后的模型输入。工具结果通过 <code>tool_call_id</code> 对应原请求；嵌套列表推导式则先遍历模型消息，再取出各条消息中的 <code>tool_calls</code>。邮件结果中的末行 JSON 用 <code>json.loads()</code> 还原成字典，打印时展开字段并保留中文；人工修改参数的原始说明仍保存在消息历史中。</p>
 </div>
 </div>
 </div>
@@ -8216,11 +8347,12 @@ State 已保存的调用： send_email
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">check_outcome</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">expected_records</span><span class="p">,</span> <span class="n">expected_feedback</span><span class="p">):</span>
     <span class="k">assert</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">interrupts</span><span class="p">,</span> <span class="s2">"仍有未解决的中断"</span>
+    <span class="c1"># 先看工具真正做了什么，再看返回给模型的消息。</span>
     <span class="k">assert</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"records"</span><span class="p">]</span> <span class="o">==</span> <span class="n">expected_records</span><span class="p">,</span> <span class="s2">"执行次数或实际参数不符"</span>
     <span class="n">messages</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
     <span class="n">calls</span> <span class="o">=</span> <span class="p">[</span><span class="n">call</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span>
@@ -8241,20 +8373,25 @@ State 已保存的调用： send_email
             <span class="k">assert</span> <span class="n">expected</span> <span class="ow">in</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="s2">"拒绝原因没有反馈给模型"</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">assert</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="n">expected</span><span class="p">,</span> <span class="s2">"人工回答没有原样成为工具结果"</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"工具结果：</span><span class="si">{</span><span class="n">reply</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">；状态：</span><span class="si">{</span><span class="n">reply</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">；调用 ID：</span><span class="si">{</span><span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"工具结果："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  状态："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  调用 ID："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">if</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">Tool response:</span><span class="se">\n</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">"框架附有人工改参说明；原始 ToolMessage 保留在 result.value 中。"</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">"框架附有人工修改参数的说明；下面展开实际执行参数。"</span><span class="p">)</span>
             <span class="n">show_text</span><span class="p">(</span><span class="s2">"  工具实际返回的参数："</span><span class="p">,</span>
                       <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">actual_args</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">show_text</span><span class="p">(</span><span class="s2">"  返回内容："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+    <span class="c1"># 只检查恢复后的模型调用，它们应已收到这批工具结果。</span>
     <span class="n">resumed_inputs</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"recorder"</span><span class="p">]</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"model_calls_before"</span><span class="p">]:]</span>
     <span class="k">assert</span> <span class="n">resumed_inputs</span><span class="p">,</span> <span class="s2">"恢复后没有调用模型读取工具结果"</span>
     <span class="k">for</span> <span class="n">model_input</span> <span class="ow">in</span> <span class="n">resumed_inputs</span><span class="p">:</span>
         <span class="n">seen_ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">message</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">model_input</span>
                     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)}</span>
-        <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="ow">in</span> <span class="n">seen_ids</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">),</span> <span class="s2">"恢复重新调用了未含工具结果的模型步骤"</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="ow">in</span> <span class="n">seen_ids</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">),</span> <span class="p">(</span>
+            <span class="s2">"恢复后的模型输入缺少工具结果，可能重跑了审批前的模型步骤"</span>
+        <span class="p">)</span>
     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">AIMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tool_calls</span>
     <span class="k">assert</span> <span class="ow">not</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"agent"</span><span class="p">]</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"config"</span><span class="p">])</span><span class="o">.</span><span class="n">next</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"工具实际执行次数："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"records"</span><span class="p">]))</span>
@@ -8265,30 +8402,15 @@ State 已保存的调用： send_email
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d10f2491">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="5.1-approve%EF%BC%9A%E6%8C%89%E5%8E%9F%E5%8F%82%E6%95%B0%E6%89%A7%E8%A1%8C">5.1 approve：按原参数执行<a class="anchor-link" href="#5.1-approve%EF%BC%9A%E6%8C%89%E5%8E%9F%E5%8F%82%E6%95%B0%E6%89%A7%E8%A1%8C">¶</a></h3><p>批准当前邮件。预期只新增一条记录，收件人仍为 <code>all@example.com</code>；工具结果成功，并对应原始调用 ID。</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch09-approve" id="cell-id=89be7007">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch09-approve-check" id="cell-id=eb7df64a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [10]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">approved</span> <span class="o">=</span> <span class="n">approve_case</span><span class="p">[</span><span class="s2">"agent"</span><span class="p">]</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
-    <span class="n">Command</span><span class="p">(</span><span class="n">resume</span><span class="o">=</span><span class="p">{</span><span class="s2">"decisions"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"approve"</span><span class="p">}]}),</span>
-    <span class="n">config</span><span class="o">=</span><span class="n">approve_case</span><span class="p">[</span><span class="s2">"config"</span><span class="p">],</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="n">check_outcome</span><span class="p">(</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">check_outcome</span><span class="p">(</span>
     <span class="n">approve_case</span><span class="p">,</span> <span class="n">approved</span><span class="p">,</span>
     <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"send_email"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">ORIGINAL_ARGS</span><span class="p">}],</span>
     <span class="p">[(</span><span class="s2">"success"</span><span class="p">,</span> <span class="n">ORIGINAL_ARGS</span><span class="p">)],</span>
@@ -8305,7 +8427,9 @@ State 已保存的调用： send_email
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>工具结果：send_email；状态：success；调用 ID：mail-1
+<pre>工具结果： send_email
+  状态： success
+  调用 ID： mail-1
 
   工具实际返回的参数：
 {
@@ -8327,9 +8451,9 @@ State 已保存的调用： send_email
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>看执行记录和成功工具结果：原参数执行了一次。offline 下，模型请求数从 <strong>1</strong> 变成 <strong>2</strong>；新增请求已经包含邮件结果，表示这是工具之后的新模型步骤，不是重新生成审批前的请求。</p>
+<p>执行记录和成功的工具结果都显示：原参数执行了一次。offline 下，模型请求数从 <strong>1</strong> 变成 <strong>2</strong>；第二次请求已包含邮件结果，是工具执行之后的新模型步骤。审批前生成工具请求的模型步骤没有重跑。</p>
 <h3 id="5.2-edit%EF%BC%9A%E4%BF%AE%E6%94%B9%E6%94%B6%E4%BB%B6%E4%BA%BA%E5%86%8D%E6%89%A7%E8%A1%8C">5.2 edit：修改收件人再执行<a class="anchor-link" href="#5.2-edit%EF%BC%9A%E4%BF%AE%E6%94%B9%E6%94%B6%E4%BB%B6%E4%BA%BA%E5%86%8D%E6%89%A7%E8%A1%8C">¶</a></h3><p>创建独立实验，仍让模型提出原来的收件人。人类把它改为 <code>team@example.com</code>，保留主题和正文。<code>edited_action</code> 必须提供工具 <code>name</code> 与完整的 <code>args</code>。</p>
-<p>在锁定版本中，消息历史可能保留模型原始请求，框架在真正执行时替换参数。因此要检查<strong>执行记录和工具返回</strong>，不能只看最初那条 <code>AIMessage</code>。</p>
+<p><code>{**ORIGINAL_ARGS, "to": EDITED_TO}</code> 先复制原字典中的字段，再覆盖收件人；原始请求、主题和正文保持不变。在锁定版本中，消息历史仍保留模型原始请求，真正执行时才使用修改后的参数。因此要查看执行记录和工具返回，核对实际收件人。</p>
 </div>
 </div>
 </div>
@@ -8338,7 +8462,7 @@ State 已保存的调用： send_email
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [11]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">edit_case</span> <span class="o">=</span> <span class="n">new_experiment</span><span class="p">([</span><span class="n">EMAIL_CALL</span><span class="p">],</span> <span class="s2">"ch09-edit"</span><span class="p">)</span>
@@ -8357,7 +8481,9 @@ State 已保存的调用： send_email
     <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"send_email"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">edited_args</span><span class="p">}],</span>
     <span class="p">[(</span><span class="s2">"success"</span><span class="p">,</span> <span class="n">edited_args</span><span class="p">)],</span>
 <span class="p">)</span>
-<span class="k">assert</span> <span class="n">edit_case</span><span class="p">[</span><span class="s2">"records"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"to"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"team@example.com"</span>
+<span class="k">assert</span> <span class="n">edit_case</span><span class="p">[</span><span class="s2">"records"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"to"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"team@example.com"</span><span class="p">,</span> <span class="p">(</span>
+    <span class="s2">"教学目标要求通知项目组 team@example.com，实际收件人已改变"</span>
+<span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"原请求收件人："</span><span class="p">,</span> <span class="n">ORIGINAL_ARGS</span><span class="p">[</span><span class="s2">"to"</span><span class="p">])</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"实际执行收件人："</span><span class="p">,</span> <span class="n">edit_case</span><span class="p">[</span><span class="s2">"records"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"to"</span><span class="p">])</span>
 </pre></div>
@@ -8384,8 +8510,10 @@ State 已保存的调用： send_email
 }
   允许决策： approve, edit, reject
 工具执行次数： 0
-工具结果：send_email；状态：success；调用 ID：mail-1
-框架附有人工改参说明；原始 ToolMessage 保留在 result.value 中。
+工具结果： send_email
+  状态： success
+  调用 ID： mail-1
+框架附有人工修改参数的说明；下面展开实际执行参数。
 
   工具实际返回的参数：
 {
@@ -8409,8 +8537,8 @@ State 已保存的调用： send_email
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>预期实际收件人是 <code>team@example.com</code>。<code>{**ORIGINAL_ARGS, "to": ...}</code> 先展开原字典，再覆盖一个字段；它没有修改原始请求，也没有丢掉主题和正文。</p>
-<h3 id="5.3-reject%EF%BC%9A%E5%B7%A5%E5%85%B7%E4%B8%8D%E6%89%A7%E8%A1%8C%EF%BC%8C%E6%8B%92%E7%BB%9D%E5%8E%9F%E5%9B%A0%E4%BA%A4%E5%9B%9E%E6%A8%A1%E5%9E%8B">5.3 reject：工具不执行，拒绝原因交回模型<a class="anchor-link" href="#5.3-reject%EF%BC%9A%E5%B7%A5%E5%85%B7%E4%B8%8D%E6%89%A7%E8%A1%8C%EF%BC%8C%E6%8B%92%E7%BB%9D%E5%8E%9F%E5%9B%A0%E4%BA%A4%E5%9B%9E%E6%A8%A1%E5%9E%8B">¶</a></h3><p>拒绝邮件并说明下一步。预期记录仍为空；框架生成 <code>status="error"</code> 的反馈，表示该调用没有执行，而不是教学工具抛了 Python 异常。</p>
+<p>输出最后两行分别是原请求收件人 <code>all@example.com</code> 和实际执行收件人 <code>team@example.com</code>。成功的工具结果也返回了新地址，说明修改影响了工具执行，而不只是改了展示文本。</p>
+<h3 id="5.3-reject%EF%BC%9A%E5%B7%A5%E5%85%B7%E4%B8%8D%E6%89%A7%E8%A1%8C%EF%BC%8C%E6%8B%92%E7%BB%9D%E5%8E%9F%E5%9B%A0%E4%BA%A4%E5%9B%9E%E6%A8%A1%E5%9E%8B">5.3 reject：工具不执行，拒绝原因交回模型<a class="anchor-link" href="#5.3-reject%EF%BC%9A%E5%B7%A5%E5%85%B7%E4%B8%8D%E6%89%A7%E8%A1%8C%EF%BC%8C%E6%8B%92%E7%BB%9D%E5%8E%9F%E5%9B%A0%E4%BA%A4%E5%9B%9E%E6%A8%A1%E5%9E%8B">¶</a></h3><p>创建新实验并拒绝发送。<code>message</code> 写明拒绝原因和希望模型接下来怎么做。预期 <code>records</code> 仍为空，框架把拒绝原因写入 <code>status="error"</code> 的 <code>ToolMessage</code>。</p>
 </div>
 </div>
 </div>
@@ -8419,7 +8547,7 @@ State 已保存的调用： send_email
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [12]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">reject_case</span> <span class="o">=</span> <span class="n">new_experiment</span><span class="p">([</span><span class="n">EMAIL_CALL</span><span class="p">],</span> <span class="s2">"ch09-reject"</span><span class="p">)</span>
@@ -8454,7 +8582,9 @@ State 已保存的调用： send_email
 }
   允许决策： approve, edit, reject
 工具执行次数： 0
-工具结果：send_email；状态：error；调用 ID：mail-1
+工具结果： send_email
+  状态： error
+  调用 ID： mail-1
 
   返回内容：
 User rejected the tool call for `send_email` with reason:
@@ -8473,8 +8603,9 @@ User rejected the tool call for `send_email` with reason:
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="5.4-respond%EF%BC%9A%E4%BA%BA%E7%9A%84%E5%9B%9E%E7%AD%94%E4%BB%A3%E6%9B%BF%E5%8D%A0%E4%BD%8D%E5%B7%A5%E5%85%B7%E7%BB%93%E6%9E%9C">5.4 respond：人的回答代替占位工具结果<a class="anchor-link" href="#5.4-respond%EF%BC%9A%E4%BA%BA%E7%9A%84%E5%9B%9E%E7%AD%94%E4%BB%A3%E6%9B%BF%E5%8D%A0%E4%BD%8D%E5%B7%A5%E5%85%B7%E7%BB%93%E6%9E%9C">¶</a></h3><p>新实验只调用 <code>ask_user</code>。我们回答“按季度汇总，排除测试数据”。预期占位函数没有执行，但框架生成成功的 <code>ToolMessage</code>，内容就是人的回答。</p>
-<p>**respond 不是拒绝。**不想发送邮件应使用 <code>reject</code>；<code>respond</code> 表示人类代替工具给出结果，适用于本来就需要人回答的问题。</p>
+<p>输出中的执行次数是 <strong>0</strong>，返回内容包含 <code>REJECT_REASON</code>。这里的 <code>error</code> 表示调用被拒绝；工具没有运行，也没有抛出 Python 异常。拒绝原因已进入恢复后的模型输入。本例只检查这条反馈，不创建或保存邮件草稿。</p>
+<h3 id="5.4-respond%EF%BC%9A%E4%BA%BA%E7%9A%84%E5%9B%9E%E7%AD%94%E4%BB%A3%E6%9B%BF%E5%8D%A0%E4%BD%8D%E5%B7%A5%E5%85%B7%E7%BB%93%E6%9E%9C">5.4 respond：人的回答代替占位工具结果<a class="anchor-link" href="#5.4-respond%EF%BC%9A%E4%BA%BA%E7%9A%84%E5%9B%9E%E7%AD%94%E4%BB%A3%E6%9B%BF%E5%8D%A0%E4%BD%8D%E5%B7%A5%E5%85%B7%E7%BB%93%E6%9E%9C">¶</a></h3><p>新实验只提出 <code>ask_user</code> 请求。用 <code>respond</code> 回答“按季度汇总，并排除测试数据”，预期占位函数不执行，但模型收到成功的 <code>ToolMessage</code>，内容就是人的回答。</p>
+<p><code>respond</code> 用于人直接提供工具结果。不想发送邮件时应使用 <code>reject</code>；本例也只为 <code>ask_user</code> 允许 <code>respond</code>。</p>
 </div>
 </div>
 </div>
@@ -8483,7 +8614,7 @@ User rejected the tool call for `send_email` with reason:
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [10]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [13]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">respond_case</span> <span class="o">=</span> <span class="n">new_experiment</span><span class="p">([</span><span class="n">ASK_CALL</span><span class="p">],</span> <span class="s2">"ch09-respond"</span><span class="p">)</span>
@@ -8516,7 +8647,9 @@ User rejected the tool call for `send_email` with reason:
 }
   允许决策： respond
 工具执行次数： 0
-工具结果：ask_user；状态：success；调用 ID：question-1
+工具结果： ask_user
+  状态： success
+  调用 ID： question-1
 
   返回内容：
 按季度汇总，并排除测试数据。
@@ -8534,8 +8667,9 @@ User rejected the tool call for `send_email` with reason:
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="6.-%E4%B8%A4%E9%A1%B9%E5%8A%A8%E4%BD%9C%EF%BC%9A%E6%8C%89%E8%AF%B7%E6%B1%82%E9%A1%BA%E5%BA%8F%E6%8F%90%E4%BA%A4%E5%86%B3%E7%AD%96">6. 两项动作：按请求顺序提交决策<a class="anchor-link" href="#6.-%E4%B8%A4%E9%A1%B9%E5%8A%A8%E4%BD%9C%EF%BC%9A%E6%8C%89%E8%AF%B7%E6%B1%82%E9%A1%BA%E5%BA%8F%E6%8F%90%E4%BA%A4%E5%86%B3%E7%AD%96">¶</a></h2><p>当同一条模型消息提出多个需要审批的工具调用，中间件把它们打包进一个中断。本例计划两封教学邮件：先发给 <code>team@example.com</code>，再发给 <code>all@example.com</code>。对第一个请求批准，对第二个请求拒绝。</p>
-<p><code>decisions[0]</code> 对应 <code>action_requests[0]</code>，不是按工具名称查找；即使两项都叫 <code>send_email</code>，也要保持位置对应。框架校验数量和允许类型，<strong>不会推断你是不是把两个同类型决策写反了</strong>。实际审批界面应保留请求与决策的对应关系。</p>
+<p>输出中工具执行次数仍是 <strong>0</strong>，工具结果却是 <code>success</code>，并原样包含 <code>HUMAN_ANSWER</code>。这是人工回答成为了结果，不表示占位函数运行成功；恢复后的模型已收到这条回答。</p>
+<h2 id="6.-%E4%B8%A4%E9%A1%B9%E5%8A%A8%E4%BD%9C%EF%BC%9A%E6%8C%89%E8%AF%B7%E6%B1%82%E9%A1%BA%E5%BA%8F%E6%8F%90%E4%BA%A4%E5%86%B3%E7%AD%96">6. 两项动作：按请求顺序提交决策<a class="anchor-link" href="#6.-%E4%B8%A4%E9%A1%B9%E5%8A%A8%E4%BD%9C%EF%BC%9A%E6%8C%89%E8%AF%B7%E6%B1%82%E9%A1%BA%E5%BA%8F%E6%8F%90%E4%BA%A4%E5%86%B3%E7%AD%96">¶</a></h2><p>当同一条模型消息提出多个需要审批的工具调用，中间件把它们打包进一个中断。本例先请求给 <code>team@example.com</code> 发邮件，再请求给 <code>all@example.com</code> 发邮件；我们批准第一项、拒绝第二项。</p>
+<p><code>decisions[0]</code> 对应 <code>action_requests[0]</code>，按位置配对，不按工具名查找。框架会检查决策数量和允许类型；本例两项都叫 <code>send_email</code>，都允许批准或拒绝，即使把两个决定写反也不会因此报错。所以要保留请求顺序，确认每个决定属于哪项动作。</p>
 </div>
 </div>
 </div>
@@ -8544,7 +8678,7 @@ User rejected the tool call for `send_email` with reason:
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [11]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [14]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">BATCH_CALLS</span> <span class="o">=</span> <span class="p">[</span>
@@ -8601,7 +8735,15 @@ User rejected the tool call for `send_email` with reason:
 }
   允许决策： approve, edit, reject
 工具执行次数： 0
-工具结果：send_email；状态：success；调用 ID：batch-team
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>工具结果： send_email
+  状态： success
+  调用 ID： batch-team
 
   工具实际返回的参数：
 {
@@ -8609,7 +8751,9 @@ User rejected the tool call for `send_email` with reason:
   "subject": "上线通知",
   "body": "测试与构建已通过，计划明天上线。"
 }
-工具结果：send_email；状态：error；调用 ID：batch-all
+工具结果： send_email
+  状态： error
+  调用 ID： batch-all
 
   返回内容：
 User rejected the tool call for `send_email` with reason:
@@ -8628,8 +8772,9 @@ User rejected the tool call for `send_email` with reason:
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%E9%94%99%E8%AF%AF%E7%A4%BA%E4%BE%8B%EF%BC%9A%E4%B8%A4%E9%A1%B9%E5%8A%A8%E4%BD%9C%E5%8F%AA%E6%8F%90%E4%BA%A4%E4%B8%80%E9%A1%B9%E5%86%B3%E5%AE%9A">错误示例：两项动作只提交一项决定<a class="anchor-link" href="#%E9%94%99%E8%AF%AF%E7%A4%BA%E4%BE%8B%EF%BC%9A%E4%B8%A4%E9%A1%B9%E5%8A%A8%E4%BD%9C%E5%8F%AA%E6%8F%90%E4%BA%A4%E4%B8%80%E9%A1%B9%E5%86%B3%E5%AE%9A">¶</a></h3><p>再创建全新的实验，故意少提交一个决定。预期 <code>ValueError</code> 明确指出决策数量不匹配，且工具执行次数仍为 0。这里只捕获该预期错误；其他异常照常暴露，不会伪装成成功。</p>
-<p>这是<strong>恢复请求的校验失败</strong>，不是新的人工中断。下面保留失败现场，不继续在这个实验上提交恢复请求。想重新实验时，重启内核并从第一格运行；真实审批程序应在提交前核对数量、顺序和允许类型，并按自身错误处理流程处理失败。</p>
+<p>输出中 <code>batch-team</code> 对应成功结果，<code>batch-all</code> 对应拒绝反馈；工具实际执行次数是 <strong>1</strong>，唯一的执行记录指向项目组地址。这样既核对了两个结果，也确认只执行了批准的那一项。</p>
+<h3 id="%E9%94%99%E8%AF%AF%E7%A4%BA%E4%BE%8B%EF%BC%9A%E4%B8%A4%E9%A1%B9%E5%8A%A8%E4%BD%9C%E5%8F%AA%E6%8F%90%E4%BA%A4%E4%B8%80%E9%A1%B9%E5%86%B3%E5%AE%9A">错误示例：两项动作只提交一项决定<a class="anchor-link" href="#%E9%94%99%E8%AF%AF%E7%A4%BA%E4%BE%8B%EF%BC%9A%E4%B8%A4%E9%A1%B9%E5%8A%A8%E4%BD%9C%E5%8F%AA%E6%8F%90%E4%BA%A4%E4%B8%80%E9%A1%B9%E5%86%B3%E5%AE%9A">¶</a></h3><p>再创建独立实验，故意少提交一个决定。预期 <code>ValueError</code> 指出决策数量不匹配，且工具执行次数仍为 0。这里只捕获该预期错误；其他异常照常报错。</p>
+<p>这次 <code>invoke()</code> 会因恢复输入不合法而失败。它没有完成任务，也没有返回一次新的审批中断；下面不继续恢复这条失败的会话。要重复本实验，可重启内核并从第一格运行。实际审批程序应在提交前核对请求与决定的数量、顺序和允许类型。</p>
 </div>
 </div>
 </div>
@@ -8638,7 +8783,7 @@ User rejected the tool call for `send_email` with reason:
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [12]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [15]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">invalid_case</span> <span class="o">=</span> <span class="n">new_experiment</span><span class="p">(</span><span class="n">BATCH_CALLS</span><span class="p">,</span> <span class="s2">"ch09-invalid-count"</span><span class="p">)</span>
@@ -8706,17 +8851,39 @@ Number of human decisions (1) does not match number of hanging tool calls
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="7.-%E6%81%A2%E5%A4%8D%E8%BE%B9%E7%95%8C%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">7. 恢复边界、练习与清理<a class="anchor-link" href="#7.-%E6%81%A2%E5%A4%8D%E8%BE%B9%E7%95%8C%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">¶</a></h2><p>本次实验观察到：工具请求先进入 State，审批前执行次数为 0；<code>approve</code> 保留参数，<code>edit</code> 改变实际参数，<code>reject</code> 不执行并反馈拒绝，<code>respond</code> 不执行占位函数并返回人工回答。</p>
-<h3 id="Checkpoint-%E8%83%BD%E6%81%A2%E5%A4%8D%E4%BB%80%E4%B9%88%EF%BC%9F">Checkpoint 能恢复什么？<a class="anchor-link" href="#Checkpoint-%E8%83%BD%E6%81%A2%E5%A4%8D%E4%BB%80%E4%B9%88%EF%BC%9F">¶</a></h3><ul>
-<li>Checkpoint 是会话 State 和执行进度的存档，不是整个 Python 进程或调用栈的备份；也不是每个 prompt 结束后才存一次。LangGraph 通常在执行步骤边界保存，具体持久化时机还受运行配置影响。</li>
-<li><code>interrupt()</code> 恢复时会重新进入发生中断的节点或任务，中断之前的普通代码可能重跑。本例审批位于独立的 <code>after_model</code> 节点，前面模型节点的结果已保存；新增模型请求是在工具结果到达之后发生的。</li>
-<li>如果自行把 LLM 调用、外部写操作和 <code>interrupt()</code> 放进同一个节点，恢复可能重复这些调用。应拆清执行边界，并为不能重复的业务动作设计幂等性，例如用唯一业务 ID 去重。即使把动作放在审批之后，也不自动保证“恰好执行一次”：动作完成但结果尚未保存时崩溃，恢复仍可能再次执行。</li>
-<li><code>InMemorySaver</code> 在内核退出后丢失数据。本实验验证当前进程中的恢复，不验证跨进程恢复、数据库持久化、并发审批或真实邮件投递。<a href="https://docs.langchain.com/oss/python/langgraph/interrupts">LangGraph 中断说明</a>与<a href="https://docs.langchain.com/oss/python/langgraph/checkpointers">Checkpointer 文档</a>有进一步说明。</li>
-</ul>
+<p>错误信息中的 <code>(1)</code> 和 <code>(2)</code> 分别表示提交的决定数与待审批调用数。工具执行次数为 <strong>0</strong>，说明数量校验失败时尚未执行邮件工具。</p>
+<h2 id="7.-%E6%81%A2%E5%A4%8D%E8%BE%B9%E7%95%8C%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">7. 恢复边界、练习与清理<a class="anchor-link" href="#7.-%E6%81%A2%E5%A4%8D%E8%BE%B9%E7%95%8C%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">¶</a></h2><p>本次实验观察到：工具请求先进入 State，审批前执行次数为 0；<code>approve</code> 保留参数，<code>edit</code> 改变实际参数，<code>reject</code> 跳过调用并反馈拒绝原因，<code>respond</code> 跳过占位函数并返回人工回答。</p>
+<h3 id="Checkpoint-%E8%83%BD%E6%81%A2%E5%A4%8D%E4%BB%80%E4%B9%88%EF%BC%9F">Checkpoint 能恢复什么？<a class="anchor-link" href="#Checkpoint-%E8%83%BD%E6%81%A2%E5%A4%8D%E4%BB%80%E4%B9%88%EF%BC%9F">¶</a></h3><p>Checkpoint 保存会话的 State 和执行进度，不能备份整个 Python 进程或函数调用栈。它也不限于每个 prompt 结束后保存一次：LangGraph 通常在图的执行步骤之间保存快照，具体写入时机还受运行配置影响。</p>
+<p>恢复 <code>interrupt()</code> 时，LangGraph 会重新执行发生中断的节点（或包含中断的任务）。中断之前的普通代码可能再运行一次。对照本例的三个步骤更容易理解：</p>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>本例恢复时发生什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>审批前的模型步骤</td>
+<td>已结束，工具请求保存在 State 中，沿用已有结果</td>
+</tr>
+<tr>
+<td><code>after_model</code> 审批步骤</td>
+<td>重新进入，读取 <code>Command</code> 中的决定并处理审批</td>
+</tr>
+<tr>
+<td>工具之后的模型步骤</td>
+<td>收到工具结果后新执行一次，用于给出最终回复</td>
+</tr>
+</tbody>
+</table>
+<p>如果你在同一个节点里先调用 LLM 或写外部数据，再调用 <code>interrupt()</code>，恢复可能重复前面的调用。可以把审批前的工作拆成独立节点；对不能重复的外部动作还要设计<strong>幂等性</strong>，也就是同一业务请求重复执行时，不产生重复效果，例如用唯一业务 ID 防止重复发送。</p>
+<p>把外部动作放在审批之后也不自动保证只执行一次：若邮件已经发送，程序却在保存执行结果前崩溃，恢复时仍可能再次发送。Checkpointer 本身无法消除这种重复。</p>
+<p><code>InMemorySaver</code> 的数据随内核退出而丢失。本实验只验证当前进程中的审批恢复；跨进程恢复、数据库持久化、并发审批和真实邮件投递均未验证。进一步说明见 <a href="https://docs.langchain.com/oss/python/langgraph/interrupts">LangGraph 中断文档</a>与 <a href="https://docs.langchain.com/oss/python/langgraph/checkpointers">Checkpointer 文档</a>。</p>
 <h3 id="%E6%94%B9%E4%B8%80%E4%B8%AA%E5%8F%98%E9%87%8F%E5%86%8D%E8%A7%82%E5%AF%9F">改一个变量再观察<a class="anchor-link" href="#%E6%94%B9%E4%B8%80%E4%B8%AA%E5%8F%98%E9%87%8F%E5%86%8D%E8%A7%82%E5%AF%9F">¶</a></h3><ol>
-<li>只把 5.2 中 <code>EDITED_TO</code> 改为 <code>"review@example.com"</code>，先预测实际执行收件人；从第一格重跑。</li>
-<li>观察 5.2 的成功工具结果：应出现新地址。随后固定要求 <code>"team@example.com"</code> 的断言应失败。这说明批准了修改后的参数，实验的原始业务目标却发生了变化；不能只看成功状态。</li>
-<li>恢复 <code>EDITED_TO = "team@example.com"</code>，重启内核并全部运行，所有预期检查应重新通过，包括被捕获的数量错误。</li>
+<li>只把 5.2 中 <code>EDITED_TO</code> 改为 <code>"review@example.com"</code>，先预测实际收件人，再重启内核并从第一格运行。</li>
+<li>观察 5.2 的工具结果：应出现新地址，但随后固定要求 <code>"team@example.com"</code> 的断言会失败。这是“工具按新参数执行成功，却不再满足原收件人要求”的区别。</li>
+<li>恢复 <code>EDITED_TO = "team@example.com"</code>，重启内核并全部运行。各项检查应通过；第 6 节的数量错误仍会出现，并由代码按预期捕获。</li>
 </ol>
 <h3 id="%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E4%B8%8E%E4%B8%8B%E4%B8%80%E6%AD%A5">常见问题与下一步<a class="anchor-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E4%B8%8E%E4%B8%8B%E4%B8%80%E6%AD%A5">¶</a></h3><table>
 <thead>
@@ -8728,23 +8895,23 @@ Number of human decisions (1) does not match number of hanging tool calls
 <tbody>
 <tr>
 <td>没有审批中断</td>
-<td>是否真的提出了对应工具调用，<code>interrupt_on</code> 是否包含工具名</td>
+<td>模型是否真的提出了对应工具调用，<code>interrupt_on</code> 是否包含工具名</td>
 </tr>
 <tr>
 <td>恢复时缺状态或没有继续</td>
-<td>是否保留同一个 Agent/Checkpointer，并使用原来的 <code>thread_id</code></td>
+<td>是否保留同一个 Agent 和 Checkpointer，并使用原来的 <code>thread_id</code></td>
 </tr>
 <tr>
 <td>决策报错</td>
-<td>是否与请求数量和顺序一致，决策类型是否在 <code>allowed_decisions</code> 中</td>
+<td>数量是否匹配、类型是否允许；再按原请求顺序核对每项决定，以免选错动作</td>
 </tr>
 <tr>
 <td>live 断言失败</td>
-<td>看实际请求、参数和工具结果；真实模型可能没有遵循实验任务，不能退回 offline 声称通过</td>
+<td>查看实际请求、参数和工具结果；真实模型可能没有遵循任务要求，不能用 offline 结果替代</td>
 </tr>
 </tbody>
 </table>
-<p>本实验只分配内存对象，没有启动服务或创建磁盘文件；重启内核即可清理全部存档与执行记录。回到<a href="../../content/ch09-human-in-the-loop.md">第 9 章正文</a>了解条件审批、子 Agent 配置与自定义中断；章节作者参见<a href="../CONTRIBUTING.md">贡献指南</a>。</p>
+<p>本实验只使用内存对象，没有启动服务或创建磁盘文件；重启内核即可清理存档与执行记录。回到<a href="../../content/ch09-human-in-the-loop.md">第 9 章正文</a>了解条件审批、子 Agent 配置与自定义中断；章节作者参见<a href="../CONTRIBUTING.md">贡献指南</a>。</p>
 </div>
 </div>
 </div>
