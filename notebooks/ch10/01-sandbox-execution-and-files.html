@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>565f12c5f0b8</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>49c81ae1afe9</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -8074,7 +8074,7 @@ python@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
 <h2 id="3.-%E7%BB%99-Agent-%E6%8E%A5%E5%85%A5%E6%89%A7%E8%A1%8C%E5%90%8E%E7%AB%AF">3. 给 Agent 接入执行后端<a class="anchor-link" href="#3.-%E7%BB%99-Agent-%E6%8E%A5%E5%85%A5%E6%89%A7%E8%A1%8C%E5%90%8E%E7%AB%AF">¶</a></h2><p><code>create_deep_agent()</code> 把模型与工具组装成可执行的图（Graph），也就是前面看到的循环流程。传入 <code>backend=...</code> 指定文件与命令执行的后端。框架识别 <code>SandboxBackendProtocol</code> 后才向模型提供 <code>execute</code>；本例的 <code>DockerSandbox</code> 继承 <code>BaseSandbox</code>，实现执行、上传、下载与 <code>id</code>，其余文件工具复用基类实现。</p>
 <p><code>DockerSandbox</code> 是本章自定义的教学后端，不是 Deep Agents 官方内置类。它通过 Docker CLI 创建、操作和回收真实容器；上传、下载把字节交给容器里的固定 Python 脚本，不调用模型，也不把传输包装成 Agent 的 <code>execute</code> 请求。<a href="docker_sandbox.py">查看适配源码</a>。远程 Provider 的原生传输方式仍应参考对应 SDK。</p>
 <p>容器使用非 root 用户、只读根文件系统，只有 <code>/workspace</code> 和 <code>/tmp</code> 各有 16 MiB 可写空间；上限为 256 MiB 内存、1 个 CPU、64 个进程。单条命令最多 30 秒，日志最多读取 32 KiB，更多输出标为 <code>truncated</code>。命令超时返回退出码 124；若 Docker 通信本身超时，则回收容器并终止实验。这些是本实验的配置，不是所有 Provider 的默认值。</p>
-<p><code>task_input()</code> 把工具名和参数整理成用户消息；<code>make_agent()</code> 为每个实验组装 Agent，并创建新模型。offline 的响应列表按顺序提出两次调用，再结束；它不会检查工具结果，列表也会循环。下面仍要验证真实调用、退出码和文件内容。live 使用公共 <code>create_model()</code> 配置真实模型，任务不符合要求时断言报错。</p>
+<p><code>task_input()</code> 把工具名和参数整理成用户消息；<code>make_agent()</code> 为每个实验组装 Agent，并创建新模型。offline 的响应列表按当前实验的 <code>planned_calls</code> 依次提出请求，最后给出结束回复；它不会检查工具结果，列表也会循环。下面仍要验证真实调用、退出码和文件内容。live 使用公共 <code>create_model()</code> 配置真实模型，任务不符合要求时断言报错。</p>
 </div>
 </div>
 </div>
@@ -8221,7 +8221,7 @@ Python 3.12.14
 <p>输出中的 <code>orders: 3</code>、<code>total: 75</code> 来自实际下载的文件。第二个文件返回 <code>file_not_found</code>，没有影响第一个文件下载。最后的回收检查确认资源已删除；镜像缓存仍保留，后续运行可以复用。</p>
 <p>这还不能单独证明 Agent 按要求用了工具：应用本身也可以执行 Backend 接口。下一节将下载内容与 Agent 消息链对应起来。</p>
 <h2 id="5.-%E6%A0%B8%E5%AF%B9%E8%AF%B7%E6%B1%82%E3%80%81%E7%BB%93%E6%9E%9C%E5%92%8C%E5%AE%9E%E9%99%85%E4%BA%A7%E7%89%A9">5. 核对请求、结果和实际产物<a class="anchor-link" href="#5.-%E6%A0%B8%E5%AF%B9%E8%AF%B7%E6%B1%82%E3%80%81%E7%BB%93%E6%9E%9C%E5%92%8C%E5%AE%9E%E9%99%85%E4%BA%A7%E7%89%A9">¶</a></h2><p><code>check_loop()</code> 检查工具名与参数符合任务要求，每个返回消息都对应原调用 ID，并打印结果。嵌套推导式先遍历模型消息，再取出各条消息中的调用；<code>zip()</code> 将每个调用和它的返回配对。本例按顺序运行工具，因此也检查返回的顺序。</p>
-<p><code>execute</code> 的 <code>ToolMessage.artifact["exit_code"]</code> 保存命令退出码，<strong>0 才表示程序成功</strong>。<code>read_file</code> 的结果先用 <code>@@ lines ... @@</code> 标明读取范围，下面才是 JSON 内容。检查时用 <code>partition("\n")</code> 去掉第一行范围提示，再解析 JSON，与宿主下载的原始内容完整比较。</p>
+<p><code>execute</code> 的 <code>ToolMessage.artifact["exit_code"]</code> 保存命令退出码，<strong>0 才表示程序成功</strong>。<code>read_file</code> 的结果先用 <code>@@ lines ... @@</code> 标明读取范围，下面才是 JSON 内容。检查时用 <code>partition("\n")</code> 去掉第一行范围提示，再解析 JSON，与宿主下载后解析出的 JSON 对象比较。</p>
 </div>
 </div>
 </div>
@@ -8420,7 +8420,7 @@ planned failure
 <td>检查 Docker 到镜像仓库的网络；镜像摘要在适配文件中，不随意换成其他镜像</td>
 </tr>
 <tr>
-<td>下载结果 <code>content</code> 为空</td>
+<td>报告下载结果的 <code>content</code> 为 <code>None</code></td>
 <td>逐项检查 <code>error</code>，确认程序成功并写入目标路径</td>
 </tr>
 <tr>
