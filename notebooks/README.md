@@ -13,6 +13,7 @@
 | 第 1 章：Agent Harness | [Notebook](ch01/01-agent-harness.ipynb) · [Markdown](ch01/01-agent-harness.md) · [HTML](ch01/01-agent-harness.html) | echo 成功、消息循环、默认工具差异 | 默认脚本模型；可选真实模型 |
 | 第 5 章：同步子 Agent | [Notebook](ch05/01-subagent-delegation.ipynb) · [Markdown](ch05/01-subagent-delegation.md) · [HTML](ch05/01-subagent-delegation.html) | 消息隔离、文件共享与显式读取 | 默认脚本模型；可选真实模型 |
 | 第 6 章：异步子 Agent | [Notebook](ch06/01-async-subagent-lifecycle.ipynb) · [Markdown](ch06/01-async-subagent-lifecycle.md) · [HTML](ch06/01-async-subagent-lifecycle.html) | 五个异步工具、服务状态与失败清理 | 默认脚本模型；真实本地 Agent Server；server 依赖组 |
+| 第 11 章：文件系统权限 | [Notebook](ch11/01-filesystem-permissions.ipynb) · [Markdown](ch11/01-filesystem-permissions.md) · [HTML](ch11/01-filesystem-permissions.html) | 规则顺序、默认允许、拒绝与人工审批 | 默认脚本模型；可选真实模型；自动清理的教学临时目录 |
 <!-- course-notebook-index:end -->
 
 每份实验同时提供三种格式：Notebook 用于逐格运行，Markdown 可直接在 GitHub 阅读，HTML 在克隆或下载仓库后用浏览器打开（GitHub 文件页显示的是 HTML 源码）。三份文件位于同一目录，包含同一次执行的结果；当前提交的示例使用 offline 模式。
