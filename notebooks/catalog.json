@@ -44,6 +44,18 @@
         "local-agent-server"
       ],
       "source_issue": 128
+    },
+    {
+      "id": "ch10-sandboxes",
+      "chapter_id": "ch10-sandboxes",
+      "title": "沙箱执行与输入、产物传输",
+      "path": "ch10/01-sandbox-execution-and-files.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [
+        "local-docker"
+      ],
+      "source_issue": 105
     }
   ]
 }
