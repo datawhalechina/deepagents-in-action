@@ -44,6 +44,16 @@
         "local-agent-server"
       ],
       "source_issue": 128
+    },
+    {
+      "id": "ch13-grading-rubrics",
+      "chapter_id": "ch13-grading-rubrics",
+      "title": "评分量规的取证、修订与验收",
+      "path": "ch13/01-rubric-revision.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
+      "source_issue": 105
     }
   ]
 }

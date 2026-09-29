@@ -2,6 +2,8 @@
 
 > 一个 Agent 可以返回完整代码、停止调用工具，甚至自信地解释“任务已经完成”，结果却仍在边界输入上失败。问题不在于它没有生成结果，而在于系统缺少一条独立、可取证、能把具体差距送回生成环节的验收链路。本章先从这种“看似完成”出发，再搭建一条失败后能够修订、只有明确通过才会放行的运行时闭环。
 
+> 配套实验：[Notebook](../notebooks/ch13/01-rubric-revision.ipynb) · [Markdown](../notebooks/ch13/01-rubric-revision.md) · [HTML](../notebooks/ch13/01-rubric-revision.html)。实验用 JSON 报告观察真实取证、反馈修订与评分预算，默认无需模型 Key；运行方式见 [Notebook README](../notebooks/README.md)。
+
 ## 1. 为什么需要运行时验收
 
 假设你让 Agent 实现 `find_duplicates(values)`。一个使用 `set` 记录已见元素的版本，可以通过最常见的整数输入：
@@ -96,7 +98,7 @@ Grading Rubrics（评分量规）把“完成”的定义写成一组可检查�
 4. 观察评分失败时怎样反馈差距并触发修订
 5. 读取每轮评审结论，只在 `satisfied` 时接收结果
 
-本章按 `deepagents==0.7.1` 核对，`RubricMiddleware` 最低需要 `deepagents>=0.6.5`，目前仍是 Beta API（测试阶段接口）。示例中的模型调用需要有效的 Provider（模型服务商）凭据；测试工具本身可以在没有模型密钥的情况下运行。
+本章按 `deepagents==0.7.15` 核对，`RubricMiddleware` 最低需要 `deepagents>=0.6.5`，目前仍是 Beta API（测试阶段接口）。示例中的模型调用需要有效的 Provider（模型服务商）凭据；测试工具本身可以在没有模型密钥的情况下运行。
 
 以下代码片段按出现顺序共享同一个 Python 运行上下文，后文会直接复用前面定义的模型、任务、工具和 Middleware。案例用于展示装配与验证过程，不额外提供独立代码工程。
 
@@ -105,7 +107,7 @@ Grading Rubrics（评分量规）把“完成”的定义写成一组可检查�
 在现有 Python 项目中安装 Deep Agents 和所选模型的 LangChain 集成。下面以 OpenAI 集成为例：
 
 ```bash
-uv add "deepagents==0.7.1" langchain-openai
+uv add "deepagents==0.7.15" langchain-openai
 ```
 
 本章把两个模型角色分开配置。两者可以使用同一模型，也可以为评分选择成本更低、但仍支持 Structured Output（结构化输出）和 Tool Calling（工具调用）的模型。
@@ -471,29 +473,32 @@ Callback 每次接收一个 `RubricEvaluation` 字典，包含以下字段：
 |---|---|---|
 | `grading_run_id` | 一次 Rubric 评分尝试的标识 | 把同一次尝试中的多轮评审归为一组 |
 | `iteration` | 当前评分轮次，从 `0` 开始 | 观察首轮通过率、修订轮数与成本 |
-| `result` | 本轮 Grader Verdict | 判断本轮是通过、需修订、失败还是评分异常 |
+| `result` | 本轮评审结果，包含中间件生成的终止结论 | 判断通过、需修订、预算耗尽、无法评估或评分异常 |
 | `explanation` | 评分模型对本轮结论的整体说明 | 写入日志或 Trace，帮助理解评分原因 |
 | `criteria` | 每条标准的通过状态 | 从失败项的 `gap` 提取可执行修订方向 |
+| `unverified` | 中间件因标准覆盖不足而降级结论的标记 | 为 `True` 时，区分“没有完整验证”与“已确认候选缺陷” |
 
 同一个 `grading_run_id` 会贯穿一次 Rubric 尝试中的所有迭代。调用方换用新的 Rubric，或者一次运行已经终止后再次用同一 Rubric 发起调用，都会开始新的评分尝试。它与 `thread_id` 不是同一个概念：前者标识一次评分尝试，后者标识 Checkpointer 延续的会话状态。
 
 `criteria` 中通过项通常包含 `name` 和 `passed=true`；未通过项还会提供 `gap`。因此，不要只统计 `result`，还应保存逐项结果，才能回答“哪条标准最常失败”和“修订是否真正缩小了差距”。
 
-### 区分本轮结论与整个运行状态
+### 区分评分模型结论与回调结果
 
-`RubricEvaluation["result"]` 只记录评分模型本轮返回的结论，`max_iterations_reached` 则是 Middleware 在预算耗尽后设置的运行终态。两者不能混成同一个字段。
+评分模型通过 `GraderResponse` 返回 `satisfied`、`needs_revision` 或 `failed`。中间件还可能生成 `grader_error`，以及在评分预算用完时生成 `max_iterations_reached`；它们也会出现在 `RubricEvaluation["result"]` 中。
 
-| 名称 | 所属层次 | 后续行为 | 是否接收 |
+| 名称 | 产生方式 | 后续行为 | 是否接收 |
 |---|---|---|---:|
-| `satisfied` | 本轮评分结论 | 结束运行 | 是 |
-| `needs_revision` | 本轮评分结论 | 有预算时继续修订；无预算时结束 | 否 |
-| `failed` | 本轮评分结论 | Rubric 无法可靠评估，结束运行 | 否 |
-| `grader_error` | 本轮评分结论 | 评分调用链异常，结束运行 | 否 |
-| `max_iterations_reached` | Middleware 运行终态 | 预算耗尽，不再修订 | 否 |
+| `satisfied` | 评分模型全部评审通过，且中间件未降级 | 结束运行 | 是 |
+| `needs_revision` | 评分模型发现仍需修订 | 有预算时反馈并继续修订 | 否 |
+| `failed` | 评分模型认为 Rubric 无法评估 | 结束运行 | 否 |
+| `grader_error` | 评分调用链发生异常 | 结束运行 | 否 |
+| `max_iterations_reached` | 最后一轮仍需修订，评分预算已用完 | 不再修订，结束运行 | 否 |
 
-例如第三轮仍返回 `needs_revision`，而 `max_iterations=3` 已经用完时，Callback 收到的仍是 `result="needs_revision"`。Middleware 随后以 `max_iterations_reached` 结束运行，但不会回头改写已经交给 Callback 的评审记录。
+在本章锁定的 `deepagents==0.7.15` 中，第三轮仍返回 `needs_revision`，而 `max_iterations=3` 已经用完时，中间件会先把本轮结果改为 `max_iterations_reached`，再发送结束事件、调用 Callback 并更新状态。因此，Callback 收到的最后一轮也是 `result="max_iterations_reached"`。配套 Notebook 用一轮预算验证了这条路径。
 
-这个差异不会破坏失败关闭规则：最后一轮不是 `satisfied`，应用就拒绝结果。如果业务必须精确区分“仍需修订”与“已经耗尽预算”，需要为当前 Deep Agents 版本建立显式状态映射和回归测试；不要直接把 `_rubric_status`、`_rubric_iterations` 或 `_rubric_evaluations` 等私有字段固化成长期业务 API。
+中间件还会检查评分是否覆盖既有标准。如果声称 `satisfied` 却没有提供足够的逐项评审，重试后仍不完整，会降级为 `needs_revision` 并设置 `unverified=True`；若同时耗尽预算，则终止为 `max_iterations_reached`。这不代表它已经独立验证了业务事实，确定性事实仍应由证据工具检查。
+
+应用可以从公开 Callback 记录读取最终结论，不必依赖 `_rubric_status`、`_rubric_iterations` 或 `_rubric_evaluations` 等私有状态字段。API 仍处于 Beta，升级版本时应重跑回归实验。
 
 ### 建立失败关闭的验收门
 
@@ -657,7 +662,7 @@ Rubric 只能判断候选结果是否符合标准，不能替代第 9 章的 Hum
 - 调用时必须传入非空 `rubric`，才能启动新的评分循环。
 - 只有 `needs_revision` 会触发下一轮；只有 `satisfied` 代表验收通过。
 - 最终消息存在不等于通过，应用应采用失败关闭的放行规则。
-- `on_evaluation` 记录每轮 `RubricEvaluation`，Callback 结论不等于整个运行终态；事件流和 Checkpointer 分别服务于实时进度与状态延续。
+- `on_evaluation` 记录每轮 `RubricEvaluation`，包含中间件生成的预算耗尽与评分异常结论；事件流和 Checkpointer 分别服务于实时进度与状态延续。
 - Rubric 不能替代沙箱、权限控制、人工审批和离线评测。
 
 ## 官方参考
