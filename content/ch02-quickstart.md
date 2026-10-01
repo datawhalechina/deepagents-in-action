@@ -284,7 +284,28 @@ print(result["messages"][-1].content)
 
 ## Agent 在背后做了什么？
 
-当你调用 `agent.invoke()` 时，Deep Agent 会自动执行一系列操作。这正是它作为 Harness 的价值所在——你只写了几行代码，但 Agent 背后的工作流程远比你看到的复杂：
+### 核心执行循环
+
+第 1 章的[整体架构图](../ch01-agent-harness/#deep-agents-的技术全景)说明了创建时如何装配能力。调用 `agent.invoke()` 后，执行的是一个**模型—工具循环**：模型收到当前上下文，决定调用工具还是直接回答；工具执行结果返回上下文，再交给模型决定下一步。
+
+![Deep Agent 核心执行循环：用户消息进入模型，模型选择工具时经过工具中间件执行并写回结果，随后再次调用模型；没有工具调用时输出最终回答；模型中间件负责上下文处理，审批中断按配置暂停并恢复](../public/imgs/05-flowchart-agent-loop.svg)
+
+[打开原尺寸 SVG 执行循环图](https://datawhalechina.github.io/deepagents-in-action/imgs/05-flowchart-agent-loop.svg)，可放大查看循环路径。
+
+Middleware 让这个循环具备 Harness 能力：模型调用前可以整理上下文、注入技能索引或记忆内容，工具执行阶段可以检查权限、等待审批，或处理大体积结果。技能正文仍由模型按需通过 `read_file` 读取。不同 Middleware 使用不同 hooks，图中的能力框表示介入位置，不表示每轮都执行全部操作。具体 hooks 见 [LangChain Middleware Overview](https://docs.langchain.com/oss/python/langchain/middleware/overview)。
+
+文件读写、计划维护和子任务委派，都是这个循环里可选择的工具动作。例如：
+
+- 模型选择 `internet_search`，执行的是应用注册的搜索工具。
+- 模型选择 `read_file`，执行的是内置文件工具，通过 Backend 读取内容。
+- 模型选择 `task`，主 Agent 将任务交给子 Agent；子 Agent 使用独立上下文运行，再把结果返回主 Agent。
+- 如果配置了人工审批，相关工具调用可以暂停；应用提交审批决定后，从中断处继续执行。完整流程见[第 9 章](../ch09-human-in-the-loop/)。
+
+正常完成时，模型不再请求工具调用，生成最终回复。如果发生异常或达到运行限制，也可能提前结束；如果触发审批中断，则等待恢复。`invoke()` 不意味着底层只调用一次模型。
+
+### 研究任务中的一种可能路径
+
+以前面的研究助手为例，模型可能在循环中选择以下操作。这正是它作为 Harness 的价值所在——你只写了几行代码，但 Agent 背后的工作流程远比你看到的复杂：
 
 1. **规划任务** — 因为示例显式启用了 `TodoListMiddleware`，Agent 可以调用 `write_todos`，把“研究 LangGraph”拆解为多个子步骤
 2. **搜索信息** — 调用你提供的 `internet_search` 工具，执行多次网络搜索
@@ -292,7 +313,7 @@ print(result["messages"][-1].content)
 4. **委派子任务**（如需要）— 调用内置的 `task` 工具，将复杂子任务委派给专门的子 Agent
 5. **综合报告** — 从文件系统中读取整理好的信息，撰写最终报告
 
-这个过程中，Agent 可能调用了 10+ 次工具，但你只需要一次 `invoke()` 调用。
+这个过程中，Agent 可能调用了 10+ 次工具，但你只需要一次 `invoke()` 调用。实际顺序、调用次数和是否委派，取决于任务、模型决策及启用的能力；这是一种可能的任务路径。
 
 ![agent.invoke() 背后发生了什么？规划任务 → 搜索信息 → 管理上下文 → 委派子任务（如需要）→ 综合报告，你只写了 1 行调用，Agent 自动完成 10+ 次工具调用](../public/imgs/05-flowchart-agent-workflow.png)
 
