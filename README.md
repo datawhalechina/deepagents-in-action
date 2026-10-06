@@ -49,6 +49,8 @@
 
 ## 课程大纲
 
+**想先看 Deep Agents 的整体架构？** 第 1 章的[三层选择与组合](https://datawhalechina.github.io/deepagents-in-action/chapters/ch01-agent-harness/#三层如何选择与组合)解释 Deep Agents、LangChain 与 LangGraph 的分工；[整体架构图](https://datawhalechina.github.io/deepagents-in-action/chapters/ch01-agent-harness/#deep-agents-的技术全景)展示 Middleware、工具、Backend 和运行时的连接；第 2 章的[核心执行循环](https://datawhalechina.github.io/deepagents-in-action/chapters/ch02-quickstart/#核心执行循环)说明一次 `invoke()` 背后如何反复调用模型与工具。配合阅读官方博客 [Deep Agents vs LangChain vs LangGraph](https://www.langchain.com/blog/deep-agents-vs-langchain-vs-langgraph)。
+
 ### 推荐技能
 
 配合课程学习，推荐安装以下两个 AI 编码助手技能，在开发过程中获得框架级的专业指导：
