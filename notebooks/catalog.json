@@ -86,6 +86,18 @@
       "source_issue": 105
     },
     {
+      "id": "ch10-sandboxes",
+      "chapter_id": "ch10-sandboxes",
+      "title": "沙箱执行与输入、产物传输",
+      "path": "ch10/01-sandbox-execution-and-files.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [
+        "local-docker"
+      ],
+      "source_issue": 105
+    },
+    {
       "id": "ch14-streaming",
       "chapter_id": "ch14-streaming",
       "title": "Streaming v3 的委派、工具与订阅时机",
