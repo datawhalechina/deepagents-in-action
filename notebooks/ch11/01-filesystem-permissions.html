@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>24bf45e0675a</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>208916a35d23</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7849,6 +7849,10 @@ a.anchor-link {
 <td>敏感写入 interrupt</td>
 <td>审批前报告未改，approve 后才写入</td>
 </tr>
+<tr>
+<td>审批场景写错路径</td>
+<td>兜底拒绝，不产生审批，文件保持原样</td>
+</tr>
 </tbody>
 </table>
 <p>默认 offline 使用公共脚本模型安排工具请求；权限中间件、文件操作和审批恢复都真实执行。预设的结束回复不表示成功，下面用工具消息与实际文件核查结果。live 可以运行同一实验，但模型是否按要求调用工具需由实际结果验证。</p>
@@ -7868,6 +7872,9 @@ a.anchor-link {
 uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>course_notebooks.run<span class="w"> </span>ch11-filesystem-permissions
 </pre></div>
 <p>默认不需要模型 Key、Docker、数据库或 Agent Server。真实模型需按 README 配置根目录未提交的 <code>.env</code>，并在命令末尾添加 <code>--mode live</code>；交互式内核先执行 <code>import os</code>、设置 <code>os.environ["COURSE_MODE"] = "live"</code>，再顺序运行。live 可能产生模型费用，失败不会自动退回 offline。</p>
+<h3 id="%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">硅流真实模型（live）<a class="anchor-link" href="#%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">¶</a></h3><p><strong>待验证</strong>（2026-10-06 核对）：当前版本尚无整本 live 通过记录。真实模型复测曾在审批场景把目标路径写错，本节按复测结果补了兜底拒绝并收窄可见工具；暂不列出已验证型号，补验后再填写完整型号、日期、验证版本和记录链接。</p>
+<p>配置：在未提交的根目录 <code>.env</code> 中填写 <code>SILICONFLOW_API_KEY</code> 和完整 <code>MODEL_NAME</code>；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 <a href="../README.md#live-records">README 模型记录说明</a>。随附输出仍为 offline。</p>
+<p>范围与服务：模型提出读取、写入与审批请求；文件权限中间件、Backend 和审批恢复真实执行。教学文件在自动清理的临时目录内，无额外服务。</p>
 <ul>
 <li>**Backend（后端）**负责实际读写。本例使用 <code>FilesystemBackend(root_dir=..., virtual_mode=True)</code>，把 Agent 的虚拟路径映射到临时目录。</li>
 <li><strong>工具请求</strong>是模型提出的操作。<code>AIMessage.tool_calls</code> 记录工具名、参数与调用 ID；框架执行或拒绝后，用 <code>ToolMessage</code> 返回结果，<code>tool_call_id</code> 对应原请求。</li>
@@ -7899,6 +7906,7 @@ uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> <
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">deepagents</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilesystemPermission</span><span class="p">,</span> <span class="n">create_deep_agent</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">deepagents.backends</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilesystemBackend</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain.agents.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgentMiddleware</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIMessage</span><span class="p">,</span> <span class="n">ToolMessage</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">langgraph.checkpoint.memory</span><span class="w"> </span><span class="kn">import</span> <span class="n">InMemorySaver</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">langgraph.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">Command</span>
@@ -8005,6 +8013,7 @@ langchain-openai==1.6.7
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="%E7%94%A8%E5%90%8C%E4%B8%80%E5%A5%97%E8%BF%90%E8%A1%8C%E6%AD%A5%E9%AA%A4%E6%AF%94%E8%BE%83%E8%A7%84%E5%88%99">用同一套运行步骤比较规则<a class="anchor-link" href="#%E7%94%A8%E5%90%8C%E4%B8%80%E5%A5%97%E8%BF%90%E8%A1%8C%E6%AD%A5%E9%AA%A4%E6%AF%94%E8%BE%83%E8%A7%84%E5%88%99">¶</a></h3><p><code>make_agent()</code> 将模型、Backend 和权限组装成可执行的图（Graph），即模型提出请求、工具返回结果的循环。图中的节点负责具体步骤，例如调用模型或执行工具。<code>invoke()</code> 启动这个循环，返回的 <code>result["messages"]</code> 是 Agent State（运行数据）中的消息历史。</p>
+<p><code>LimitVisibleTools</code> 是本章用来收窄“模型可见工具”的小中间件：它不改变权限判断，只减少模型能选用的工具，让场景要求不只靠提示词约束。</p>
 <p>每个实验创建新模型。offline 响应列表按 <code>calls</code> 依次提出请求，最后给出结束回复；它不会理解权限或根据错误调整任务。live 使用公共 <code>create_model()</code> 的模型配置，收到同样的工具名、参数和顺序要求。</p>
 </div>
 </div>
@@ -8017,7 +8026,19 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">make_agent</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">rules</span><span class="p">,</span> <span class="n">calls</span><span class="p">,</span> <span class="n">checkpointer</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">LimitVisibleTools</span><span class="p">(</span><span class="n">AgentMiddleware</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""按场景收窄模型可见工具，让本场景的要求不只靠提示词约束。"""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">allowed</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allowed</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">allowed</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrap_model_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="n">kept</span> <span class="o">=</span> <span class="p">[</span><span class="n">tool</span> <span class="k">for</span> <span class="n">tool</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">tools</span> <span class="k">if</span> <span class="n">tool</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">allowed</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">handler</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">override</span><span class="p">(</span><span class="n">tools</span><span class="o">=</span><span class="n">kept</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">make_agent</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">rules</span><span class="p">,</span> <span class="n">calls</span><span class="p">,</span> <span class="n">checkpointer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tool_names</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="n">responses</span> <span class="o">=</span> <span class="p">[</span><span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">tool_calls</span><span class="o">=</span><span class="p">[</span><span class="n">call</span><span class="p">])</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">]</span>
     <span class="n">responses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"本轮结束；请核对工具结果和实际文件。"</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">create_deep_agent</span><span class="p">(</span>
@@ -8025,6 +8046,7 @@ langchain-openai==1.6.7
         <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span>
         <span class="n">permissions</span><span class="o">=</span><span class="n">rules</span><span class="p">,</span>
         <span class="n">checkpointer</span><span class="o">=</span><span class="n">checkpointer</span><span class="p">,</span>
+        <span class="n">middleware</span><span class="o">=</span><span class="p">[]</span> <span class="k">if</span> <span class="n">tool_names</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[</span><span class="n">LimitVisibleTools</span><span class="p">(</span><span class="n">tool_names</span><span class="p">)],</span>
         <span class="n">system_prompt</span><span class="o">=</span><span class="p">(</span>
             <span class="s2">"仅按用户给出的顺序调用指定工具，参数原样保留。"</span>
             <span class="s2">"不委派、不规划、不调用其他工具。遇到拒绝不要绕过或重试；"</span>
@@ -8448,11 +8470,12 @@ Error: permission denied for read on /workspace/private.txt
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p>拒绝结果不包含私有文件正文；错误顺序下，真实返回中能读到它。规则需要按“具体保护路径 → 业务放行目录 → 全局兜底”组织。这些检查证明的是本次工具调用的边界，不是对模型推理质量的评价。</p>
-<h2 id="6.-interrupt%EF%BC%9A%E5%85%88%E6%9A%82%E5%81%9C%EF%BC%8C%E6%89%B9%E5%87%86%E5%90%8E%E5%86%99%E5%85%A5">6. interrupt：先暂停，批准后写入<a class="anchor-link" href="#6.-interrupt%EF%BC%9A%E5%85%88%E6%9A%82%E5%81%9C%EF%BC%8C%E6%89%B9%E5%87%86%E5%90%8E%E5%86%99%E5%85%A5">¶</a></h2><p>对 <code>/review/**</code> 的写入使用 <code>mode="interrupt"</code>。框架会根据权限规则配置工具审批，本例不另写 <code>interrupt_on</code>。</p>
+<h2 id="6.-interrupt%EF%BC%9A%E5%85%88%E6%9A%82%E5%81%9C%EF%BC%8C%E6%89%B9%E5%87%86%E5%90%8E%E5%86%99%E5%85%A5">6. interrupt：先暂停，批准后写入<a class="anchor-link" href="#6.-interrupt%EF%BC%9A%E5%85%88%E6%9A%82%E5%81%9C%EF%BC%8C%E6%89%B9%E5%87%86%E5%90%8E%E5%86%99%E5%85%A5">¶</a></h2><p>对 <code>/review/**</code> 的写入使用 <code>mode="interrupt"</code>；再补一条全局 <code>deny</code> 兜底，其余路径的写入直接拒绝。这样即使模型写错路径，也不能未经审批成功。框架会根据权限规则配置工具审批，本例不另写 <code>interrupt_on</code>。</p>
+<p>本场景还用 <code>LimitVisibleTools</code> 把模型可见工具收窄为 <code>write_file</code>，让“只写这份报告”不只靠提示词约束；每次工具调用前，权限规则仍由框架实际检查。</p>
 <p><code>InMemorySaver</code> 是内存 Checkpointer，用于保存 Agent 的状态与待恢复执行进度。<code>thread_id</code> 标识这条会话；恢复必须使用相同配置。</p>
 <p>本例指定 <code>version="v2"</code> 选择返回格式：<code>paused.value</code> 是 State，<code>paused.interrupts</code> 是中断列表。</p>
 <p>Checkpointer 不会保存暂停在某一行的 Python 调用栈；恢复时会重新进入被中断的节点。如果这个节点中还有发送请求等操作，需要避免重复执行带来的影响。</p>
-<p>下一格在同一临时目录生命周期内完成暂停与批准：先检查待审批动作、实际文件未变、尚无写入 ToolMessage；按有限换行容差确认它符合任务后，先用 <code>deepcopy</code> 保存实际 <code>action_requests</code> 和调用 ID，再用 <code>Command(resume=...)</code> 提交 approve。恢复后按实际批准请求严格核对工具关联和参数，最终文件必须与实际批准的 <code>content</code> 逐字相同；这里不能再用预设的 <code>WRITE_REVIEW</code> 正文代替批准内容。<code>get_state(config)</code> 读取已保存的快照，<code>next</code> 表示还有待继续执行的节点。更完整的决策与恢复说明见<a href="../../content/ch09-human-in-the-loop.md">第 9 章正文</a>。</p>
+<p>下一格在同一临时目录生命周期内完成暂停与批准：先打印模型实际发出的工具请求、实际工具返回和当前文件内容，再看有没有产生审批。确有待审批动作后，检查实际文件未变、尚无写入 ToolMessage；按有限换行容差确认它符合任务后，先用 <code>deepcopy</code> 保存实际 <code>action_requests</code> 和调用 ID，再用 <code>Command(resume=...)</code> 提交 approve。恢复后按实际批准请求严格核对工具关联和参数，最终文件必须与实际批准的 <code>content</code> 逐字相同；这里不能再用预设的 <code>WRITE_REVIEW</code> 正文代替批准内容。<code>get_state(config)</code> 读取已保存的快照，<code>next</code> 表示还有待继续执行的节点。更完整的决策与恢复说明见<a href="../../content/ch09-human-in-the-loop.md">第 9 章正文</a>。</p>
 </div>
 </div>
 </div>
@@ -8464,18 +8487,33 @@ Error: permission denied for read on /workspace/private.txt
 <div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">REVIEW_RULES</span> <span class="o">=</span> <span class="p">[</span><span class="n">FilesystemPermission</span><span class="p">(</span>
-    <span class="n">operations</span><span class="o">=</span><span class="p">[</span><span class="s2">"write"</span><span class="p">],</span> <span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="s2">"/review/**"</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"interrupt"</span><span class="p">,</span>
-<span class="p">)]</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">REVIEW_RULES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">FilesystemPermission</span><span class="p">(</span><span class="n">operations</span><span class="o">=</span><span class="p">[</span><span class="s2">"write"</span><span class="p">],</span> <span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="s2">"/review/**"</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"interrupt"</span><span class="p">),</span>
+    <span class="c1"># 兜底：其余写入直接拒绝，模型写错路径也不能绕过审批。</span>
+    <span class="n">FilesystemPermission</span><span class="p">(</span><span class="n">operations</span><span class="o">=</span><span class="p">[</span><span class="s2">"write"</span><span class="p">],</span> <span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="s2">"/**"</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"deny"</span><span class="p">),</span>
+<span class="p">]</span>
 <span class="k">with</span> <span class="n">TemporaryDirectory</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">"course-ch11-review-"</span><span class="p">)</span> <span class="k">as</span> <span class="n">folder</span><span class="p">:</span>
     <span class="n">review_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
     <span class="n">report_path</span> <span class="o">=</span> <span class="n">review_root</span> <span class="o">/</span> <span class="s2">"review"</span> <span class="o">/</span> <span class="s2">"report.txt"</span>
     <span class="n">report_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
     <span class="n">report_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">SEED</span><span class="p">[</span><span class="s2">"/review/report.txt"</span><span class="p">],</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
     <span class="n">review_backend</span> <span class="o">=</span> <span class="n">FilesystemBackend</span><span class="p">(</span><span class="n">root_dir</span><span class="o">=</span><span class="n">review_root</span><span class="p">,</span> <span class="n">virtual_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">reviewer</span> <span class="o">=</span> <span class="n">make_agent</span><span class="p">(</span><span class="n">review_backend</span><span class="p">,</span> <span class="n">REVIEW_RULES</span><span class="p">,</span> <span class="p">[</span><span class="n">WRITE_REVIEW</span><span class="p">],</span> <span class="n">InMemorySaver</span><span class="p">())</span>
+    <span class="n">reviewer</span> <span class="o">=</span> <span class="n">make_agent</span><span class="p">(</span><span class="n">review_backend</span><span class="p">,</span> <span class="n">REVIEW_RULES</span><span class="p">,</span> <span class="p">[</span><span class="n">WRITE_REVIEW</span><span class="p">],</span> <span class="n">InMemorySaver</span><span class="p">(),</span>
+                          <span class="n">tool_names</span><span class="o">=</span><span class="p">{</span><span class="s2">"write_file"</span><span class="p">})</span>
     <span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"configurable"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"thread_id"</span><span class="p">:</span> <span class="s2">"ch11-review"</span><span class="p">},</span> <span class="s2">"recursion_limit"</span><span class="p">:</span> <span class="mi">24</span><span class="p">}</span>
     <span class="n">paused</span> <span class="o">=</span> <span class="n">reviewer</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">task_input</span><span class="p">([</span><span class="n">WRITE_REVIEW</span><span class="p">]),</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">)</span>
+    <span class="c1"># 先展示实际请求、工具返回和文件状态，再判断有没有产生审批。</span>
+    <span class="n">show_text</span><span class="p">(</span><span class="s2">"审批前实际 AI 工具请求："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+        <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span>
+         <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">requested_calls</span><span class="p">(</span><span class="n">paused</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">])],</span>
+        <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">))</span>
+    <span class="n">show_text</span><span class="p">(</span><span class="s2">"审批前实际工具返回："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+        <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s2">"status"</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">text</span><span class="p">}</span>
+         <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">paused</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)],</span>
+        <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">))</span>
+    <span class="n">show_text</span><span class="p">(</span><span class="s2">"审批前实际文件："</span><span class="p">,</span> <span class="n">report_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">))</span>
     <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">paused</span><span class="o">.</span><span class="n">interrupts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"应出现一组权限审批中断"</span>
     <span class="n">payload</span> <span class="o">=</span> <span class="n">paused</span><span class="o">.</span><span class="n">interrupts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
     <span class="n">expected_action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">WRITE_REVIEW</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">WRITE_REVIEW</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span>
@@ -8494,7 +8532,6 @@ Error: permission denied for read on /workspace/private.txt
     <span class="k">assert</span> <span class="n">requested_calls</span><span class="p">(</span><span class="n">snapshot</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">])</span> <span class="o">==</span> <span class="n">approved_calls</span>
     <span class="n">show_text</span><span class="p">(</span><span class="s2">"待审批动作："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">actions</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"已保存待恢复进度；审批前没有执行写入。"</span><span class="p">)</span>
-    <span class="n">show_text</span><span class="p">(</span><span class="s2">"审批前实际文件："</span><span class="p">,</span> <span class="n">report_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">))</span>
 
     <span class="n">resumed</span> <span class="o">=</span> <span class="n">reviewer</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
         <span class="n">Command</span><span class="p">(</span><span class="n">resume</span><span class="o">=</span><span class="p">{</span><span class="s2">"decisions"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"approve"</span><span class="p">}]}),</span>
@@ -8524,7 +8561,24 @@ Error: permission denied for read on /workspace/private.txt
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>任务预期与实际请求：无差异。
+<pre>
+审批前实际 AI 工具请求：
+[
+  {
+    "name": "write_file",
+    "args": {
+      "file_path": "/review/report.txt",
+      "content": "经人工确认的新报告\n"
+    }
+  }
+]
+
+审批前实际工具返回：
+[]
+
+审批前实际文件：
+尚未发布的旧报告
+任务预期与实际请求：无差异。
 
 待审批动作：
 [
@@ -8537,9 +8591,6 @@ Error: permission denied for read on /workspace/private.txt
   }
 ]
 已保存待恢复进度；审批前没有执行写入。
-
-审批前实际文件：
-尚未发布的旧报告
 任务预期与实际请求：无差异。
 请求工具： write_file
 
@@ -8556,6 +8607,67 @@ Updated file /review/report.txt
 批准后实际文件：
 经人工确认的新报告
 审批实验目录已清理。
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ch11-review-extra-1">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%E5%85%9C%E5%BA%95%E8%A7%84%E5%88%99%E5%9B%9E%E5%BD%92%EF%BC%9A%E5%86%99%E9%94%99%E8%B7%AF%E5%BE%84">兜底规则回归：写错路径<a class="anchor-link" href="#%E5%85%9C%E5%BA%95%E8%A7%84%E5%88%99%E5%9B%9E%E5%BD%92%EF%BC%9A%E5%86%99%E9%94%99%E8%B7%AF%E5%BE%84">¶</a></h3><p>真实模型复测时曾把 <code>/review/report.txt</code> 写成 <code>/report/report.txt</code>。如果只有 <code>/review/**</code> 的 interrupt 规则，这个错误路径不匹配任何规则，按“未匹配默认允许”执行，报告就在没有审批的情况下被改写。</p>
+<p>下一格用同一套真实权限中间件与 <code>FilesystemBackend</code> 运行这个错误路径：写入必须返回权限错误，全部教学文件与 <code>SEED</code> 逐字相同，也不会产生审批。模型故意写错路径，我们不替它改成目标路径。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch11-review-fallback" id="cell-id=ch11-review-extra-2">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [10]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">WRONG_REVIEW</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">WRITE_REVIEW</span><span class="p">)</span>
+<span class="n">WRONG_REVIEW</span><span class="p">[</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"file_path"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"/report/report.txt"</span>
+<span class="n">WRONG_REVIEW</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"write-wrong-report"</span>
+<span class="n">wrong_case</span> <span class="o">=</span> <span class="n">run_case</span><span class="p">(</span><span class="s2">"审批场景写错路径"</span><span class="p">,</span> <span class="n">REVIEW_RULES</span><span class="p">,</span> <span class="p">[</span><span class="n">WRONG_REVIEW</span><span class="p">])</span>
+<span class="k">assert</span> <span class="n">wrong_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"error"</span>
+<span class="k">assert</span> <span class="s2">"permission denied"</span> <span class="ow">in</span> <span class="n">wrong_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+<span class="k">assert</span> <span class="n">wrong_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">]</span> <span class="o">==</span> <span class="n">SEED</span><span class="p">,</span> <span class="s2">"未获批准的写入改变了文件"</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"写错路径已被兜底拒绝；没有写入，也没有产生审批。"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>
+=== 审批场景写错路径 ===
+任务预期与实际请求：无差异。
+请求工具： write_file
+
+参数：
+{
+  "file_path": "/report/report.txt",
+  "content": "经人工确认的新报告\n"
+}
+调用 ID： write-wrong-report 状态： error
+
+实际返回：
+Error: permission denied for write on /report/report.txt
+教学目录已清理；文件内容副本留在 files 中。
+写错路径已被兜底拒绝；没有写入，也没有产生审批。
 </pre>
 </div>
 </div>

@@ -21,11 +21,14 @@ def chapter(monkeypatch):
     # These cells define rules used by later experiments, without running cases.
     for tag in ("ch11-default-allow", "ch11-private"):
         exec(cells[tag].split("\nallow_only_case =", 1)[0].split("\nprotected_case =", 1)[0], namespace)
+    # The approval cell defines its rules before entering the temporary directory.
+    exec(cells["ch11-review"].split("\nwith TemporaryDirectory", 1)[0], namespace)
     return namespace, cells
 
 
 @pytest.mark.parametrize("tag", [
     "ch11-readonly", "ch11-default-allow", "ch11-order", "ch11-private", "ch11-review",
+    "ch11-review-fallback",
 ])
 def test_notebook_checks_real_results_and_file_effects(chapter, tag):
     namespace, cells = chapter
@@ -55,6 +58,53 @@ def test_optional_single_newline_does_not_change_permission_or_approved_content(
         assert approved != namespace["WRITE_REVIEW"]["args"]["content"]
     elif tag == "ch11-readonly":
         assert namespace["readonly_case"]["files"] == namespace["SEED"]
+
+
+def test_review_fallback_denies_wrong_path_with_real_permissions(chapter):
+    """审批场景的兜底 deny 必须让写错路径失败，且不产生审批或写入。"""
+    namespace, _ = chapter
+    assert [rule.mode for rule in namespace["REVIEW_RULES"]] == ["interrupt", "deny"]
+    wrong = deepcopy(namespace["WRITE_REVIEW"])
+    wrong["args"]["file_path"] = "/report/report.txt"
+    wrong["id"] = "write-wrong-review"
+    case = namespace["run_case"]("写错路径", namespace["REVIEW_RULES"], [wrong])
+    assert case["replies"][0].status == "error"
+    assert "permission denied" in case["replies"][0].text
+    assert case["files"] == namespace["SEED"]
+    assert case["calls"][0]["args"]["file_path"] == "/report/report.txt"
+
+
+def test_review_narrows_visible_tools_to_write_file(chapter):
+    """审批场景只向模型暴露 write_file，避免只靠提示词约束目标路径。"""
+    namespace, _ = chapter
+    bound = []
+
+    class RecordingModel(namespace["ScriptedChatModel"]):
+        def bind_tools(self, tools, **kwargs):
+            bound.append(tuple(
+                tool["function"]["name"] if isinstance(tool, dict) else tool.name
+                for tool in tools
+            ))
+            return super().bind_tools(tools, **kwargs)
+
+    namespace["create_model"] = lambda scripted: RecordingModel(responses=scripted.responses)
+    with namespace["TemporaryDirectory"]() as folder:
+        root = namespace["Path"](folder)
+        (root / "review").mkdir()
+        (root / "review/report.txt").write_text(
+            namespace["SEED"]["/review/report.txt"], encoding="utf-8",
+        )
+        backend = namespace["FilesystemBackend"](root_dir=root, virtual_mode=True)
+        agent = namespace["make_agent"](
+            backend, namespace["REVIEW_RULES"], [namespace["WRITE_REVIEW"]],
+            tool_names={"write_file"},
+        )
+        paused = agent.invoke(
+            namespace["task_input"]([namespace["WRITE_REVIEW"]]),
+            config={"recursion_limit": 24}, version="v2",
+        )
+    assert bound and all(names == ("write_file",) for names in bound)
+    assert len(paused.interrupts) == 1
 
 
 def test_task_tolerance_does_not_rewrite_request_or_relax_actual_approval(chapter):

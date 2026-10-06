@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`24bf45e0675a`。
+> 本次执行模式：**offline**。源码指纹：`208916a35d23`。
 
 # 第 11 章实验：允许写工作区，为什么还会写到别处？
 
@@ -14,6 +14,7 @@
 | 交换规则顺序 | 全局 deny 先命中，工作区也不能写 |
 | 先保护私有文件 | 私有文件读取失败；把目录 allow 放在前面则会暴露它 |
 | 敏感写入 interrupt | 审批前报告未改，approve 后才写入 |
+| 审批场景写错路径 | 兜底拒绝，不产生审批，文件保持原样 |
 
 默认 offline 使用公共脚本模型安排工具请求；权限中间件、文件操作和审批恢复都真实执行。预设的结束回复不表示成功，下面用工具消息与实际文件核查结果。live 可以运行同一实验，但模型是否按要求调用工具需由实际结果验证。
 
@@ -29,6 +30,14 @@ uv run --project notebooks --locked python -m course_notebooks.run ch11-filesyst
 ```
 
 默认不需要模型 Key、Docker、数据库或 Agent Server。真实模型需按 README 配置根目录未提交的 `.env`，并在命令末尾添加 `--mode live`；交互式内核先执行 `import os`、设置 `os.environ["COURSE_MODE"] = "live"`，再顺序运行。live 可能产生模型费用，失败不会自动退回 offline。
+
+### 硅流真实模型（live）
+
+**待验证**（2026-10-06 核对）：当前版本尚无整本 live 通过记录。真实模型复测曾在审批场景把目标路径写错，本节按复测结果补了兜底拒绝并收窄可见工具；暂不列出已验证型号，补验后再填写完整型号、日期、验证版本和记录链接。
+
+配置：在未提交的根目录 `.env` 中填写 `SILICONFLOW_API_KEY` 和完整 `MODEL_NAME`；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 [README 模型记录说明](../README.md#live-records)。随附输出仍为 offline。
+
+范围与服务：模型提出读取、写入与审批请求；文件权限中间件、Backend 和审批恢复真实执行。教学文件在自动清理的临时目录内，无额外服务。
 
 - **Backend（后端）**负责实际读写。本例使用 `FilesystemBackend(root_dir=..., virtual_mode=True)`，把 Agent 的虚拟路径映射到临时目录。
 - **工具请求**是模型提出的操作。`AIMessage.tool_calls` 记录工具名、参数与调用 ID；框架执行或拒绝后，用 `ToolMessage` 返回结果，`tool_call_id` 对应原请求。
@@ -53,6 +62,7 @@ from tempfile import TemporaryDirectory
 
 from deepagents import FilesystemPermission, create_deep_agent
 from deepagents.backends import FilesystemBackend
+from langchain.agents.middleware import AgentMiddleware
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
@@ -117,11 +127,25 @@ show_text("初始教学文件：", json.dumps(SEED, ensure_ascii=False, indent=2
 
 `make_agent()` 将模型、Backend 和权限组装成可执行的图（Graph），即模型提出请求、工具返回结果的循环。图中的节点负责具体步骤，例如调用模型或执行工具。`invoke()` 启动这个循环，返回的 `result["messages"]` 是 Agent State（运行数据）中的消息历史。
 
+`LimitVisibleTools` 是本章用来收窄“模型可见工具”的小中间件：它不改变权限判断，只减少模型能选用的工具，让场景要求不只靠提示词约束。
+
 每个实验创建新模型。offline 响应列表按 `calls` 依次提出请求，最后给出结束回复；它不会理解权限或根据错误调整任务。live 使用公共 `create_model()` 的模型配置，收到同样的工具名、参数和顺序要求。
 
 
 ```python
-def make_agent(backend, rules, calls, checkpointer=None):
+class LimitVisibleTools(AgentMiddleware):
+    """按场景收窄模型可见工具，让本场景的要求不只靠提示词约束。"""
+
+    def __init__(self, allowed):
+        super().__init__()
+        self.allowed = tuple(allowed)
+
+    def wrap_model_call(self, request, handler):
+        kept = [tool for tool in request.tools if tool.name in self.allowed]
+        return handler(request.override(tools=kept))
+
+
+def make_agent(backend, rules, calls, checkpointer=None, tool_names=None):
     responses = [AIMessage(content="", tool_calls=[call]) for call in calls]
     responses.append(AIMessage(content="本轮结束；请核对工具结果和实际文件。"))
     return create_deep_agent(
@@ -129,6 +153,7 @@ def make_agent(backend, rules, calls, checkpointer=None):
         backend=backend,
         permissions=rules,
         checkpointer=checkpointer,
+        middleware=[] if tool_names is None else [LimitVisibleTools(tool_names)],
         system_prompt=(
             "仅按用户给出的顺序调用指定工具，参数原样保留。"
             "不委派、不规划、不调用其他工具。遇到拒绝不要绕过或重试；"
@@ -141,6 +166,7 @@ def task_input(calls):
     tasks = [{"name": call["name"], "args": call["args"]} for call in calls]
     return {"messages": [("user", "依次请求以下工具：\n" +
                           json.dumps(tasks, ensure_ascii=False, indent=2))]}
+
 ```
 
 `check_calls()` 从模型消息中提取实际请求，先输出预期与实际的差异，再核对任务匹配和结果关联。仅 `WRITE_NOTES`、`WRITE_OUTSIDE`、`WRITE_REVIEW` 明确指定的教学 `content` 允许有或没有一个末尾 `\n`；正文其他差异、工具名、路径、其他参数和调用顺序仍严格比较。不使用全局 `.strip()`，也不改写实际请求。随后各实验独立核对读取/拒绝状态、错误内容和真实文件效果。嵌套推导式先遍历模型消息，再取出各条消息中的工具调用；`zip()` 将请求与结果逐项配对。
@@ -426,7 +452,9 @@ print("同一个文件，仅改变规则顺序，读取结果就发生了变化�
 
 ## 6. interrupt：先暂停，批准后写入
 
-对 `/review/**` 的写入使用 `mode="interrupt"`。框架会根据权限规则配置工具审批，本例不另写 `interrupt_on`。
+对 `/review/**` 的写入使用 `mode="interrupt"`；再补一条全局 `deny` 兜底，其余路径的写入直接拒绝。这样即使模型写错路径，也不能未经审批成功。框架会根据权限规则配置工具审批，本例不另写 `interrupt_on`。
+
+本场景还用 `LimitVisibleTools` 把模型可见工具收窄为 `write_file`，让“只写这份报告”不只靠提示词约束；每次工具调用前，权限规则仍由框架实际检查。
 
 `InMemorySaver` 是内存 Checkpointer，用于保存 Agent 的状态与待恢复执行进度。`thread_id` 标识这条会话；恢复必须使用相同配置。
 
@@ -434,22 +462,38 @@ print("同一个文件，仅改变规则顺序，读取结果就发生了变化�
 
 Checkpointer 不会保存暂停在某一行的 Python 调用栈；恢复时会重新进入被中断的节点。如果这个节点中还有发送请求等操作，需要避免重复执行带来的影响。
 
-下一格在同一临时目录生命周期内完成暂停与批准：先检查待审批动作、实际文件未变、尚无写入 ToolMessage；按有限换行容差确认它符合任务后，先用 `deepcopy` 保存实际 `action_requests` 和调用 ID，再用 `Command(resume=...)` 提交 approve。恢复后按实际批准请求严格核对工具关联和参数，最终文件必须与实际批准的 `content` 逐字相同；这里不能再用预设的 `WRITE_REVIEW` 正文代替批准内容。`get_state(config)` 读取已保存的快照，`next` 表示还有待继续执行的节点。更完整的决策与恢复说明见[第 9 章正文](../../content/ch09-human-in-the-loop.md)。
+下一格在同一临时目录生命周期内完成暂停与批准：先打印模型实际发出的工具请求、实际工具返回和当前文件内容，再看有没有产生审批。确有待审批动作后，检查实际文件未变、尚无写入 ToolMessage；按有限换行容差确认它符合任务后，先用 `deepcopy` 保存实际 `action_requests` 和调用 ID，再用 `Command(resume=...)` 提交 approve。恢复后按实际批准请求严格核对工具关联和参数，最终文件必须与实际批准的 `content` 逐字相同；这里不能再用预设的 `WRITE_REVIEW` 正文代替批准内容。`get_state(config)` 读取已保存的快照，`next` 表示还有待继续执行的节点。更完整的决策与恢复说明见[第 9 章正文](../../content/ch09-human-in-the-loop.md)。
+
 
 
 ```python
-REVIEW_RULES = [FilesystemPermission(
-    operations=["write"], paths=["/review/**"], mode="interrupt",
-)]
+REVIEW_RULES = [
+    FilesystemPermission(operations=["write"], paths=["/review/**"], mode="interrupt"),
+    # 兜底：其余写入直接拒绝，模型写错路径也不能绕过审批。
+    FilesystemPermission(operations=["write"], paths=["/**"], mode="deny"),
+]
 with TemporaryDirectory(prefix="course-ch11-review-") as folder:
     review_root = Path(folder)
     report_path = review_root / "review" / "report.txt"
     report_path.parent.mkdir()
     report_path.write_text(SEED["/review/report.txt"], encoding="utf-8")
     review_backend = FilesystemBackend(root_dir=review_root, virtual_mode=True)
-    reviewer = make_agent(review_backend, REVIEW_RULES, [WRITE_REVIEW], InMemorySaver())
+    reviewer = make_agent(review_backend, REVIEW_RULES, [WRITE_REVIEW], InMemorySaver(),
+                          tool_names={"write_file"})
     config = {"configurable": {"thread_id": "ch11-review"}, "recursion_limit": 24}
     paused = reviewer.invoke(task_input([WRITE_REVIEW]), config=config, version="v2")
+    # 先展示实际请求、工具返回和文件状态，再判断有没有产生审批。
+    show_text("审批前实际 AI 工具请求：", json.dumps(
+        [{"name": c["name"], "args": c["args"]}
+         for c in requested_calls(paused.value["messages"])],
+        ensure_ascii=False, indent=2,
+    ))
+    show_text("审批前实际工具返回：", json.dumps(
+        [{"name": m.name, "status": m.status, "text": m.text}
+         for m in paused.value["messages"] if isinstance(m, ToolMessage)],
+        ensure_ascii=False, indent=2,
+    ))
+    show_text("审批前实际文件：", report_path.read_text(encoding="utf-8"))
     assert len(paused.interrupts) == 1, "应出现一组权限审批中断"
     payload = paused.interrupts[0].value
     expected_action = {"name": WRITE_REVIEW["name"], "args": WRITE_REVIEW["args"]}
@@ -468,7 +512,6 @@ with TemporaryDirectory(prefix="course-ch11-review-") as folder:
     assert requested_calls(snapshot.values["messages"]) == approved_calls
     show_text("待审批动作：", json.dumps(actions, ensure_ascii=False, indent=2))
     print("已保存待恢复进度；审批前没有执行写入。")
-    show_text("审批前实际文件：", report_path.read_text(encoding="utf-8"))
 
     resumed = reviewer.invoke(
         Command(resume={"decisions": [{"type": "approve"}]}),
@@ -486,8 +529,26 @@ with TemporaryDirectory(prefix="course-ch11-review-") as folder:
 
 assert not review_root.exists(), "审批实验留下了教学目录"
 print("审批实验目录已清理。")
+
 ```
 
+    
+    审批前实际 AI 工具请求：
+    [
+      {
+        "name": "write_file",
+        "args": {
+          "file_path": "/review/report.txt",
+          "content": "经人工确认的新报告\n"
+        }
+      }
+    ]
+    
+    审批前实际工具返回：
+    []
+    
+    审批前实际文件：
+    尚未发布的旧报告
     任务预期与实际请求：无差异。
     
     待审批动作：
@@ -501,9 +562,6 @@ print("审批实验目录已清理。")
       }
     ]
     已保存待恢复进度；审批前没有执行写入。
-    
-    审批前实际文件：
-    尚未发布的旧报告
     任务预期与实际请求：无差异。
     请求工具： write_file
     
@@ -520,6 +578,44 @@ print("审批实验目录已清理。")
     批准后实际文件：
     经人工确认的新报告
     审批实验目录已清理。
+
+
+### 兜底规则回归：写错路径
+
+真实模型复测时曾把 `/review/report.txt` 写成 `/report/report.txt`。如果只有 `/review/**` 的 interrupt 规则，这个错误路径不匹配任何规则，按“未匹配默认允许”执行，报告就在没有审批的情况下被改写。
+
+下一格用同一套真实权限中间件与 `FilesystemBackend` 运行这个错误路径：写入必须返回权限错误，全部教学文件与 `SEED` 逐字相同，也不会产生审批。模型故意写错路径，我们不替它改成目标路径。
+
+
+
+```python
+WRONG_REVIEW = deepcopy(WRITE_REVIEW)
+WRONG_REVIEW["args"]["file_path"] = "/report/report.txt"
+WRONG_REVIEW["id"] = "write-wrong-report"
+wrong_case = run_case("审批场景写错路径", REVIEW_RULES, [WRONG_REVIEW])
+assert wrong_case["replies"][0].status == "error"
+assert "permission denied" in wrong_case["replies"][0].text
+assert wrong_case["files"] == SEED, "未获批准的写入改变了文件"
+print("写错路径已被兜底拒绝；没有写入，也没有产生审批。")
+
+```
+
+    
+    === 审批场景写错路径 ===
+    任务预期与实际请求：无差异。
+    请求工具： write_file
+    
+    参数：
+    {
+      "file_path": "/report/report.txt",
+      "content": "经人工确认的新报告\n"
+    }
+    调用 ID： write-wrong-report 状态： error
+    
+    实际返回：
+    Error: permission denied for write on /report/report.txt
+    教学目录已清理；文件内容副本留在 files 中。
+    写错路径已被兜底拒绝；没有写入，也没有产生审批。
 
 
 审批前看到旧报告与待审批写入，没有工具执行结果；approve 后出现关联到实际调用 ID 的成功结果，文件逐字等于实际批准的正文（包括其是否带末尾换行）。这里是 Notebook 代码代表审查方批准，没有图形审批界面。Checkpointer 使用内存，进程退出后存档不再保留；临时文件目录已经删除。
