@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`c4587349f0fd`。
+> 本次执行模式：**offline**。源码指纹：`1969d8d57bf8`。
 
 # 第 8 章 Notebook：跨线程记忆与文件隔离
 
@@ -26,13 +26,15 @@ uv run --project notebooks --locked python -m course_notebooks.run ch08-long-ter
 | `InMemorySaver` / Checkpointer | 以 `thread_id` 为键保存 State 快照 | 回到旧线程时恢复草稿 |
 | `InMemoryStore` + `StoreBackend` | 以 namespace、key 保存共享文件 | 同一用户的新线程读到偏好 |
 
-它们都只在这个 Python 进程的内存中。**跨线程可见不等于重启后还在**；生产环境需要持久化的 Store 与 Checkpointer。`/memories/preferences.md`、`/workspace/draft.txt` 是 Agent 虚拟路径，不是电脑磁盘路径。
+它们都只在这个 Python 进程的内存中。**跨线程可见不等于重启后还在**；生产环境需要持久化的 Store 与 Checkpointer。`/memories/preferences.json`、`/workspace/draft.txt` 是 Agent 虚拟路径，不是电脑磁盘路径。
 
 `show_runtime()` 展示当前模式与依赖版本；`show_text()` 把工具输出折行。
 
 
 ```python
 from dataclasses import dataclass
+import json
+import re
 
 from course_notebooks.model_config import create_model
 from course_notebooks.nbtools import show_runtime, show_text
@@ -41,7 +43,7 @@ from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 from deepagents.backends.utils import create_file_data
 from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.store.memory import InMemoryStore
 
@@ -50,24 +52,27 @@ show_runtime()
 
     运行模式： offline （脚本模型）
     Python： 3.12.13 平台： Darwin arm64
-    deepagents==0.7.15
-    langchain==1.4.2
-    langgraph==1.2.11
-    langchain-openai==1.6.2
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
 
 
 ## 2. 先准备两个用户的记忆文件
 
-`StoreBackend` 的 `namespace` 用用户 ID 隔离数据。这里用两个固定教学用户 `alice` 和 `bob`。先预置文件，因为 `memory=[...]` 负责**读取已有文件**，不会为新用户自动创建文件。`create_file_data` 将文本转成 StoreBackend 期望的文件数据格式。
+`StoreBackend` 的 `namespace` 用用户 ID 隔离数据。这里用两个固定教学用户 `alice` 和 `bob`。Alice 先预置空 JSON 对象 `{}`；Bob 用同 schema 的另一对象：`comment_language="en"`、`variable_language="zh"`。Alice 保存后应为 `comment_language="zh"`、`variable_language="en"`。先预置文件，因为 `memory=[...]` 负责**读取已有文件**，不会为新用户自动创建文件。`create_file_data` 将文本转成 StoreBackend 期望的文件数据格式。
 
-`CompositeBackend` 根据路径选择后端：`/memories/` 走 Store，其余路径走 State。路由会去掉 `/memories/` 前缀，所以 Agent 看见的 `/memories/preferences.md` 在 Store 中对应 key `/preferences.md`。此处的用户 ID 来自我们传入的运行上下文；实际服务应由经过身份验证的入口提供，不能直接信任任意客户端填的 ID。
+`CompositeBackend` 根据路径选择后端：`/memories/` 走 Store，其余路径走 State。路由会去掉 `/memories/` 前缀，所以 Agent 看见的 `/memories/preferences.json` 在 Store 中对应 key `/preferences.json`。此处的用户 ID 来自我们传入的运行上下文；实际服务应由经过身份验证的入口提供，不能直接信任任意客户端填的 ID。
 
 
 ```python
-MEMORY_PATH = "/memories/preferences.md"
+MEMORY_PATH = "/memories/preferences.json"
 DRAFT_PATH = "/workspace/draft.txt"
-STORE_KEY = "/preferences.md"
-PREFERENCE = "代码注释用中文，变量名用英文。"
+STORE_KEY = "/preferences.json"
+EXPECTED_PREFERENCES = {"comment_language": "zh", "variable_language": "en"}
+BOB_PREFERENCES = {"comment_language": "en", "variable_language": "zh"}
+PREFERENCE_JSON = json.dumps(EXPECTED_PREFERENCES, ensure_ascii=False)
 DRAFT_TEXT = "仅本线程可见：草稿 42"
 
 @dataclass(frozen=True)
@@ -76,9 +81,9 @@ class UserContext:
 
 store = InMemoryStore()
 store.put(("alice", "memories"), STORE_KEY,
-          create_file_data("# 用户偏好\n暂无记录。\n"))
+          create_file_data("{}"))
 store.put(("bob", "memories"), STORE_KEY,
-          create_file_data("# 用户偏好\n回答尽量详细。\n"))
+          create_file_data(json.dumps(BOB_PREFERENCES)))
 
 backend = CompositeBackend(
     default=StateBackend(),
@@ -116,7 +121,7 @@ def scripted_reply(messages, tool_names):
     plans = {
         "保存": [("read_file", {"file_path": MEMORY_PATH}),
                ("edit_file", {"file_path": MEMORY_PATH,
-                              "old_string": "暂无记录。", "new_string": PREFERENCE}),
+                              "old_string": "{}", "new_string": PREFERENCE_JSON}),
                ("write_file", {"file_path": DRAFT_PATH, "content": DRAFT_TEXT})],
         "新线程": [("read_file", {"file_path": MEMORY_PATH}),
                    ("read_file", {"file_path": DRAFT_PATH})],
@@ -135,7 +140,7 @@ def scripted_reply(messages, tool_names):
 model = create_model(ScriptedChatModel(responder=scripted_reply))
 ```
 
-`memory=[MEMORY_PATH]` 会让框架在模型请求中加入**已有文件**的内容。为了验证“模型真的收到更新后的偏好”，下面使用 LangChain 的回调记录 `on_chat_model_start` 收到的实际请求文本。回调只观察，不替模型生成答案；输出只展示与实验有关的短片段，避免打印整个系统提示词。
+`memory=[MEMORY_PATH]` 会让框架在模型请求中加入**已有文件**的内容。为了验证“模型真的收到更新后的偏好”，下面使用 LangChain 的回调记录 `on_chat_model_start` 收到的实际 messages 对象。回调只观察，不替模型生成答案；验收只解析首次实际 `SystemMessage` 的 `<agent_memory>` 内、`MEMORY_PATH` 标题下的 JSON 正文，不在用户指令或整个 prompt 中搜语言关键词。输出只展示解析后的对象，避免打印整个系统提示词。
 
 
 ```python
@@ -144,7 +149,7 @@ class ModelRequestRecorder(BaseCallbackHandler):
         self.requests = []
 
     def on_chat_model_start(self, serialized, messages, **kwargs):
-        self.requests.append("\n".join(message.text for message in messages[0]))
+        self.requests.append(list(messages[0]))
 
 agent = create_deep_agent(
     model=model,
@@ -155,7 +160,8 @@ agent = create_deep_agent(
     memory=[MEMORY_PATH],
     system_prompt=(
         f"用户要求记住偏好时，先读取 {MEMORY_PATH}，再用 edit_file 更新原文件；"
-        f"将本轮临时草稿写到 {DRAFT_PATH}。"
+        "偏好文件只保存用户指定的 JSON 对象，替换整个旧对象，不加日期或其他字段。"
+        f"然后继续用 write_file 将本轮临时草稿写到 {DRAFT_PATH}。"
         "用户要求查看文件时，用 read_file 回答。工具出错时不要声称读到了内容。"
     ),
 )
@@ -171,8 +177,31 @@ print("Agent 已组装；尚未执行任何场景。")
 
 旧线程的历史也会出现在返回值里，所以辅助函数只截取**本次最新用户消息之后**的记录。它逐条打印工具名、参数、状态和折行后的结果，同时按 `tool_call_id` 将工具结果与请求对应。回调记录的第一条请求用于检查这次执行起步时注入了哪份记忆。
 
+锁定版本的 `read_file` 以 `@@ lines 1-N of N @@` 标明完整范围，后面才是文件正文；辅助函数核对范围和正文行数，拒绝不完整分页。Store 正文、工具正文和系统 memory 正文统一用 `json.loads` 解析，要求整个对象严格相等：换序和空白可接受，缺字段、错值、额外日期都失败。
+
 
 ```python
+def scene_evidence(messages):
+    """只验收最新用户消息后的调用；返回必须在对应调用之后且 ID、工具名唯一匹配。"""
+    latest = max(i for i, message in enumerate(messages)
+                 if isinstance(message, HumanMessage))
+    calls, returns, pending, seen = [], [], {}, set()
+    for message in messages[latest + 1:]:
+        if isinstance(message, AIMessage):
+            for call in message.tool_calls:
+                assert call["id"] not in seen, "工具调用 ID 重复"
+                seen.add(call["id"])
+                pending[call["id"]] = call
+                calls.append(call)
+        elif isinstance(message, ToolMessage):
+            call = pending.pop(message.tool_call_id, None)
+            assert call is not None, "工具返回没有唯一的先前调用"
+            assert message.name == call["name"], "工具返回名称与调用不一致"
+            returns.append(message)
+    assert not pending, "工具调用缺少返回"
+    return calls, returns
+
+
 def run_scene(scene, thread_id, user_id, instruction):
     recorder = ModelRequestRecorder()
     result = agent.invoke(
@@ -180,81 +209,134 @@ def run_scene(scene, thread_id, user_id, instruction):
         config={"configurable": {"thread_id": thread_id}, "callbacks": [recorder]},
         context=UserContext(user_id=user_id),
     )
-    messages = result["messages"]
-    latest = max(i for i, message in enumerate(messages)
-                 if isinstance(message, HumanMessage))
-    current = messages[latest + 1:]
-    calls = [call for message in current if isinstance(message, AIMessage)
-             for call in message.tool_calls]
-    returns = [message for message in current if isinstance(message, ToolMessage)]
+    calls, returns = scene_evidence(result["messages"])
     assert recorder.requests, "没有记录到模型请求"
+    run = {"result": result, "calls": calls, "returns": returns,
+           "first_request": recorder.requests[0]}
     print(f"\n【{scene}】用户={user_id}，线程={thread_id}")
     print("  本轮工具调用数：", len(calls))
-    for call in calls:
-        reply = next((item for item in returns
-                      if item.tool_call_id == call["id"]), None)
-        print(f"  {call['name']}({call['args'].get('file_path')}) → "
-              f"{reply.status if reply else '无返回'}")
-        if reply:
-            show_text("  工具返回：", reply.text, width=78)
-    return {"result": result, "calls": calls, "returns": returns,
-            "first_request": recorder.requests[0]}
+    for call, reply in ((call, next(item for item in returns
+                                   if item.tool_call_id == call["id"]))
+                        for call in calls):
+        print(f"  {call['id']}: {call['name']}({call['args'].get('file_path')}) → "
+              f"{reply.status}")
+        show_text("  工具返回：", reply.text, width=78)
+    return run
 
 
 def tool_reply(run, name, path):
-    """按调用 ID 找到本轮指定文件工具的实际返回。"""
+    """调用关联已经由 scene_evidence 核对；按工具名和路径选本轮结果。"""
     for call in run["calls"]:
         if call["name"] == name and call["args"].get("file_path") == path:
-            return next((message for message in run["returns"]
-                         if message.tool_call_id == call["id"]), None)
+            return next(message for message in run["returns"]
+                        if message.tool_call_id == call["id"])
     return None
+
+
+def parse_preferences(content, expected):
+    """对象严格相等：允许换序、空白，不允许缺字段、错误值或额外字段。"""
+    value = json.loads(content)
+    assert isinstance(value, dict) and value == expected, "偏好 JSON 对象不符合预期"
+    return value
+
+
+def read_file_content(reply):
+    """取完整文件正文，不能把范围头一起交给 json.loads 或接受部分分页。"""
+    assert reply is not None and reply.status == "success", "文件读取未成功"
+    lines = reply.text.splitlines()
+    header = re.fullmatch(r"@@ lines (\d+)-(\d+) of (\d+) @@", lines[0]) if lines else None
+    assert header is not None, "缺少完整文件范围头"
+    start, end, total = map(int, header.groups())
+    assert start == 1 and end == total and total > 0, "拒绝不完整分页"
+    body = lines[1:]
+    assert len(body) == total, "文件正文行数不完整"
+    return "\n".join(body)
+
+
+def memory_content(first_request):
+    """只取实际 SystemMessage 的 agent_memory 中指定路径下的文件正文。"""
+    system = "\n".join(message.text for message in first_request
+                       if isinstance(message, SystemMessage))
+    blocks = re.findall(r"^<agent_memory>\n(.*?)\n\n</agent_memory>",
+                        system, flags=re.MULTILINE | re.DOTALL)
+    assert len(blocks) == 1, "没有唯一的实际 memory 注入块"
+    path, separator, content = blocks[0].partition("\n\n")
+    assert separator and path == MEMORY_PATH, "memory 未加载指定偏好文件"
+    return content
+
+
+def validate_preferences(run, user_id, expected):
+    """Store、真实 read_file 和首次系统 memory 各自独立验收同一完整对象。"""
+    record = store.get((user_id, "memories"), STORE_KEY)
+    assert record is not None, "用户 namespace 中没有偏好记录"
+    stored = parse_preferences(record.value["content"], expected)
+    read = parse_preferences(read_file_content(tool_reply(run, "read_file", MEMORY_PATH)), expected)
+    injected = parse_preferences(memory_content(run["first_request"]), expected)
+    return {"store": stored, "read_file": read, "agent_memory": injected}
+
+
+def validate_saved(run):
+    """先读再编辑、草稿写入成功及最终产物是验收目标，不限制额外工具调用。"""
+    replies = []
+    for name, path in (("read_file", MEMORY_PATH), ("edit_file", MEMORY_PATH),
+                       ("write_file", DRAFT_PATH)):
+        reply = tool_reply(run, name, path)
+        assert reply is not None and reply.status == "success", f"{name}({path}) 未成功"
+        replies.append(reply)
+    call_ids = [call["id"] for call in run["calls"]]
+    assert call_ids.index(replies[0].tool_call_id) < call_ids.index(replies[1].tool_call_id), "必须先读再编辑"
+    parse_preferences(read_file_content(replies[0]), {})
+    parse_preferences(memory_content(run["first_request"]), {})
+    record = store.get(("alice", "memories"), STORE_KEY)
+    assert record is not None, "Alice 的 namespace 中没有保存偏好"
+    parse_preferences(record.value["content"], EXPECTED_PREFERENCES)
+    assert run["result"]["files"][DRAFT_PATH]["content"] == DRAFT_TEXT
+    assert MEMORY_PATH not in run["result"]["files"], "偏好不应写入 State"
+    assert store.get(("alice", "memories"), DRAFT_PATH) is None, "草稿不应写入 Store"
+
 ```
 
 ### 4.1 第一段对话：更新偏好并写草稿
 
-`edit_file` 更新 Store 中已有偏好；`write_file` 写入 State 中的草稿。只有两条真实工具结果成功，后面才有意义。此时用户 `alice` 的记忆提示词仍是本轮开始时加载的旧文本；写入后的值要在**新线程**检查。
+`edit_file` 更新 Store 中已有偏好；`write_file` 写入 State 中的草稿。验收检查偏好先读再编辑、所需工具成功，再核对 Alice 的 Store JSON 和 State 草稿；额外工具调用完整保留，不因此判错。即使工具报告成功，写错 namespace 或内容也不能通过。此时用户 `alice` 的记忆提示词仍是本轮开始时加载的旧对象 `{}`；写入后的值要在**新线程**检查。
 
 
 ```python
 saved = run_scene(
     "保存", "alice-original", "alice",
-    f"请记住我的偏好：{PREFERENCE} 先读原文件，再更新偏好；"
-    f"另外写一份临时草稿，内容是“{DRAFT_TEXT}”。",
+    f"请将 {MEMORY_PATH} 保存为 JSON 对象 {PREFERENCE_JSON}，"
+    '字段 comment_language 必须为 "zh"，variable_language 必须为 "en"；'
+    "只保留这两个字段，不添加日期或其他字段。先用 read_file 读取原文件，"
+    "再用 edit_file 将整个旧对象 {} 替换为该 JSON 对象；"
+    f"然后继续用 write_file 写临时草稿 {DRAFT_PATH}，内容是“{DRAFT_TEXT}”。",
 )
-for name, path in (("read_file", MEMORY_PATH),
-                   ("edit_file", MEMORY_PATH),
-                   ("write_file", DRAFT_PATH)):
-    reply = tool_reply(saved, name, path)
-    assert reply is not None and reply.status == "success", f"{name}({path}) 未成功"
-
+validate_saved(saved)
 alice_record = store.get(("alice", "memories"), STORE_KEY)
-assert alice_record is not None and PREFERENCE in alice_record.value["content"]
-show_text("Store 中 Alice 的偏好：", alice_record.value["content"])
+show_text("Store 中 Alice 的偏好 JSON：", alice_record.value["content"])
 print("旧线程的 State 文件：", list(saved["result"].get("files", {})))
+
 ```
 
     
     【保存】用户=alice，线程=alice-original
       本轮工具调用数： 3
-      read_file(/memories/preferences.md) → success
+      ch08-保存-0: read_file(/memories/preferences.json) → success
     
       工具返回：
-    @@ lines 1-2 of 2 @@
-    # 用户偏好
-    暂无记录。
-      edit_file(/memories/preferences.md) → success
+    @@ lines 1-1 of 1 @@
+    {}
+      ch08-保存-1: edit_file(/memories/preferences.json) → success
     
       工具返回：
     Successfully replaced 1 instance(s) of the string in
-      '/memories/preferences.md'
-      write_file(/workspace/draft.txt) → success
+      '/memories/preferences.json'
+      ch08-保存-2: write_file(/workspace/draft.txt) → success
     
       工具返回：
     Updated file /workspace/draft.txt
     
-    Store 中 Alice 的偏好：
-    # 用户偏好
-    代码注释用中文，变量名用英文。
+    Store 中 Alice 的偏好 JSON：
+    {"comment_language": "zh", "variable_language": "en"}
     旧线程的 State 文件： ['/workspace/draft.txt']
 
 
@@ -270,37 +352,32 @@ fresh = run_scene(
     "新线程", "alice-fresh", "alice",
     f"请分别读取 {MEMORY_PATH} 和 {DRAFT_PATH}，报告实际工具结果。",
 )
-preference_read = tool_reply(fresh, "read_file", MEMORY_PATH)
 draft_miss = tool_reply(fresh, "read_file", DRAFT_PATH)
-assert preference_read is not None and preference_read.status == "success"
-assert PREFERENCE in preference_read.text
 assert draft_miss is not None and draft_miss.status == "error"
 assert DRAFT_PATH not in fresh["result"].get("files", {})
-assert PREFERENCE in fresh["first_request"], "新线程的模型请求未包含更新后的记忆"
-print("首次模型请求中的偏好：",
-      next(line.strip() for line in fresh["first_request"].splitlines()
-           if PREFERENCE in line))
+alice_evidence = validate_preferences(fresh, "alice", EXPECTED_PREFERENCES)
+print("首次模型请求中的偏好对象：", alice_evidence["agent_memory"])
 print("新线程读不到旧草稿。")
+
 ```
 
     
     【新线程】用户=alice，线程=alice-fresh
       本轮工具调用数： 2
-      read_file(/memories/preferences.md) → success
+      ch08-新线程-0: read_file(/memories/preferences.json) → success
     
       工具返回：
-    @@ lines 1-2 of 2 @@
-    # 用户偏好
-    代码注释用中文，变量名用英文。
-      read_file(/workspace/draft.txt) → error
+    @@ lines 1-1 of 1 @@
+    {"comment_language": "zh", "variable_language": "en"}
+      ch08-新线程-1: read_file(/workspace/draft.txt) → error
     
       工具返回：
     Error: File '/workspace/draft.txt' not found
-    首次模型请求中的偏好： 代码注释用中文，变量名用英文。
+    首次模型请求中的偏好对象： {'comment_language': 'zh', 'variable_language': 'en'}
     新线程读不到旧草稿。
 
 
-`read_file` 的成功返回说明 Agent 能通过虚拟文件工具读取 Store；首次模型请求中也已有更新后的文本，说明 `memory=` 确实将已有文件注入。草稿读取失败只说明**新线程隔离**，不代表旧线程的数据被删除。
+`read_file` 的成功返回说明 Agent 能通过虚拟文件工具读取 Store；首次模型请求的系统 memory 正文也严格等于 Alice 的 JSON 对象，说明 `memory=` 确实将已有文件注入。草稿读取失败只说明**新线程隔离**，不代表旧线程的数据被删除。
 
 ### 4.3 回到旧线程：草稿仍在
 
@@ -314,16 +391,17 @@ resumed = run_scene(
 )
 draft_read = tool_reply(resumed, "read_file", DRAFT_PATH)
 assert draft_read is not None and draft_read.status == "success"
-assert DRAFT_TEXT in draft_read.text
+assert read_file_content(draft_read) == DRAFT_TEXT
 old_state = agent.get_state({"configurable": {"thread_id": "alice-original"}})
-assert DRAFT_PATH in old_state.values.get("files", {})
+assert old_state.values["files"][DRAFT_PATH]["content"] == DRAFT_TEXT
+parse_preferences(memory_content(resumed["first_request"]), {})
 print("旧线程 checkpoint 中仍有：", list(old_state.values["files"]))
 ```
 
     
     【旧线程】用户=alice，线程=alice-original
       本轮工具调用数： 1
-      read_file(/workspace/draft.txt) → success
+      ch08-旧线程-0: read_file(/workspace/draft.txt) → success
     
       工具返回：
     @@ lines 1-1 of 1 @@
@@ -335,7 +413,7 @@ print("旧线程 checkpoint 中仍有：", list(old_state.values["files"]))
 
 ### 4.4 另一个用户：namespace 隔离
 
-同一个 Agent 与同一个 Store，改用 `bob` 的运行上下文。预期读取 Bob 的“回答尽量详细”，且模型首次请求不包含 Alice 刚保存的偏好。
+同一个 Agent 与同一个 Store，改用 `bob` 的运行上下文。预期 Store、真实 `read_file` 正文、首次系统 memory 正文都严格等于 Bob 的对象 `{"comment_language": "en", "variable_language": "zh"}`；任一处串入 Alice 的对象都会失败。
 
 
 ```python
@@ -343,30 +421,23 @@ other_user = run_scene(
     "其他用户", "bob-first", "bob",
     f"请读取你自己的偏好文件 {MEMORY_PATH}。",
 )
-bob_read = tool_reply(other_user, "read_file", MEMORY_PATH)
-assert bob_read is not None and bob_read.status == "success"
-assert "回答尽量详细" in bob_read.text and PREFERENCE not in bob_read.text
-assert "回答尽量详细" in other_user["first_request"]
-assert PREFERENCE not in other_user["first_request"]
-bob_record = store.get(("bob", "memories"), STORE_KEY)
-assert bob_record is not None and "回答尽量详细" in bob_record.value["content"]
-print("首次模型请求中的偏好：",
-      next(line.strip() for line in other_user["first_request"].splitlines()
-           if "回答尽量详细" in line))
-print("Bob 的工具结果、Store 文件和首次模型请求均使用 Bob 的 namespace。")
+bob_evidence = validate_preferences(other_user, "bob", BOB_PREFERENCES)
+assert BOB_PREFERENCES != EXPECTED_PREFERENCES
+print("首次模型请求中的偏好对象：", bob_evidence["agent_memory"])
+print("Bob 的工具结果、Store 文件和首次模型请求均严格匹配 Bob 的对象。")
+
 ```
 
     
     【其他用户】用户=bob，线程=bob-first
       本轮工具调用数： 1
-      read_file(/memories/preferences.md) → success
+      ch08-其他用户-0: read_file(/memories/preferences.json) → success
     
       工具返回：
-    @@ lines 1-2 of 2 @@
-    # 用户偏好
-    回答尽量详细。
-    首次模型请求中的偏好： 回答尽量详细。
-    Bob 的工具结果、Store 文件和首次模型请求均使用 Bob 的 namespace。
+    @@ lines 1-1 of 1 @@
+    {"comment_language": "en", "variable_language": "zh"}
+    首次模型请求中的偏好对象： {'comment_language': 'en', 'variable_language': 'zh'}
+    Bob 的工具结果、Store 文件和首次模型请求均严格匹配 Bob 的对象。
 
 
 ## 5. 回顾、边界与练习
@@ -379,5 +450,7 @@ print("Bob 的工具结果、Store 文件和首次模型请求均使用 Bob 的 
 4. 这些记录都在内存里；**跨线程共享**是本实验的结论，不是进程重启后的持久化保证。也没有测试访问控制：实际用户身份应由服务入口认证。
 
 **改一个变量再观察**：把 4.2 中 `run_scene` 的线程 ID 从 `"alice-fresh"` 改成 `"alice-original"`，保持用户仍为 `alice`。先预测草稿读取的状态：它应从预期错误变成成功，后面的 `assert draft_miss.status == "error"` 会停止。看打印出来的 `read_file` 结果核对原因。然后恢复线程 ID、重启内核并从第一格全部运行，四个场景应重新通过。
+
+还可把脚本保存对象加一个 `date` 字段，预测 Store 严格比较应失败；或故意将 namespace 固定为 Alice，预测 Bob 的工具即使 success，JSON 验收也会失败。检查 `/memories/preferences.json`（Store key 为 `/preferences.json`）的对象，恢复修改后重启内核全部运行。
 
 如果 `memory=` 提示词断言失败，先检查是否预置了对应 Store 文件、路由 key 是否去掉 `/memories/` 前缀，以及是否用了新的线程。下一步可回到 [第 8 章正文](../../content/ch08-long-term-memory.md)了解持久化 Store、更多作用域和记忆整理。重启当前内核即可清理本实验的内存数据。
