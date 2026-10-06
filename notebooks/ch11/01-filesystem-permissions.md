@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`40460db5d04b`。
+> 本次执行模式：**offline**。源码指纹：`24bf45e0675a`。
 
 # 第 11 章实验：允许写工作区，为什么还会写到别处？
 
@@ -47,6 +47,7 @@ uv run --project notebooks --locked python -m course_notebooks.run ch11-filesyst
 
 ```python
 import json
+from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -65,10 +66,11 @@ show_runtime()
 
     运行模式： offline （脚本模型）
     Python： 3.12.13 平台： Darwin arm64
-    deepagents==0.7.15
-    langchain==1.4.2
-    langgraph==1.2.11
-    langchain-openai==1.6.2
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
 
 
 ## 2. 准备同一组文件与请求
@@ -141,7 +143,7 @@ def task_input(calls):
                           json.dumps(tasks, ensure_ascii=False, indent=2))]}
 ```
 
-`check_calls()` 从模型消息中提取实际请求，核对名称、参数、顺序与结果关联，并分行展示返回内容。嵌套推导式先遍历模型消息，再取出各条消息中的工具调用；`zip()` 将请求与结果逐项配对。
+`check_calls()` 从模型消息中提取实际请求，先输出预期与实际的差异，再核对任务匹配和结果关联。仅 `WRITE_NOTES`、`WRITE_OUTSIDE`、`WRITE_REVIEW` 明确指定的教学 `content` 允许有或没有一个末尾 `\n`；正文其他差异、工具名、路径、其他参数和调用顺序仍严格比较。不使用全局 `.strip()`，也不改写实际请求。随后各实验独立核对读取/拒绝状态、错误内容和真实文件效果。嵌套推导式先遍历模型消息，再取出各条消息中的工具调用；`zip()` 将请求与结果逐项配对。
 
 `run_case()` 为一次比较创建临时目录，准备文件、调用 Agent、读取文件副本。所有需要目录的操作都在同一个 `with TemporaryDirectory()` 中：正常结束或抛出 Python 异常都会清理。它不判断某项权限应该放行还是拒绝，具体实验的断言负责检查这一点。
 
@@ -149,12 +151,36 @@ def task_input(calls):
 
 
 ```python
-def check_calls(messages, planned_calls):
-    calls = [call for message in messages if isinstance(message, AIMessage)
-             for call in message.tool_calls]
+def requested_calls(messages):
+    return [call for message in messages if isinstance(message, AIMessage)
+            for call in message.tool_calls]
+
+
+def check_task_match(actual, expected, *, optional_newline=True):
+    """仅教学 write_file 正文可少一个末尾换行；不改写真实请求。"""
+    comparison = deepcopy(actual)
+    teaching_texts = {call["args"]["content"]
+                      for call in (WRITE_NOTES, WRITE_OUTSIDE, WRITE_REVIEW)}
+    if actual != expected:
+        show_text("任务预期：", json.dumps(expected, ensure_ascii=False, indent=2))
+        show_text("实际请求（差异先展示，再判断）：",
+                  json.dumps(actual, ensure_ascii=False, indent=2))
+    else:
+        print("任务预期与实际请求：无差异。")
+    for wanted, got in zip(expected, comparison):
+        text = wanted["args"].get("content")
+        if (optional_newline and wanted["name"] == got["name"] == "write_file"
+                and text in teaching_texts
+                and got["args"].get("content") in (text, text.removesuffix("\n"))):
+            got["args"]["content"] = text
+    assert comparison == expected, "工具名称、参数或顺序与任务要求不同"
+
+
+def check_calls(messages, planned_calls, *, optional_newline=True):
+    calls = requested_calls(messages)
     expected = [{"name": c["name"], "args": c["args"]} for c in planned_calls]
     actual = [{"name": c["name"], "args": c["args"]} for c in calls]
-    assert actual == expected, "工具名称、参数或顺序与任务要求不同"
+    check_task_match(actual, expected, optional_newline=optional_newline)
     replies = [m for m in messages if isinstance(m, ToolMessage)]
     assert len(replies) == len(calls), "工具返回数量不符"
     for call, reply in zip(calls, replies):
@@ -179,11 +205,12 @@ def run_case(label, rules, calls):
         agent = make_agent(backend, rules, calls)
         result = agent.invoke(task_input(calls), config={"recursion_limit": 24})
         replies = check_calls(result["messages"], calls)
-        files = {path: (root / path.lstrip("/")).read_text(encoding="utf-8")
-                 for path in SEED}
+        files = {"/" + file.relative_to(root).as_posix(): file.read_text(encoding="utf-8")
+                 for file in root.rglob("*") if file.is_file()}
     assert not root.exists(), "教学目录没有清理"
     print("教学目录已清理；文件内容副本留在 files 中。")
-    return {"result": result, "replies": replies, "files": files}
+    return {"result": result, "calls": requested_calls(result["messages"]),
+            "replies": replies, "files": files}
 ```
 
 `recursion_limit=24` 限制图的执行步数，超过后报错，不是模型费用上限。目录的真实路径不出现在输出中；离开 `with` 后只保留消息和文件内容副本，后面的检查不需要目录继续存在。
@@ -205,6 +232,7 @@ show_text("拒绝后实际笔记：", readonly_case["files"]["/workspace/notes.t
 
     
     === 全局只读 ===
+    任务预期与实际请求：无差异。
     请求工具： read_file
     
     参数：
@@ -249,12 +277,13 @@ DENY_ALL = FilesystemPermission(
 )
 allow_only_case = run_case("只有工作区 allow", [WORKSPACE_ALLOW], [WRITE_OUTSIDE])
 assert allow_only_case["replies"][0].status == "success"
-assert allow_only_case["files"]["/outside.txt"] == WRITE_OUTSIDE["args"]["content"]
+assert allow_only_case["files"]["/outside.txt"] == allow_only_case["calls"][0]["args"]["content"]
 show_text("工作区外实际内容：", allow_only_case["files"]["/outside.txt"])
 ```
 
     
     === 只有工作区 allow ===
+    任务预期与实际请求：无差异。
     请求工具： write_file
     
     参数：
@@ -280,7 +309,7 @@ WORKSPACE_ONLY = [WORKSPACE_ALLOW, DENY_ALL]
 workspace_case = run_case("工作区 allow + 全局 deny", WORKSPACE_ONLY,
                           [WRITE_NOTES, WRITE_OUTSIDE])
 assert [r.status for r in workspace_case["replies"]] == ["success", "error"]
-assert workspace_case["files"]["/workspace/notes.txt"] == WRITE_NOTES["args"]["content"]
+assert workspace_case["files"]["/workspace/notes.txt"] == workspace_case["calls"][0]["args"]["content"]
 assert "permission denied" in workspace_case["replies"][1].text
 assert workspace_case["files"]["/outside.txt"] == SEED["/outside.txt"]
 
@@ -294,6 +323,7 @@ print("已核对：兜底拒绝放在最后；放在最前面会连工作区一�
 
     
     === 工作区 allow + 全局 deny ===
+    任务预期与实际请求：无差异。
     请求工具： write_file
     
     参数：
@@ -319,6 +349,7 @@ print("已核对：兜底拒绝放在最后；放在最前面会连工作区一�
     教学目录已清理；文件内容副本留在 files 中。
     
     === 交换顺序：全局 deny 在前 ===
+    任务预期与实际请求：无差异。
     请求工具： write_file
     
     参数：
@@ -361,6 +392,7 @@ print("同一个文件，仅改变规则顺序，读取结果就发生了变化�
 
     
     === 先拒绝私有文件 ===
+    任务预期与实际请求：无差异。
     请求工具： read_file
     
     参数：
@@ -374,6 +406,7 @@ print("同一个文件，仅改变规则顺序，读取结果就发生了变化�
     教学目录已清理；文件内容副本留在 files 中。
     
     === 先放行整个工作区 ===
+    任务预期与实际请求：无差异。
     请求工具： read_file
     
     参数：
@@ -401,7 +434,7 @@ print("同一个文件，仅改变规则顺序，读取结果就发生了变化�
 
 Checkpointer 不会保存暂停在某一行的 Python 调用栈；恢复时会重新进入被中断的节点。如果这个节点中还有发送请求等操作，需要避免重复执行带来的影响。
 
-下一格在同一临时目录生命周期内完成暂停与批准：先检查待审批动作、实际文件未变、尚无写入 ToolMessage；再用 `Command(resume=...)` 提交 approve，核对工具结果与新文件。`get_state(config)` 读取已保存的快照，`next` 表示还有待继续执行的节点。更完整的决策与恢复说明见[第 9 章正文](../../content/ch09-human-in-the-loop.md)。
+下一格在同一临时目录生命周期内完成暂停与批准：先检查待审批动作、实际文件未变、尚无写入 ToolMessage；按有限换行容差确认它符合任务后，先用 `deepcopy` 保存实际 `action_requests` 和调用 ID，再用 `Command(resume=...)` 提交 approve。恢复后按实际批准请求严格核对工具关联和参数，最终文件必须与实际批准的 `content` 逐字相同；这里不能再用预设的 `WRITE_REVIEW` 正文代替批准内容。`get_state(config)` 读取已保存的快照，`next` 表示还有待继续执行的节点。更完整的决策与恢复说明见[第 9 章正文](../../content/ch09-human-in-the-loop.md)。
 
 
 ```python
@@ -421,13 +454,18 @@ with TemporaryDirectory(prefix="course-ch11-review-") as folder:
     payload = paused.interrupts[0].value
     expected_action = {"name": WRITE_REVIEW["name"], "args": WRITE_REVIEW["args"]}
     actions = [{"name": a["name"], "args": a["args"]} for a in payload["action_requests"]]
-    assert actions == [expected_action], "待审批动作不符合本次任务"
+    check_task_match(actions, [expected_action])
+    approved_action = deepcopy(payload["action_requests"][0])
+    approved_calls = deepcopy(requested_calls(paused.value["messages"]))
+    assert len(approved_calls) == 1
+    assert [{"name": c["name"], "args": c["args"]} for c in approved_calls] == actions
     assert len(payload["review_configs"]) == 1
     assert "approve" in payload["review_configs"][0]["allowed_decisions"]
     assert not any(isinstance(m, ToolMessage) for m in paused.value["messages"])
     assert report_path.read_text(encoding="utf-8") == SEED["/review/report.txt"]
     snapshot = reviewer.get_state(config)
     assert snapshot.next and snapshot.interrupts
+    assert requested_calls(snapshot.values["messages"]) == approved_calls
     show_text("待审批动作：", json.dumps(actions, ensure_ascii=False, indent=2))
     print("已保存待恢复进度；审批前没有执行写入。")
     show_text("审批前实际文件：", report_path.read_text(encoding="utf-8"))
@@ -437,10 +475,12 @@ with TemporaryDirectory(prefix="course-ch11-review-") as folder:
         config=config, version="v2",
     )
     assert not resumed.interrupts
-    review_replies = check_calls(resumed.value["messages"], [WRITE_REVIEW])
+    review_replies = check_calls(
+        resumed.value["messages"], approved_calls, optional_newline=False,
+    )
     assert review_replies[0].status == "success"
     published_report = report_path.read_text(encoding="utf-8")
-    assert published_report == WRITE_REVIEW["args"]["content"]
+    assert published_report == approved_action["args"]["content"], "文件与实际批准内容不一致"
     assert not reviewer.get_state(config).next
     show_text("批准后实际文件：", published_report)
 
@@ -448,10 +488,9 @@ assert not review_root.exists(), "审批实验留下了教学目录"
 print("审批实验目录已清理。")
 ```
 
+    任务预期与实际请求：无差异。
     
     待审批动作：
-
-    
     [
       {
         "name": "write_file",
@@ -465,8 +504,7 @@ print("审批实验目录已清理。")
     
     审批前实际文件：
     尚未发布的旧报告
-
-
+    任务预期与实际请求：无差异。
     请求工具： write_file
     
     参数：
@@ -484,7 +522,7 @@ print("审批实验目录已清理。")
     审批实验目录已清理。
 
 
-审批前看到旧报告与待审批写入，没有工具执行结果；approve 后出现关联到 `write-review` 的成功结果，文件变成新报告。这里是 Notebook 代码代表审查方批准，没有图形审批界面。Checkpointer 使用内存，进程退出后存档不再保留；临时文件目录已经删除。
+审批前看到旧报告与待审批写入，没有工具执行结果；approve 后出现关联到实际调用 ID 的成功结果，文件逐字等于实际批准的正文（包括其是否带末尾换行）。这里是 Notebook 代码代表审查方批准，没有图形审批界面。Checkpointer 使用内存，进程退出后存档不再保留；临时文件目录已经删除。
 
 ## 7. 练习、边界与常见问题
 

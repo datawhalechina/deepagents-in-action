@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>40460db5d04b</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>24bf45e0675a</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7893,6 +7893,7 @@ uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> <
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">tempfile</span><span class="w"> </span><span class="kn">import</span> <span class="n">TemporaryDirectory</span>
 
@@ -7921,10 +7922,11 @@ uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> <
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>运行模式： offline （脚本模型）
 Python： 3.12.13 平台： Darwin arm64
-deepagents==0.7.15
-langchain==1.4.2
-langgraph==1.2.11
-langchain-openai==1.6.2
+deepagents==0.7.22
+langchain==1.4.3
+langchain-core==1.6.6
+langgraph==1.2.13
+langchain-openai==1.6.7
 </pre>
 </div>
 </div>
@@ -8047,7 +8049,7 @@ langchain-openai==1.6.2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><code>check_calls()</code> 从模型消息中提取实际请求，核对名称、参数、顺序与结果关联，并分行展示返回内容。嵌套推导式先遍历模型消息，再取出各条消息中的工具调用；<code>zip()</code> 将请求与结果逐项配对。</p>
+<p><code>check_calls()</code> 从模型消息中提取实际请求，先输出预期与实际的差异，再核对任务匹配和结果关联。仅 <code>WRITE_NOTES</code>、<code>WRITE_OUTSIDE</code>、<code>WRITE_REVIEW</code> 明确指定的教学 <code>content</code> 允许有或没有一个末尾 <code>\n</code>；正文其他差异、工具名、路径、其他参数和调用顺序仍严格比较。不使用全局 <code>.strip()</code>，也不改写实际请求。随后各实验独立核对读取/拒绝状态、错误内容和真实文件效果。嵌套推导式先遍历模型消息，再取出各条消息中的工具调用；<code>zip()</code> 将请求与结果逐项配对。</p>
 <p><code>run_case()</code> 为一次比较创建临时目录，准备文件、调用 Agent、读取文件副本。所有需要目录的操作都在同一个 <code>with TemporaryDirectory()</code> 中：正常结束或抛出 Python 异常都会清理。它不判断某项权限应该放行还是拒绝，具体实验的断言负责检查这一点。</p>
 <p>准备文件时，<code>lstrip("/")</code> 去掉虚拟路径开头的斜杠，再用 <code>root / ...</code> 拼接到临时根目录下。例如 <code>/workspace/notes.txt</code> 对应临时目录里的 <code>workspace/notes.txt</code>；Agent 工具访问时则由 Backend 完成路径映射。</p>
 </div>
@@ -8061,12 +8063,36 @@ langchain-openai==1.6.2
 <div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">check_calls</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">planned_calls</span><span class="p">):</span>
-    <span class="n">calls</span> <span class="o">=</span> <span class="p">[</span><span class="n">call</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span>
-             <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">]</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">requested_calls</span><span class="p">(</span><span class="n">messages</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">call</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">check_task_match</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">optional_newline</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""仅教学 write_file 正文可少一个末尾换行；不改写真实请求。"""</span>
+    <span class="n">comparison</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span>
+    <span class="n">teaching_texts</span> <span class="o">=</span> <span class="p">{</span><span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span>
+                      <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="p">(</span><span class="n">WRITE_NOTES</span><span class="p">,</span> <span class="n">WRITE_OUTSIDE</span><span class="p">,</span> <span class="n">WRITE_REVIEW</span><span class="p">)}</span>
+    <span class="k">if</span> <span class="n">actual</span> <span class="o">!=</span> <span class="n">expected</span><span class="p">:</span>
+        <span class="n">show_text</span><span class="p">(</span><span class="s2">"任务预期："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">show_text</span><span class="p">(</span><span class="s2">"实际请求（差异先展示，再判断）："</span><span class="p">,</span>
+                  <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"任务预期与实际请求：无差异。"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">wanted</span><span class="p">,</span> <span class="n">got</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">comparison</span><span class="p">):</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">wanted</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"content"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">optional_newline</span> <span class="ow">and</span> <span class="n">wanted</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">==</span> <span class="n">got</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"write_file"</span>
+                <span class="ow">and</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">teaching_texts</span>
+                <span class="ow">and</span> <span class="n">got</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"content"</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">text</span><span class="o">.</span><span class="n">removesuffix</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">))):</span>
+            <span class="n">got</span><span class="p">[</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span> <span class="o">=</span> <span class="n">text</span>
+    <span class="k">assert</span> <span class="n">comparison</span> <span class="o">==</span> <span class="n">expected</span><span class="p">,</span> <span class="s2">"工具名称、参数或顺序与任务要求不同"</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">check_calls</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">planned_calls</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">optional_newline</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">calls</span> <span class="o">=</span> <span class="n">requested_calls</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
     <span class="n">expected</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">planned_calls</span><span class="p">]</span>
     <span class="n">actual</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">]</span>
-    <span class="k">assert</span> <span class="n">actual</span> <span class="o">==</span> <span class="n">expected</span><span class="p">,</span> <span class="s2">"工具名称、参数或顺序与任务要求不同"</span>
+    <span class="n">check_task_match</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">optional_newline</span><span class="o">=</span><span class="n">optional_newline</span><span class="p">)</span>
     <span class="n">replies</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
     <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">replies</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">calls</span><span class="p">),</span> <span class="s2">"工具返回数量不符"</span>
     <span class="k">for</span> <span class="n">call</span><span class="p">,</span> <span class="n">reply</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">calls</span><span class="p">,</span> <span class="n">replies</span><span class="p">):</span>
@@ -8091,11 +8117,12 @@ langchain-openai==1.6.2
         <span class="n">agent</span> <span class="o">=</span> <span class="n">make_agent</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">rules</span><span class="p">,</span> <span class="n">calls</span><span class="p">)</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">task_input</span><span class="p">(</span><span class="n">calls</span><span class="p">),</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">"recursion_limit"</span><span class="p">:</span> <span class="mi">24</span><span class="p">})</span>
         <span class="n">replies</span> <span class="o">=</span> <span class="n">check_calls</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">],</span> <span class="n">calls</span><span class="p">)</span>
-        <span class="n">files</span> <span class="o">=</span> <span class="p">{</span><span class="n">path</span><span class="p">:</span> <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="n">path</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"/"</span><span class="p">))</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
-                 <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">SEED</span><span class="p">}</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"/"</span> <span class="o">+</span> <span class="n">file</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">as_posix</span><span class="p">():</span> <span class="n">file</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+                 <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">"*"</span><span class="p">)</span> <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">is_file</span><span class="p">()}</span>
     <span class="k">assert</span> <span class="ow">not</span> <span class="n">root</span><span class="o">.</span><span class="n">exists</span><span class="p">(),</span> <span class="s2">"教学目录没有清理"</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"教学目录已清理；文件内容副本留在 files 中。"</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="s2">"replies"</span><span class="p">:</span> <span class="n">replies</span><span class="p">,</span> <span class="s2">"files"</span><span class="p">:</span> <span class="n">files</span><span class="p">}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="s2">"calls"</span><span class="p">:</span> <span class="n">requested_calls</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]),</span>
+            <span class="s2">"replies"</span><span class="p">:</span> <span class="n">replies</span><span class="p">,</span> <span class="s2">"files"</span><span class="p">:</span> <span class="n">files</span><span class="p">}</span>
 </pre></div>
 </div>
 </div>
@@ -8142,6 +8169,7 @@ langchain-openai==1.6.2
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 === 全局只读 ===
+任务预期与实际请求：无差异。
 请求工具： read_file
 
 参数：
@@ -8201,7 +8229,7 @@ Error: permission denied for write on /workspace/notes.txt
 <span class="p">)</span>
 <span class="n">allow_only_case</span> <span class="o">=</span> <span class="n">run_case</span><span class="p">(</span><span class="s2">"只有工作区 allow"</span><span class="p">,</span> <span class="p">[</span><span class="n">WORKSPACE_ALLOW</span><span class="p">],</span> <span class="p">[</span><span class="n">WRITE_OUTSIDE</span><span class="p">])</span>
 <span class="k">assert</span> <span class="n">allow_only_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span>
-<span class="k">assert</span> <span class="n">allow_only_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="s2">"/outside.txt"</span><span class="p">]</span> <span class="o">==</span> <span class="n">WRITE_OUTSIDE</span><span class="p">[</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="n">allow_only_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="s2">"/outside.txt"</span><span class="p">]</span> <span class="o">==</span> <span class="n">allow_only_case</span><span class="p">[</span><span class="s2">"calls"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span>
 <span class="n">show_text</span><span class="p">(</span><span class="s2">"工作区外实际内容："</span><span class="p">,</span> <span class="n">allow_only_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="s2">"/outside.txt"</span><span class="p">])</span>
 </pre></div>
 </div>
@@ -8217,6 +8245,7 @@ Error: permission denied for write on /workspace/notes.txt
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 === 只有工作区 allow ===
+任务预期与实际请求：无差异。
 请求工具： write_file
 
 参数：
@@ -8260,7 +8289,7 @@ Updated file /outside.txt
 <span class="n">workspace_case</span> <span class="o">=</span> <span class="n">run_case</span><span class="p">(</span><span class="s2">"工作区 allow + 全局 deny"</span><span class="p">,</span> <span class="n">WORKSPACE_ONLY</span><span class="p">,</span>
                           <span class="p">[</span><span class="n">WRITE_NOTES</span><span class="p">,</span> <span class="n">WRITE_OUTSIDE</span><span class="p">])</span>
 <span class="k">assert</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">status</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">workspace_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">]]</span> <span class="o">==</span> <span class="p">[</span><span class="s2">"success"</span><span class="p">,</span> <span class="s2">"error"</span><span class="p">]</span>
-<span class="k">assert</span> <span class="n">workspace_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="s2">"/workspace/notes.txt"</span><span class="p">]</span> <span class="o">==</span> <span class="n">WRITE_NOTES</span><span class="p">[</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="n">workspace_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="s2">"/workspace/notes.txt"</span><span class="p">]</span> <span class="o">==</span> <span class="n">workspace_case</span><span class="p">[</span><span class="s2">"calls"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span>
 <span class="k">assert</span> <span class="s2">"permission denied"</span> <span class="ow">in</span> <span class="n">workspace_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
 <span class="k">assert</span> <span class="n">workspace_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="s2">"/outside.txt"</span><span class="p">]</span> <span class="o">==</span> <span class="n">SEED</span><span class="p">[</span><span class="s2">"/outside.txt"</span><span class="p">]</span>
 
@@ -8284,6 +8313,7 @@ Updated file /outside.txt
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 === 工作区 allow + 全局 deny ===
+任务预期与实际请求：无差异。
 请求工具： write_file
 
 参数：
@@ -8309,6 +8339,7 @@ Error: permission denied for write on /outside.txt
 教学目录已清理；文件内容副本留在 files 中。
 
 === 交换顺序：全局 deny 在前 ===
+任务预期与实际请求：无差异。
 请求工具： write_file
 
 参数：
@@ -8376,6 +8407,7 @@ Error: permission denied for write on /workspace/notes.txt
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 === 先拒绝私有文件 ===
+任务预期与实际请求：无差异。
 请求工具： read_file
 
 参数：
@@ -8389,6 +8421,7 @@ Error: permission denied for read on /workspace/private.txt
 教学目录已清理；文件内容副本留在 files 中。
 
 === 先放行整个工作区 ===
+任务预期与实际请求：无差异。
 请求工具： read_file
 
 参数：
@@ -8419,7 +8452,7 @@ Error: permission denied for read on /workspace/private.txt
 <p><code>InMemorySaver</code> 是内存 Checkpointer，用于保存 Agent 的状态与待恢复执行进度。<code>thread_id</code> 标识这条会话；恢复必须使用相同配置。</p>
 <p>本例指定 <code>version="v2"</code> 选择返回格式：<code>paused.value</code> 是 State，<code>paused.interrupts</code> 是中断列表。</p>
 <p>Checkpointer 不会保存暂停在某一行的 Python 调用栈；恢复时会重新进入被中断的节点。如果这个节点中还有发送请求等操作，需要避免重复执行带来的影响。</p>
-<p>下一格在同一临时目录生命周期内完成暂停与批准：先检查待审批动作、实际文件未变、尚无写入 ToolMessage；再用 <code>Command(resume=...)</code> 提交 approve，核对工具结果与新文件。<code>get_state(config)</code> 读取已保存的快照，<code>next</code> 表示还有待继续执行的节点。更完整的决策与恢复说明见<a href="../../content/ch09-human-in-the-loop.md">第 9 章正文</a>。</p>
+<p>下一格在同一临时目录生命周期内完成暂停与批准：先检查待审批动作、实际文件未变、尚无写入 ToolMessage；按有限换行容差确认它符合任务后，先用 <code>deepcopy</code> 保存实际 <code>action_requests</code> 和调用 ID，再用 <code>Command(resume=...)</code> 提交 approve。恢复后按实际批准请求严格核对工具关联和参数，最终文件必须与实际批准的 <code>content</code> 逐字相同；这里不能再用预设的 <code>WRITE_REVIEW</code> 正文代替批准内容。<code>get_state(config)</code> 读取已保存的快照，<code>next</code> 表示还有待继续执行的节点。更完整的决策与恢复说明见<a href="../../content/ch09-human-in-the-loop.md">第 9 章正文</a>。</p>
 </div>
 </div>
 </div>
@@ -8447,13 +8480,18 @@ Error: permission denied for read on /workspace/private.txt
     <span class="n">payload</span> <span class="o">=</span> <span class="n">paused</span><span class="o">.</span><span class="n">interrupts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
     <span class="n">expected_action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">WRITE_REVIEW</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">WRITE_REVIEW</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span>
     <span class="n">actions</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">a</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">a</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">[</span><span class="s2">"action_requests"</span><span class="p">]]</span>
-    <span class="k">assert</span> <span class="n">actions</span> <span class="o">==</span> <span class="p">[</span><span class="n">expected_action</span><span class="p">],</span> <span class="s2">"待审批动作不符合本次任务"</span>
+    <span class="n">check_task_match</span><span class="p">(</span><span class="n">actions</span><span class="p">,</span> <span class="p">[</span><span class="n">expected_action</span><span class="p">])</span>
+    <span class="n">approved_action</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="s2">"action_requests"</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">approved_calls</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">requested_calls</span><span class="p">(</span><span class="n">paused</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]))</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">approved_calls</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="k">assert</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">approved_calls</span><span class="p">]</span> <span class="o">==</span> <span class="n">actions</span>
     <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="s2">"review_configs"</span><span class="p">])</span> <span class="o">==</span> <span class="mi">1</span>
     <span class="k">assert</span> <span class="s2">"approve"</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">[</span><span class="s2">"review_configs"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"allowed_decisions"</span><span class="p">]</span>
     <span class="k">assert</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">paused</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">])</span>
     <span class="k">assert</span> <span class="n">report_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span> <span class="o">==</span> <span class="n">SEED</span><span class="p">[</span><span class="s2">"/review/report.txt"</span><span class="p">]</span>
     <span class="n">snapshot</span> <span class="o">=</span> <span class="n">reviewer</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">next</span> <span class="ow">and</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">interrupts</span>
+    <span class="k">assert</span> <span class="n">requested_calls</span><span class="p">(</span><span class="n">snapshot</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">])</span> <span class="o">==</span> <span class="n">approved_calls</span>
     <span class="n">show_text</span><span class="p">(</span><span class="s2">"待审批动作："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">actions</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"已保存待恢复进度；审批前没有执行写入。"</span><span class="p">)</span>
     <span class="n">show_text</span><span class="p">(</span><span class="s2">"审批前实际文件："</span><span class="p">,</span> <span class="n">report_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">))</span>
@@ -8463,10 +8501,12 @@ Error: permission denied for read on /workspace/private.txt
         <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="k">assert</span> <span class="ow">not</span> <span class="n">resumed</span><span class="o">.</span><span class="n">interrupts</span>
-    <span class="n">review_replies</span> <span class="o">=</span> <span class="n">check_calls</span><span class="p">(</span><span class="n">resumed</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">],</span> <span class="p">[</span><span class="n">WRITE_REVIEW</span><span class="p">])</span>
+    <span class="n">review_replies</span> <span class="o">=</span> <span class="n">check_calls</span><span class="p">(</span>
+        <span class="n">resumed</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">],</span> <span class="n">approved_calls</span><span class="p">,</span> <span class="n">optional_newline</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="k">assert</span> <span class="n">review_replies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span>
     <span class="n">published_report</span> <span class="o">=</span> <span class="n">report_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">published_report</span> <span class="o">==</span> <span class="n">WRITE_REVIEW</span><span class="p">[</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="n">published_report</span> <span class="o">==</span> <span class="n">approved_action</span><span class="p">[</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">],</span> <span class="s2">"文件与实际批准内容不一致"</span>
     <span class="k">assert</span> <span class="ow">not</span> <span class="n">reviewer</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">next</span>
     <span class="n">show_text</span><span class="p">(</span><span class="s2">"批准后实际文件："</span><span class="p">,</span> <span class="n">published_report</span><span class="p">)</span>
 
@@ -8484,14 +8524,9 @@ Error: permission denied for read on /workspace/private.txt
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>
-待审批动作：</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>
+<pre>任务预期与实际请求：无差异。
+
+待审批动作：
 [
   {
     "name": "write_file",
@@ -8505,13 +8540,8 @@ Error: permission denied for read on /workspace/private.txt
 
 审批前实际文件：
 尚未发布的旧报告
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>请求工具： write_file
+任务预期与实际请求：无差异。
+请求工具： write_file
 
 参数：
 {
@@ -8538,7 +8568,7 @@ Updated file /review/report.txt
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>审批前看到旧报告与待审批写入，没有工具执行结果；approve 后出现关联到 <code>write-review</code> 的成功结果，文件变成新报告。这里是 Notebook 代码代表审查方批准，没有图形审批界面。Checkpointer 使用内存，进程退出后存档不再保留；临时文件目录已经删除。</p>
+<p>审批前看到旧报告与待审批写入，没有工具执行结果；approve 后出现关联到实际调用 ID 的成功结果，文件逐字等于实际批准的正文（包括其是否带末尾换行）。这里是 Notebook 代码代表审查方批准，没有图形审批界面。Checkpointer 使用内存，进程退出后存档不再保留；临时文件目录已经删除。</p>
 <h2 id="7.-%E7%BB%83%E4%B9%A0%E3%80%81%E8%BE%B9%E7%95%8C%E4%B8%8E%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98">7. 练习、边界与常见问题<a class="anchor-link" href="#7.-%E7%BB%83%E4%B9%A0%E3%80%81%E8%BE%B9%E7%95%8C%E4%B8%8E%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98">¶</a></h2><h3 id="%E6%94%B9%E4%B8%80%E6%9D%A1%E8%B7%AF%E5%BE%84%E5%86%8D%E8%A7%82%E5%AF%9F">改一条路径再观察<a class="anchor-link" href="#%E6%94%B9%E4%B8%80%E6%9D%A1%E8%B7%AF%E5%BE%84%E5%86%8D%E8%A7%82%E5%AF%9F">¶</a></h3><ol>
 <li>把第 5 节 <code>PRIVATE_DENY.paths</code> 中的 <code>/workspace/private.txt</code> 改为 <code>/workspace/other.txt</code>，先预测原私有文件还能否读取。</li>
 <li>重启内核并全部运行。第 5 节“先拒绝私有文件”的请求会跳过不匹配的 deny，命中目录 allow，输出应出现教学私有内容；原本要求 error 的断言会失败。</li>
