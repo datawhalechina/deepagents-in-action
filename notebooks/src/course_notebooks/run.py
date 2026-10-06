@@ -19,7 +19,7 @@ from jupyter_client.kernelspec import KernelSpecManager
 from nbclient import NotebookClient
 from nbconvert import HTMLExporter, MarkdownExporter
 
-from .model_config import repository_root, selected_mode
+from .model_config import model_configuration, repository_root, selected_mode
 
 LINK = re.compile(r"!?\[[^\]]*\]\(([^\s)]+)\)")
 
@@ -87,8 +87,10 @@ def stage_chapter(root, path, stage):
 
 def export_reading(nb, path, root, output_dir, notebook_id, commit, *, relative_links=False):
     reading = nbformat.reads(nbformat.writes(nb), as_version=4)
+    config = nb.metadata.course_run.get("model_configuration")
+    model_note = f" 模型配置：`{config['model_name']}`（{config['provider']}，{config['api_host']}）。" if config else ""
     reading.cells.insert(0, nbformat.v4.new_markdown_cell(
-        f"> 本次执行模式：**{nb.metadata.course_run.mode}**。源码指纹：`{nb.metadata.course_run.source_hash[:12]}`。",
+        f"> 本次执行模式：**{nb.metadata.course_run.mode}**。{model_note}源码指纹：`{nb.metadata.course_run.source_hash[:12]}`。",
         id="course-run-info",
     ))
     # Exported artifacts are outside the source tree: link back to exact source paths.
@@ -149,6 +151,9 @@ def execute_one(entry, root, output_dir, *, mode, timeout, write_back=False):
               "services": entry.get("services", []), "model_evidence": "scripted" if mode == "offline" else "provider"}
     env = kernel_environment(root, mode)
     try:
+        config = model_configuration(root=root, mode=mode, environ=env)
+        result["model_configuration"] = config
+        nb.metadata.course_run["model_configuration"] = config
         with tempfile.TemporaryDirectory(prefix="course-notebook-") as directory:
             temporary = Path(directory)
             stage = temporary / "repository"
@@ -168,9 +173,11 @@ def execute_one(entry, root, output_dir, *, mode, timeout, write_back=False):
     except Exception as error:
         result.update(status="failed", error=type(error).__name__)
     # Never export credentials accidentally printed by a cell.
-    rendered = json.dumps([c.get("outputs", []) for c in nb.cells])
+    rendered = json.dumps({"outputs": [c.get("outputs", []) for c in nb.cells],
+                           "course_run": nb.metadata.course_run, "result": result})
     secrets = [v for k, v in env.items() if (k.endswith("API_KEY") or k.endswith("TOKEN")) and len(v) >= 8]
     if any(value in rendered for value in secrets):
+        result.pop("model_configuration", None)
         result.update(status="failed", error="Credential detected in output; artifacts withheld")
         return result
     nb.metadata.course_run["status"] = result["status"]

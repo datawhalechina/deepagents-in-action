@@ -59,7 +59,7 @@ uv run --project notebooks --locked --extra server python -m course_notebooks.ru
 
 执行器为每份实验创建临时工作目录，并直接使用项目 Python 创建专用内核；已有的用户 `python3` 内核不会改变执行环境。默认从第一格执行所有已登记实验，也可以在命令末尾指定一个或多个实验 ID，例如 `template`。
 
-结果写入 `artifacts/notebooks/`：执行后的 `.ipynb`、可直接阅读的 HTML/Markdown 和 `report.json`。报告记录源码提交、单份实验源码指纹、依赖锁指纹、模式与状态。失败返回非零退出码，后续未执行项标为 `not_run`。导出链接指向对应源码提交；未提交的新文件需提交后重新导出。
+结果写入 `artifacts/notebooks/`：执行后的 `.ipynb`、可直接阅读的 HTML/Markdown 和 `report.json`。报告记录源码提交、单份实验源码指纹、依赖锁指纹、模式与状态；live 还记录模型配置，字段说明见下文。失败返回非零退出码，后续未执行项标为 `not_run`。导出链接指向对应源码提交；未提交的新文件需提交后重新导出。
 
 在 VS Code/Jupyter 中逐格学习时，选择 `notebooks/.venv/bin/python`（Windows 为 `notebooks/.venv/Scripts/python.exe`）对应的内核。也可显式注册：
 
@@ -74,7 +74,7 @@ uv run --project notebooks --locked python -m ipykernel install --user --name de
 3. 对照每节的预期输出，再做结尾的单变量练习。不要同时修改模型、数据和工具，否则难以知道变化来自哪里。
 4. 需要恢复时，先撤销练习修改，再选择“重启内核并运行全部”。这一操作会重新建立所有变量，避免跳格执行留下旧状态。
 
-`course_notebooks` 是本仓库的辅助包，安装时一并提供。Notebook 中常见的 `show_runtime` 打印版本，`show_text` 整理输出换行，`create_model` 选择运行模式；真正的工具定义、Agent 组装与关键检查仍在各章代码格中。
+`course_notebooks` 是本仓库的辅助包，安装时一并提供。Notebook 中常见的 `show_runtime` 打印模式、版本及 live 模型配置，`show_text` 整理输出换行，`create_model` 选择运行模式；真正的工具定义、Agent 组装与关键检查仍在各章代码格中。
 
 ### 常见卡点
 
@@ -93,30 +93,64 @@ uv run --project notebooks --locked python -m ipykernel install --user --name de
 
 公共 `ScriptedChatModel` 是 LangChain 官方 `FakeMessagesListChatModel` 的薄适配器，只补充 `bind_tools()` 和可选的消息回调。模板与第 1、2 章使用官方响应列表；第 5、6 章通过回调读取当前消息、当前工具集合或运行时任务 ID。响应列表会循环，独立实验应创建新实例；回调不依赖共享调用次数。预设的结束消息不是成功证据，仍须核对真实工具结果。
 
-需要真实模型时，把 [`.env.example`](../.env.example) 复制为仓库根目录未提交的 `.env`，再明确选择 `live`：
+需要真实模型时，先看下面的[硅流模型验证表](#live-models)。把 [`.env.example`](../.env.example) 复制为仓库根目录未提交的 `.env`，填写 `SILICONFLOW_API_KEY` 和本章要使用的完整 `MODEL_NAME`，再明确选择 `live`。例如第 7 章已有整本通过记录，可以填写 `MODEL_NAME=Qwen/Qwen3-Coder-30B-A3B-Instruct` 后运行：
 
 ```bash
-uv run --project notebooks --locked python -m course_notebooks.run template --mode live
+uv run --project notebooks --locked python -m course_notebooks.run ch07-skills \
+  --mode live --output-dir artifacts/notebooks-live
 ```
 
 第 2 章研究助手在 live 模式下还会真实调用 Tavily 搜索：需要在 `.env` 中设置 `TAVILY_API_KEY`，安装和运行命令都加上 `--extra search`（完整命令见该 Notebook 开头）。offline 模式使用本地搜索样例，不需要这些。
 
-默认提供商使用 `SILICONFLOW_API_KEY`，可选 `SILICONFLOW_BASE_URL`、`MODEL_NAME`。其他 OpenAI 兼容提供商必须同时设置 `MODEL_API_KEY`、`MODEL_BASE_URL`、`MODEL_NAME`。模型必须支持工具调用；实际网络请求可能收费。复杂实验需要更可靠的工具调用能力，不能由入门实验的结果推断所有模型均适用。
+默认提供商使用 `SILICONFLOW_API_KEY`，`MODEL_NAME` 必填；`SILICONFLOW_BASE_URL` 默认 `https://api.siliconflow.cn/v1`。其他 OpenAI 兼容提供商必须同时设置 `MODEL_API_KEY`、`MODEL_BASE_URL`、`MODEL_NAME`。已有进程环境变量优先于 `.env`，切换模型后请检查开头打印的模型名。模型必须支持工具调用；实际网络请求可能收费。复杂实验需要更可靠的工具调用能力，不能由入门实验的结果推断所有模型均适用。
 
 交互式内核可在创建模型前设置 `os.environ["COURSE_MODE"] = "live"`；重跑时重新选择模式。仅仅存在 Key 或 `.env` 不会启用真实模型。明确选择 live 后缺配置、认证失败或调用失败都会报错，不自动退回脚本模型。LangSmith 追踪为可选项，本地 in-memory Agent Server 不要求 LangSmith Key。
 
 维护者验证 SiliconFlow 时，设置 `SILICONFLOW_API_KEY` 和实际的 `MODEL_NAME`，单独保存 live 产物，保留默认 offline 示例输出：
 
 ```bash
-uv run --project notebooks --locked --extra server python -m course_notebooks.run \
+uv run --project notebooks --locked python -m course_notebooks.run ch14-streaming \
   --mode live --output-dir artifacts/notebooks-live
 ```
 
 更换模型后重新执行，并记录模型名与执行报告；某个模型通过不能代表所有模型都通过。普通 fork CI 继续使用 offline，不提供供应商凭证。
 
-第 14 章的 v3 流式调用经过公共 `create_model` 中的 `StreamingChatOpenAI` 适配器：部分 OpenAI 兼容服务在后续工具参数分块中返回空工具名，`langchain-core 1.6.6` 会用它覆盖首块的名称。适配器只把这类空字符串转为“未提供名称”的 `None`，保留参数、调用 ID、文本和元数据；同步与异步路径都适用。升级上游后，应先运行 `tests/test_streaming_model.py`，确认移除适配器仍能通过，再删除这层兼容处理。
+<a id="live-models"></a>
 
-2026-10-06，在上述锁定环境与兼容处理下，SiliconFlow 的 `Qwen/Qwen3-Coder-30B-A3B-Instruct` 和 `deepseek-ai/DeepSeek-V3.2` 均完整通过第 14 章 live 实验（typed、raw、晚订阅三个场景，各执行一次）。这份记录不代表其他章节或模型也已通过。
+### 硅流模型验证表
+
+核对日期：2026-10-06。下表只收录**整本从第一格执行、原有断言全部通过**的 live 记录；“待验证”表示尚无当前实验版本的完整通过记录。已通过是所列模型的一次执行结果，不保证以后每次都成功。当前提交的 Notebook / Markdown / HTML 输出仍为 offline。
+
+| 实验 | 已验证的完整 `MODEL_NAME` / 状态 | 日期与验证版本 | live 范围与服务要求 |
+|---|---|---|---|
+| 作者模板 | 待验证 | 2026-10-06 核对 | 模型选择 echo；本地工具，无额外服务 |
+| 第 1 章 | 待验证 | 2026-10-06 核对 | 普通 Agent 与 Deep Agent 的工具选择；无额外服务 |
+| 第 2 章：快速上手 | 待验证 | 2026-10-06 核对 | 正常场景用真实模型；故意制造工具错误的场景仍用脚本模型 |
+| 第 2 章：研究助手 | 待验证 | 2026-10-06 核对 | 真实模型与 Tavily 搜索；另需 `TAVILY_API_KEY`、`search` 依赖组 |
+| 第 5 章 | 待验证 | 2026-10-06 核对 | 主、子 Agent 用真实模型；资料是本地固定样例，无搜索服务 |
+| 第 6 章 | 待验证 | 2026-10-06 核对 | 主 Agent 用真实模型；researcher 为固定回显图；需真实本地 Agent Server、`server` 依赖组 |
+| 第 7 章 | `Qwen/Qwen3-Coder-30B-A3B-Instruct` | 2026-10-06；[`ae27a77`](https://github.com/datawhalechina/deepagents-in-action/commit/ae27a77f0e9fe66d0ce81ff6a8d384075fbefb77)，[#133 评审](https://github.com/datawhalechina/deepagents-in-action/pull/133#pullrequestreview-5429855673) | 模型读取 Skill 与参考文件；缺失资源场景，无额外服务 |
+| 第 9 章 | `Qwen/Qwen3-Coder-30B-A3B-Instruct` | 2026-10-06；[`0052010`](https://github.com/datawhalechina/deepagents-in-action/commit/0052010b95ea9088c27546209bda1e4b94f2bf1d)，[#135 评审](https://github.com/datawhalechina/deepagents-in-action/pull/135#pullrequestreview-5429856799) | 模型提出工具请求，审批与恢复；教学工具只记录参数，不发送邮件 |
+| 第 10 章 | `Qwen/Qwen3-Coder-30B-A3B-Instruct` | 2026-10-06；[`b46217f`](https://github.com/datawhalechina/deepagents-in-action/commit/b46217faf2ae217131e4ccc1c33c4a406c06b659)，[#136 评审](https://github.com/datawhalechina/deepagents-in-action/pull/136#pullrequestreview-5429857769) | 模型选择 execute/read_file；分析程序预先提供；需真实 Docker，首次拉取镜像需网络 |
+| 第 14 章 | `Qwen/Qwen3-Coder-30B-A3B-Instruct`；`deepseek-ai/DeepSeek-V3.2` | 2026-10-06；[#140 修复说明](https://github.com/datawhalechina/deepagents-in-action/pull/140#issuecomment-6013556021)，最终版本 [`8fcd9d5`](https://github.com/datawhalechina/deepagents-in-action/commit/8fcd9d596b98a0c10f1729e8d2fd60741e0d2d9b) | 主、子 Agent 用真实模型；typed、raw、晚订阅三个场景，无额外服务 |
+
+第 7、9、10 章的验证版本已合入 main，合并时仅解决目录注册冲突，章节执行代码保留。第 14 章在修复工作区实测后同步 main；最终版本的流式适配器、实验代码与实测一致，模型调用依赖未变。本次模型说明更新沿用这些记录，没有把新一轮 offline 执行标成 live。
+
+`Qwen/Qwen2.5-7B-Instruct` 是入门正文使用的配置示例，尚无上述实验当前版本的完整 live 通过记录。公共入口不再隐含选择它。待验证章节先用 offline 学习；补验时明确填写所尝试的型号，不能仅凭平台标注支持工具调用就写“已验证”。`Pro/` 前缀也是模型 ID 的一部分，第 14 章的普通 DeepSeek 路由记录不涵盖 Pro 路由。
+
+<a id="live-records"></a>
+
+### 模型参数与运行记录
+
+上述实测使用 Python 3.12、当前核心模型调用依赖及公共流式适配器；完整版本以对应版本的 `uv.lock` 为准。公共入口固定 `temperature=0`、单次请求 `timeout=60` 秒、`max_retries=1`；执行器的 `--timeout` 是每个代码格的时限，另行记录。第 7、9、10 章实测的锁文件 SHA-256 为 `423f83c8720c1ea068719cf8e31eef78ecfa2a6f5e599cf63ff151121ee0d97c`。
+
+live 的 `show_runtime()` 显示所选型号、提供商及 API 主机。`report.json` 中每项结果和执行后 Notebook 的 `metadata.course_run` 同时保存 `model_configuration`：`model_name`、`provider`、`api_host`、`temperature`、`timeout_seconds`、`max_retries`。阅读导出的开头也显示型号。这里记录传给客户端的配置，不声称识别了供应商内部部署版本，也不能单独证明模型或工具被调用；仍需核对章节断言与消息、文件、服务结果。offline 的该字段为 `null`。
+
+配置记录不包含 Key、完整 API URL、URL 用户信息或查询参数；执行输出或配置记录若包含环境中的 Key / Token，执行器会扣留产物并返回失败。维护者保存 live 报告时记录源码提交、源码指纹、依赖锁、实际模型及服务范围；修改执行代码或模型调用依赖后，应补验再更新“已验证”状态。
+
+模型 ID 与可用能力可以在[硅流模型广场](https://www.siliconflow.cn/models)及[官方工具调用说明](https://docs.siliconflow.cn/docs/userguide/guides/function-calling)核对；实际适用性以本章完整执行为准。429、服务繁忙或超时应记为“运行未完成”，保留失败报告后重试，不能据此写成代码验证通过或模型不兼容。[限流说明](https://docs.siliconflow.cn/docs/userguide/faqs/rate-limit-and-upgradation)解释了按账户、模型计算的 RPM / TPM。
+
+第 14 章的 v3 流式调用经过公共 `create_model` 中的 `StreamingChatOpenAI` 适配器：部分 OpenAI 兼容服务在后续工具参数分块中返回空工具名，`langchain-core 1.6.6` 会用它覆盖首块的名称。适配器只把这类空字符串转为“未提供名称”的 `None`，保留参数、调用 ID、文本和元数据；同步与异步路径都适用。升级上游后，应先运行 `tests/test_streaming_model.py`，确认移除适配器仍能通过，再删除这层兼容处理。
 
 ## 维护者与贡献者：验证并更新三种格式
 
