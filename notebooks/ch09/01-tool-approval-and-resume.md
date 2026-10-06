@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`61443141db3b`。
+> 本次执行模式：**offline**。源码指纹：`de5589b5ad93`。
 
 # 第 9 章实验：工具审批前，Agent 到底暂停在哪里？
 
@@ -31,6 +31,14 @@ uv run --project notebooks --locked python -m course_notebooks.run ch09-human-in
 
 切换真实模型时，按 README 配置未提交的根目录 `.env`，在运行命令末尾加 `--mode live`。可能产生模型费用；配置或调用失败会直接报错。交互式运行时，先执行 `import os` 和 `os.environ["COURSE_MODE"] = "live"`，再从下一格开始顺序运行。live 仍使用同一组教学工具和断言，不能将离线结果当作真实模型验证。
 
+### 硅流真实模型（live）
+
+**已验证**：`Qwen/Qwen3-Coder-30B-A3B-Instruct`，2026-10-06 整本 live 通过。验证版本 [`0052010`](https://github.com/datawhalechina/deepagents-in-action/commit/0052010b95ea9088c27546209bda1e4b94f2bf1d)，记录见 [#135 评审](https://github.com/datawhalechina/deepagents-in-action/pull/135#pullrequestreview-5429856799)；本次说明更新沿用这份记录。
+
+配置：在未提交的根目录 `.env` 中填写 `SILICONFLOW_API_KEY`，以及 `MODEL_NAME=Qwen/Qwen3-Coder-30B-A3B-Instruct`。API 地址、固定参数与报告字段见 [README 模型记录说明](../README.md#live-records)。随附输出仍为 offline。
+
+范围与服务：真实模型提出工具请求，框架执行审批与恢复。`send_email` 只记录参数，不发送真实邮件；无需邮件服务、数据库或 Agent Server。
+
 
 ```python
 import json
@@ -52,7 +60,7 @@ show_runtime()
 ```
 
     运行模式： offline （脚本模型）
-    Python： 3.12.13 平台： Darwin arm64
+    Python： 3.12.11 平台： Darwin arm64
     deepagents==0.7.22
     langchain==1.4.3
     langchain-core==1.6.6

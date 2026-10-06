@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>ec27f36cb4ac</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>fb777c29baf1</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7866,6 +7866,9 @@ uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> <
 </pre></div>
 <p>默认 <strong>offline</strong> 不调用模型 API，但仍需要 Docker；首次运行会下载固定摘要的 Python 镜像，需要访问镜像仓库，后续使用本地缓存。未安装 Docker、Engine 未启动或镜像下载失败都会报错，不改用宿主 Shell。镜像详情与 Backend 适配代码见 <a href="docker_sandbox.py">docker_sandbox.py</a>。</p>
 <p>使用真实模型时，按 README 配置未提交的根目录 <code>.env</code>，在执行命令末尾添加 <code>--mode live</code>。交互式内核先执行 <code>import os</code> 并设置 <code>os.environ["COURSE_MODE"] = "live"</code>，再从导入格顺序运行。模型 API 可能收费；live 失败不会退回 offline。本例在两种模式中都运行预先提供的分析程序，验证的不是模型自行编程能力。</p>
+<h3 id="%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">硅流真实模型（live）<a class="anchor-link" href="#%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">¶</a></h3><p><strong>已验证</strong>：<code>Qwen/Qwen3-Coder-30B-A3B-Instruct</code>，2026-10-06 整本 live 通过。验证版本 <a href="https://github.com/datawhalechina/deepagents-in-action/commit/b46217faf2ae217131e4ccc1c33c4a406c06b659"><code>b46217f</code></a>，记录见 <a href="https://github.com/datawhalechina/deepagents-in-action/pull/136#pullrequestreview-5429857769">#136 评审</a>；本次说明更新沿用这份记录。</p>
+<p>配置：在未提交的根目录 <code>.env</code> 中填写 <code>SILICONFLOW_API_KEY</code>，以及 <code>MODEL_NAME=Qwen/Qwen3-Coder-30B-A3B-Instruct</code>。API 地址、固定参数与报告字段见 <a href="../README.md#live-records">README 模型记录说明</a>。随附输出仍为 offline。</p>
+<p>范围与服务：真实模型选择 <code>execute</code> 和 <code>read_file</code>；分析程序预先提供，仍需真实 Docker，首次下载镜像需网络。这个记录不代表模型独立编写了程序。</p>
 </div>
 </div>
 </div>
@@ -7909,13 +7912,13 @@ uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> <
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>运行模式： offline （脚本模型）
-Python： 3.12.13 平台： Darwin arm64
+Python： 3.12.11 平台： Darwin arm64
 deepagents==0.7.22
 langchain==1.4.3
 langchain-core==1.6.6
 langgraph==1.2.13
 langchain-openai==1.6.7
-Docker Engine： 29.8.1
+Docker Engine： 29.4.0
 
 固定的容器镜像：
 python@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
