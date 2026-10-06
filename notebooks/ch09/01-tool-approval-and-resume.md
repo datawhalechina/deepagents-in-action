@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`efac4ed82069`。
+> 本次执行模式：**offline**。源码指纹：`61443141db3b`。
 
 # 第 9 章实验：工具审批前，Agent 到底暂停在哪里？
 
@@ -14,7 +14,7 @@
 | `reject` | 工具不运行，模型收到拒绝原因 | 空执行记录和错误状态的反馈 |
 | `respond` | 占位工具不运行，人的回答成为结果 | 空执行记录和成功状态的人工回答 |
 
-最后观察两项工具请求的批量审批，以及决策数量不匹配时的真实报错。实验验证框架的审批与恢复机制，不以模型说“完成”作为成功证据。
+最后观察批量审批、决策数量不匹配的真实报错，以及同一会话的第二次中断：第一次回答已生效，不等于整次运行已完成。实验验证框架的审批与恢复机制，不以模型说“完成”作为成功证据。
 
 ## 1. 环境与运行模式
 
@@ -37,6 +37,7 @@ import json
 from copy import deepcopy
 
 from deepagents import create_deep_agent
+from langchain.agents.middleware import wrap_model_call
 from langchain.tools import tool
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, ToolMessage
@@ -52,10 +53,11 @@ show_runtime()
 
     运行模式： offline （脚本模型）
     Python： 3.12.13 平台： Darwin arm64
-    deepagents==0.7.15
-    langchain==1.4.2
-    langgraph==1.2.11
-    langchain-openai==1.6.2
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
 
 
 ### 先认清消息、状态与执行位置
@@ -127,23 +129,36 @@ print("教学工具已定义；尚未执行。")
 
 本节创建 Agent，暂不发起任务。关键配置是 `interrupt_on`：按工具名指定是否需要审批，以及允许哪几种决定。本例的邮件工具允许 `approve`、`edit`、`reject`；询问工具只允许 `respond`。
 
-后面还要观察模型实际被调用了几次。`ModelRequestRecorder` 是一个回调：每次框架开始调用模型时，自动执行 `on_chat_model_start()`，把输入消息记入 `inputs`。它只观察，不修改模型输入或回复。
+后面还要观察模型实际被调用了几次。`ModelRequestRecorder` 是一个回调：每次框架开始调用模型时，自动执行 `on_chat_model_start()`，把输入消息记入 `inputs`。它只观察，不修改模型输入或回复。另存 `requests` 中的 namespace 与主/子角色：锁定版 0.7.22 的受控回归实测，主模型是 `model:<id>`，子模型是 `tools:<id>|model:<id>`；角色不依赖是否带有主 Agent 的反馈。
 
 
 ```python
 class ModelRequestRecorder(BaseCallbackHandler):
+    raise_error = True
+
     def __init__(self):
         self.inputs = []
+        self.requests = []
 
     def on_chat_model_start(self, serialized, messages, **kwargs):
-        self.inputs.append(list(messages[0]))
+        namespace = kwargs.get("metadata", {}).get("langgraph_checkpoint_ns")
+        assert isinstance(namespace, str) and namespace, "缺少模型回调 graph namespace"
+        # 锁定版实测：主模型 model:<id>；子模型 tools:<id>|model:<id>。
+        role = "child" if "|" in namespace else "main"
+        self.inputs.append(deepcopy(list(messages[0])))
+        self.requests.append({"namespace": namespace, "role": role})
+
 ```
 
-`new_experiment(planned_calls, thread_id)` 把重复的组装步骤放在一个函数里。输入分别是本次要提出的工具请求和会话 ID；每次调用都创建新的 Agent、执行记录、模型和内存存档，避免不同审批实验互相影响。
+`new_experiment(planned_calls, thread_id, followup=None)` 把重复的组装步骤放在一个函数里。输入分别是本次要提出的工具请求和会话 ID；每次调用都创建新的 Agent、执行记录、模型和内存存档，避免不同审批实验互相影响。
 
-默认 offline 下，`ScriptedChatModel` 按 `responses` 列表返回两条预设消息：第一次提出 `planned_calls` 中的工具请求，第二次给出结束回复。它不会理解输入或判断工具结果，所以结束回复不能证明工具成功。这个响应列表会循环，每个独立实验都要使用新模型。
+默认 offline 下，`ScriptedChatModel` 按 `responses` 列表返回两条预设消息：第一次提出 `planned_calls` 中的工具请求，第二次给出结束回复。第 7 节传入 `followup` 后，固定序列为初始调用、第二问题调用、结束回复。它不会理解输入或判断工具结果，所以结束回复不能证明工具成功。这个响应列表会循环，每个独立实验都要使用新模型。
 
 `create_model()` 负责选择运行模式。live 下，任务要求会作为用户输入交给真实模型，工具请求由模型生成；没有满足要求时，后面的断言会报错。`deepcopy()` 复制请求字典，避免一个实验修改另一个实验的数据。
+
+主 Agent 的 `teaching_tools` 使用 `wrap_model_call` 与 `request.override(tools=...)`，把模型可见工具收窄到本场景的 `send_email` / `ask_user`。本批反馈进入消息后传入 `tools=[]`，让真实模型只生成总结，而不只是提示它“不要委派”。两次问答场景在第一回答后仍允许 `ask_user`，两次反馈后才清空工具。
+
+**这只是教学范围限制，不是生产安全边界**：没有移除图中注册的其他工具，也没有建立执行权限系统。live 的调用和总结仍由真实模型生成，脚本模型也不会因工具列表变化自动理解反馈；后面的证据检查不能省略。
 
 函数返回一个字典，后面按字段取出所需对象：
 
@@ -154,19 +169,55 @@ class ModelRequestRecorder(BaseCallbackHandler):
 | `recorder` | 查看模型实际收到的输入消息 |
 | `plan` | 生成本次用户任务，并核对待审批请求 |
 | `config` | 保存 `thread_id` 和记录模型输入的回调；启动与恢复共用它 |
+| `followup` | 可选的第二问题，只在收到第一回答后再提出 |
+| `model_tools` | 中间件为各次主模型请求选出的教学工具名 |
 
 
 ```python
-def new_experiment(planned_calls, thread_id):
+def new_experiment(planned_calls, thread_id, *, followup=None):
     records = []
     recorder = ModelRequestRecorder()
-    model = create_model(ScriptedChatModel(responses=[
-        AIMessage(content="", tool_calls=deepcopy(planned_calls)),
-        AIMessage(content="本轮结束；请以执行记录和工具结果为准。"),
-    ]))
+    experiment = {
+        "records": records, "recorder": recorder,
+        "plan": deepcopy(planned_calls), "followup": deepcopy(followup),
+        "model_tools": [],
+        "config": {"configurable": {"thread_id": thread_id},
+                   "callbacks": [recorder]},
+    }
+    responses = [AIMessage(content="", tool_calls=deepcopy(planned_calls))]
+    if followup is not None:
+        assert len(planned_calls) == 1 and planned_calls[0]["name"] == "ask_user"
+        assert followup["name"] == "ask_user"
+        responses.append(AIMessage(content="", tool_calls=[deepcopy(followup)]))
+    responses.append(AIMessage(content="本轮结束；请以执行记录和工具结果为准。"))
+    model = create_model(ScriptedChatModel(responses=responses))
+
+    @wrap_model_call
+    def teaching_tools(request, handler):
+        # 只向主模型提供本场景教学工具；不是生产环境的工具执行权限边界。
+        replies = [message for message in request.messages
+                   if isinstance(message, ToolMessage)]
+        initial_calls = experiment.get("calls") or next(
+            (message.tool_calls for message in request.messages
+             if isinstance(message, AIMessage) and message.tool_calls), []
+        )
+        initial_ids = {call["id"] for call in initial_calls}
+        seen_ids = {reply.tool_call_id for reply in replies}
+        batch_received = bool(initial_ids) and initial_ids <= seen_ids
+        allowed = {call["name"] for call in planned_calls}
+        if batch_received:
+            if followup is not None and len(seen_ids) == 1:
+                allowed = {"ask_user"}  # 第一回答后允许真实模型提出第二问题。
+            else:
+                allowed = set()  # 本批（或两轮）反馈后只生成总结。
+        tools = [item for item in request.tools if getattr(item, "name", None) in allowed]
+        experiment["model_tools"].append([item.name for item in tools])
+        return handler(request.override(tools=tools))
+
     agent = create_deep_agent(
         model=model,
         tools=make_tools(records),
+        middleware=[teaching_tools],
         checkpointer=InMemorySaver(),
         interrupt_on={
             "send_email": {"allowed_decisions": ["approve", "edit", "reject"]},
@@ -174,17 +225,16 @@ def new_experiment(planned_calls, thread_id):
         },
         system_prompt=(
             "只提出用户指定的工具调用，参数原样保留。不要委派或使用其他工具。"
-            "若有多项请求，在同一条消息中提出。"
-            "收到审批后的工具结果时，总结结果并结束，不要再次调用工具。"
+            "若有多项初始请求，在同一条消息中提出。"
+            "收到审批后的工具结果时，总结结果并结束，不要再次调用工具；"
+            "仅当用户明确要求第二问题时，在收到第一回答之后调用 ask_user 提出第二问题，"
+            "收到第二回答后总结两轮回答并结束。"
             "教学邮件只记录参数，不是真实邮件服务。"
         ),
     )
-    return {
-        "agent": agent, "records": records, "recorder": recorder,
-        "plan": deepcopy(planned_calls),
-        "config": {"configurable": {"thread_id": thread_id},
-                   "callbacks": [recorder]},
-    }
+    experiment["agent"] = agent
+    return experiment
+
 ```
 
 ## 4. 启动任务，确认工具还没有执行
@@ -205,6 +255,13 @@ def start_experiment(experiment):
     instruction = "请执行以下教学工具任务：\n" + json.dumps(
         requested, ensure_ascii=False, indent=2,
     )
+    if experiment["followup"] is not None:
+        instruction += (
+            "\n先只提出上面的第一个问题；收到人的第一次回答后，"
+            "再调用 ask_user 提出第二个问题："
+            + experiment["followup"]["args"]["question"]
+            + "\n收到第二回答后总结两轮完整回答并结束。"
+        )
     paused = experiment["agent"].invoke(
         {"messages": [("user", instruction)]},
         config=experiment["config"], version="v2",
@@ -299,27 +356,34 @@ approved = approve_case["agent"].invoke(
 
 恢复结果保存在 `approved` 中。它包含完整消息历史，可以通过 `approved.value["messages"]` 查看；但最后一条模型回复不能单独证明邮件工具运行成功。
 
-为四种决定复用同一套检查，下面定义 `check_outcome()`。它只读取结果、核对并打印，不发起任务或调用工具。调用时提供两组预期值：
+下面把两类验收分开，权威判断都留在本 Notebook：
 
-- `expected_records`：工具应实际执行哪些操作；空列表表示不应执行工具。
-- `expected_feedback`：模型应收到什么反馈，每项是 `(状态, 内容)`，按原工具请求顺序排列。
+- `check_outcome()` 核对**本批决策效果**：全部实际执行记录必须精确匹配 `expected_records`，所以未经批准或重复执行仍会失败；围绕启动时保存的真实 `calls`，核对唯一 ID、工具名、状态与完整反馈。邮件末行 JSON 反映实际参数，`respond` 的回答必须原样保留。
+- 它按 callback 的 graph namespace 先选**恢复后首个主模型请求**，再核对同一批全部 `ToolMessage` 的 ID、name、status 与完整 content。不能先筛出“有反馈”的输入，再假装缺反馈的首个请求不存在；也不要求子 Agent 接收主 Agent 的反馈。
+- `check_run_state()` 展示**整次运行**的主/子请求数、`snapshot.next`、中断与待审批动作。四种默认决策及批量示例显式使用 `expect_complete=True` 验收最终 AI 无工具调用且无待继续节点、中断。
 
-函数依次检查执行记录、工具结果和恢复后的模型输入。工具结果通过 `tool_call_id` 对应原请求；嵌套列表推导式则先遍历模型消息，再取出各条消息中的 `tool_calls`。邮件结果中的末行 JSON 用 `json.loads()` 还原成字典，打印时展开字段并保留中文；人工修改参数的原始说明仍保存在消息历史中。
+本批效果正确之后仍可能出现合法的新审批。它不会使 `check_outcome()` 失败，但运行状态必须如实显示仍待人输入，不能宣称整次完成。
 
 
 ```python
-def check_outcome(experiment, result, expected_records, expected_feedback):
-    assert not result.interrupts, "仍有未解决的中断"
-    # 先看工具真正做了什么，再看返回给模型的消息。
+def check_outcome(experiment, result, expected_records, expected_feedback,
+                  *, calls=None, model_calls_before=None):
+    """核对一批已审批请求的决策效果，不把后续新中断判为本批失败。"""
+    calls = experiment["calls"] if calls is None else calls
+    before = (experiment["model_calls_before"] if model_calls_before is None
+              else model_calls_before)
+    # 全部实际执行记录仍须精确匹配：未经批准或重复执行都失败。
     assert experiment["records"] == expected_records, "执行次数或实际参数不符"
-    messages = result.value["messages"]
-    calls = [call for message in messages if isinstance(message, AIMessage)
-             for call in message.tool_calls]
-    assert calls == experiment["calls"], "恢复后出现额外或改变的工具请求"
     assert len(expected_feedback) == len(calls)
+    assert len({call["id"] for call in calls}) == len(calls), "审批调用 ID 不唯一"
+    messages = result.value["messages"]
+    history_calls = [call for message in messages if isinstance(message, AIMessage)
+                     for call in message.tool_calls]
     replies = [message for message in messages if isinstance(message, ToolMessage)]
-    assert len(replies) == len(calls), "工具结果数量不符"
+    batch_replies = []
     for call, (status, expected) in zip(calls, expected_feedback):
+        matched_calls = [item for item in history_calls if item["id"] == call["id"]]
+        assert matched_calls == [call], "原审批请求被改变或重复"
         matched = [reply for reply in replies if reply.tool_call_id == call["id"]]
         assert len(matched) == 1, "工具结果没有唯一对应到原调用"
         reply = matched[0]
@@ -328,33 +392,60 @@ def check_outcome(experiment, result, expected_records, expected_feedback):
             actual_args = json.loads(reply.text.splitlines()[-1])
             assert actual_args == expected, "工具返回没有反映实际参数"
         elif status == "error":
-            assert expected in reply.text, "拒绝原因没有反馈给模型"
+            assert reply.content == (
+                f"User rejected the tool call for `{call['name']}` with reason: {expected}"
+            ), "完整拒绝原因没有反馈给模型"
         else:
-            assert reply.text == expected, "人工回答没有原样成为工具结果"
-        print("工具结果：", reply.name)
-        print("  状态：", reply.status)
-        print("  调用 ID：", reply.tool_call_id)
-        if isinstance(expected, dict):
-            if "\nTool response:\n" in reply.text:
-                print("框架附有人工修改参数的说明；下面展开实际执行参数。")
-            show_text("  工具实际返回的参数：",
-                      json.dumps(actual_args, ensure_ascii=False, indent=2))
-        else:
-            show_text("  返回内容：", reply.text)
-    # 只检查恢复后的模型调用，它们应已收到这批工具结果。
-    resumed_inputs = experiment["recorder"].inputs[experiment["model_calls_before"]:]
-    assert resumed_inputs, "恢复后没有调用模型读取工具结果"
-    for model_input in resumed_inputs:
-        seen_ids = {message.tool_call_id for message in model_input
-                    if isinstance(message, ToolMessage)}
-        assert all(call["id"] in seen_ids for call in calls), (
-            "恢复后的模型输入缺少工具结果，可能重跑了审批前的模型步骤"
+            assert reply.content == expected, "人工回答没有原样成为工具结果"
+        batch_replies.append(reply)
+        print("工具结果：", reply.name, "状态：", reply.status, "调用 ID：", reply.tool_call_id)
+        show_text("  完整返回内容：", reply.text)
+    recorder = experiment["recorder"]
+    assert len(recorder.inputs) == len(recorder.requests), "回调记录不完整"
+    # 先按 graph namespace 找恢复后的首个主请求，再检查内容；不能先筛有反馈的输入。
+    main_indices = [index for index in range(before, len(recorder.inputs))
+                    if recorder.requests[index]["role"] == "main"]
+    assert main_indices, "恢复后没有调用主模型读取工具结果"
+    model_replies = [message for message in recorder.inputs[main_indices[0]]
+                     if isinstance(message, ToolMessage)]
+    for reply in batch_replies:
+        matched = [item for item in model_replies if item.tool_call_id == reply.tool_call_id]
+        assert len(matched) == 1, "恢复后的首个主模型输入缺少唯一工具结果"
+        actual = matched[0]
+        assert (actual.name, actual.status, actual.content) == (
+            reply.name, reply.status, reply.content
+        ), "恢复后的首个主模型输入丢失或改变了完整工具反馈"
+    print("本批决策效果已核对；工具实际执行次数：", len(experiment["records"]))
+
+
+def check_run_state(experiment, result, *, expect_complete=None):
+    """展示整次运行状态；只有显式要求完成时才验收结束条件。"""
+    snapshot = experiment["agent"].get_state(experiment["config"])
+    messages = result.value["messages"]
+    complete = (
+        not result.interrupts and not snapshot.interrupts and not snapshot.next
+        and isinstance(messages[-1], AIMessage) and not messages[-1].tool_calls
+    )
+    recorder = experiment["recorder"]
+    print("实际模型请求数（主 / 子）：",
+          sum(item["role"] == "main" for item in recorder.requests), "/",
+          sum(item["role"] == "child" for item in recorder.requests))
+    print("待执行节点 snapshot.next：", snapshot.next)
+    print("中断数（返回 / 快照）：", len(result.interrupts), "/", len(snapshot.interrupts))
+    for pending in snapshot.interrupts:
+        for action in pending.value["action_requests"]:
+            print("待审批动作：", action["name"], action["args"])
+    print("整次运行：", "已完成" if complete else (
+        "等待下一次人工审批" if snapshot.interrupts else "未完成，需检查执行状态"
+    ))
+    if expect_complete is True:
+        assert complete, "整次运行尚未完成"
+    elif expect_complete is False:
+        assert not complete and result.interrupts and snapshot.interrupts and snapshot.next, (
+            "应保留等待人工审批的恢复状态"
         )
-    assert isinstance(messages[-1], AIMessage) and not messages[-1].tool_calls
-    assert not experiment["agent"].get_state(experiment["config"]).next
-    print("工具实际执行次数：", len(experiment["records"]))
-    print("实际模型请求数（暂停前 / 完成后）：",
-          experiment["model_calls_before"], "/", len(experiment["recorder"].inputs))
+    return snapshot
+
 ```
 
 
@@ -364,23 +455,22 @@ check_outcome(
     [{"name": "send_email", "args": ORIGINAL_ARGS}],
     [("success", ORIGINAL_ARGS)],
 )
+_ = check_run_state(approve_case, approved, expect_complete=True)
+
 ```
 
-    工具结果： send_email
-      状态： success
-      调用 ID： mail-1
+    工具结果： send_email 状态： success 调用 ID： mail-1
     
-      工具实际返回的参数：
-    {
-      "to": "all@example.com",
-      "subject": "上线通知",
-      "body": "测试与构建已通过，计划明天上线。"
-    }
-    工具实际执行次数： 1
-    实际模型请求数（暂停前 / 完成后）： 1 / 2
+      完整返回内容：
+    {"to": "all@example.com", "subject": "上线通知", "body": "测试与构建已通过，计划明天上线。"}
+    本批决策效果已核对；工具实际执行次数： 1
+    实际模型请求数（主 / 子）： 2 / 0
+    待执行节点 snapshot.next： ()
+    中断数（返回 / 快照）： 0 / 0
+    整次运行： 已完成
 
 
-执行记录和成功的工具结果都显示：原参数执行了一次。offline 下，模型请求数从 **1** 变成 **2**；第二次请求已包含邮件结果，是工具执行之后的新模型步骤。审批前生成工具请求的模型步骤没有重跑。
+执行记录和成功的工具结果都显示：原参数执行了一次。offline 下，模型请求数从 **1** 变成 **2**；第二次请求已包含邮件结果，是工具执行之后的新模型步骤。本批证据通过，且 `check_run_state(..., expect_complete=True)` 确认本示例整次结束。其他流程若在读取反馈后提出新请求，应另行查看运行状态，而不是把新中断判为本批决策失败。
 
 ### 5.2 edit：修改收件人再执行
 
@@ -411,6 +501,8 @@ assert edit_case["records"][0]["args"]["to"] == "team@example.com", (
 )
 print("原请求收件人：", ORIGINAL_ARGS["to"])
 print("实际执行收件人：", edit_case["records"][0]["args"]["to"])
+_ = check_run_state(edit_case, edited, expect_complete=True)
+
 ```
 
     线程： ch09-edit
@@ -425,21 +517,26 @@ print("实际执行收件人：", edit_case["records"][0]["args"]["to"])
     }
       允许决策： approve, edit, reject
     工具执行次数： 0
-    工具结果： send_email
-      状态： success
-      调用 ID： mail-1
-    框架附有人工修改参数的说明；下面展开实际执行参数。
+    工具结果： send_email 状态： success 调用 ID： mail-1
     
-      工具实际返回的参数：
-    {
-      "to": "team@example.com",
-      "subject": "上线通知",
-      "body": "测试与构建已通过，计划明天上线。"
-    }
-    工具实际执行次数： 1
-    实际模型请求数（暂停前 / 完成后）： 1 / 2
+      完整返回内容：
+    Note: a human reviewer replaced this tool call before it ran. The call
+      recorded in your message is the one you produced, not the one that
+      executed. This was intentional and authorized. Do not re-issue your
+      original call. Executed instead: send_email with arguments {"to":
+      "team@example.com", "subject": "\u4e0a\u7ebf\u901a\u77e5", "body": "\u6d4b
+      \u8bd5\u4e0e\u6784\u5efa\u5df2\u901a\u8fc7\uff0c\u8ba1\u5212\u660e\u5929\u
+      4e0a\u7ebf\u3002"}.
+    
+    Tool response:
+    {"to": "team@example.com", "subject": "上线通知", "body": "测试与构建已通过，计划明天上线。"}
+    本批决策效果已核对；工具实际执行次数： 1
     原请求收件人： all@example.com
     实际执行收件人： team@example.com
+    实际模型请求数（主 / 子）： 2 / 0
+    待执行节点 snapshot.next： ()
+    中断数（返回 / 快照）： 0 / 0
+    整次运行： 已完成
 
 
 输出最后两行分别是原请求收件人 `all@example.com` 和实际执行收件人 `team@example.com`。成功的工具结果也返回了新地址，说明修改影响了工具执行，而不只是改了展示文本。
@@ -458,6 +555,8 @@ rejected = reject_case["agent"].invoke(
     config=reject_case["config"], version="v2",
 )
 check_outcome(reject_case, rejected, [], [("error", REJECT_REASON)])
+_ = check_run_state(reject_case, rejected, expect_complete=True)
+
 ```
 
     线程： ch09-reject
@@ -472,15 +571,16 @@ check_outcome(reject_case, rejected, [], [("error", REJECT_REASON)])
     }
       允许决策： approve, edit, reject
     工具执行次数： 0
-    工具结果： send_email
-      状态： error
-      调用 ID： mail-1
+    工具结果： send_email 状态： error 调用 ID： mail-1
     
-      返回内容：
+      完整返回内容：
     User rejected the tool call for `send_email` with reason:
       用户拒绝发送，请只保留草稿，不要重试发送。
-    工具实际执行次数： 0
-    实际模型请求数（暂停前 / 完成后）： 1 / 2
+    本批决策效果已核对；工具实际执行次数： 0
+    实际模型请求数（主 / 子）： 2 / 0
+    待执行节点 snapshot.next： ()
+    中断数（返回 / 快照）： 0 / 0
+    整次运行： 已完成
 
 
 输出中的执行次数是 **0**，返回内容包含 `REJECT_REASON`。这里的 `error` 表示调用被拒绝；工具没有运行，也没有抛出 Python 异常。拒绝原因已进入恢复后的模型输入。本例只检查这条反馈，不创建或保存邮件草稿。
@@ -501,6 +601,8 @@ responded = respond_case["agent"].invoke(
     config=respond_case["config"], version="v2",
 )
 check_outcome(respond_case, responded, [], [("success", HUMAN_ANSWER)])
+_ = check_run_state(respond_case, responded, expect_complete=True)
+
 ```
 
     线程： ch09-respond
@@ -513,14 +615,15 @@ check_outcome(respond_case, responded, [], [("success", HUMAN_ANSWER)])
     }
       允许决策： respond
     工具执行次数： 0
-    工具结果： ask_user
-      状态： success
-      调用 ID： question-1
+    工具结果： ask_user 状态： success 调用 ID： question-1
     
-      返回内容：
+      完整返回内容：
     按季度汇总，并排除测试数据。
-    工具实际执行次数： 0
-    实际模型请求数（暂停前 / 完成后）： 1 / 2
+    本批决策效果已核对；工具实际执行次数： 0
+    实际模型请求数（主 / 子）： 2 / 0
+    待执行节点 snapshot.next： ()
+    中断数（返回 / 快照）： 0 / 0
+    整次运行： 已完成
 
 
 输出中工具执行次数仍是 **0**，工具结果却是 `success`，并原样包含 `HUMAN_ANSWER`。这是人工回答成为了结果，不表示占位函数运行成功；恢复后的模型已收到这条回答。
@@ -553,6 +656,8 @@ check_outcome(
     [{"name": "send_email", "args": BATCH_CALLS[0]["args"]}],
     [("success", BATCH_CALLS[0]["args"]), ("error", BATCH_REASON)],
 )
+_ = check_run_state(batch_case, batch_result, expect_complete=True)
+
 ```
 
     线程： ch09-batch
@@ -577,27 +682,20 @@ check_outcome(
     }
       允许决策： approve, edit, reject
     工具执行次数： 0
-
-
-    工具结果： send_email
-      状态： success
-      调用 ID： batch-team
+    工具结果： send_email 状态： success 调用 ID： batch-team
     
-      工具实际返回的参数：
-    {
-      "to": "team@example.com",
-      "subject": "上线通知",
-      "body": "测试与构建已通过，计划明天上线。"
-    }
-    工具结果： send_email
-      状态： error
-      调用 ID： batch-all
+      完整返回内容：
+    {"to": "team@example.com", "subject": "上线通知", "body": "测试与构建已通过，计划明天上线。"}
+    工具结果： send_email 状态： error 调用 ID： batch-all
     
-      返回内容：
+      完整返回内容：
     User rejected the tool call for `send_email` with reason:
       只通知项目组，取消全员通知，不要重试。
-    工具实际执行次数： 1
-    实际模型请求数（暂停前 / 完成后）： 1 / 2
+    本批决策效果已核对；工具实际执行次数： 1
+    实际模型请求数（主 / 子）： 2 / 0
+    待执行节点 snapshot.next： ()
+    中断数（返回 / 快照）： 0 / 0
+    整次运行： 已完成
 
 
 输出中 `batch-team` 对应成功结果，`batch-all` 对应拒绝反馈；工具实际执行次数是 **1**，唯一的执行记录指向项目组地址。这样既核对了两个结果，也确认只执行了批准的那一项。
@@ -657,9 +755,102 @@ print("校验失败后的工具执行次数：", len(invalid_case["records"]))
 
 错误信息中的 `(1)` 和 `(2)` 分别表示提交的决定数与待审批调用数。工具执行次数为 **0**，说明数量校验失败时尚未执行邮件工具。
 
-## 7. 恢复边界、练习与清理
+## 7. 第一回答已生效，第二问题仍待审批
 
-本次实验观察到：工具请求先进入 State，审批前执行次数为 0；`approve` 保留参数，`edit` 改变实际参数，`reject` 跳过调用并反馈拒绝原因，`respond` 跳过占位函数并返回人工回答。
+另建一条会话，但两次问答共用**同一个 Agent、thread_id 与 Checkpointer**。先问汇总周期，收到 `respond` 后才问报告格式。offline 的三条固定响应仅安排调用与结束消息；两次中断及恢复是真实框架行为。live 则由真实模型提出两次问题，第一回答后仍只提供 `ask_user`，两次回答后传 `tools=[]`。
+
+下面只提交**第一回答**。预期本批效果检查通过，而整次运行仍有第二个待审批动作；不自动批准或回答第二问题。
+
+
+```python
+FOLLOWUP_CALL = {
+    "name": "ask_user", "args": {"question": "报告输出 PDF 还是表格？"},
+    "id": "question-2",
+}
+followup_case = new_experiment([ASK_CALL], "ch09-followup", followup=FOLLOWUP_CALL)
+start_experiment(followup_case)
+FIRST_ANSWER = "按季度汇总，并排除测试数据。"
+second_pause = followup_case["agent"].invoke(
+    Command(resume={"decisions": [{"type": "respond", "message": FIRST_ANSWER}]}),
+    config=followup_case["config"], version="v2",
+)
+check_outcome(followup_case, second_pause, [], [("success", FIRST_ANSWER)])
+second_snapshot = check_run_state(followup_case, second_pause, expect_complete=False)
+second_actions = second_pause.interrupts[0].value["action_requests"]
+assert [{"name": action["name"], "args": action["args"]} for action in second_actions] == [
+    {"name": FOLLOWUP_CALL["name"], "args": FOLLOWUP_CALL["args"]}
+]
+second_calls = deepcopy(second_pause.value["messages"][-1].tool_calls)
+assert len(second_calls) == 1 and second_calls[0]["id"] != followup_case["calls"][0]["id"]
+before_second_resume = len(followup_case["recorder"].inputs)
+print("第一回答已生效；第二问题仍待你回答。尚未完成。")
+
+```
+
+    线程： ch09-followup
+    待审批动作 1：ask_user
+      调用 ID： question-1
+    
+      参数：
+    {
+      "question": "报告按月还是按季度汇总？"
+    }
+      允许决策： respond
+    工具执行次数： 0
+    工具结果： ask_user 状态： success 调用 ID： question-1
+    
+      完整返回内容：
+    按季度汇总，并排除测试数据。
+    本批决策效果已核对；工具实际执行次数： 0
+    实际模型请求数（主 / 子）： 2 / 0
+    待执行节点 snapshot.next： ('HumanInTheLoopMiddleware.after_model',)
+    中断数（返回 / 快照）： 1 / 1
+    待审批动作： ask_user {'question': '报告输出 PDF 还是表格？'}
+    整次运行： 等待下一次人工审批
+    第一回答已生效；第二问题仍待你回答。尚未完成。
+
+
+### 看过第二问题后，手动运行下一格
+
+`SECOND_ANSWER` 是人的明确第二回答。先查看上格待审批内容，按你的选择修改，然后**单独运行**本格，以 `Command` 恢复原会话；它不是循环自动批准。顺序执行全部单元格的离线演示相当于显式采用这里写出的人工回答。
+
+为核对结束前主模型收到**两轮完整回答**，`check_outcome` 的可选 `calls` 合并两轮实际请求，`model_calls_before` 指向第二次恢复前。初始 `followup_case["calls"]` 不覆盖，仍可用于单独核对第一批。最终整次运行必须完成，占位工具执行记录仍为空。
+
+
+```python
+SECOND_ANSWER = "输出 PDF，附上明细表格。"
+followup_result = followup_case["agent"].invoke(
+    Command(resume={"decisions": [{"type": "respond", "message": SECOND_ANSWER}]}),
+    config=followup_case["config"], version="v2",
+)
+check_outcome(
+    followup_case, followup_result, [],
+    [("success", FIRST_ANSWER), ("success", SECOND_ANSWER)],
+    calls=followup_case["calls"] + second_calls,
+    model_calls_before=before_second_resume,
+)
+_ = check_run_state(followup_case, followup_result, expect_complete=True)
+
+```
+
+    工具结果： ask_user 状态： success 调用 ID： question-1
+    
+      完整返回内容：
+    按季度汇总，并排除测试数据。
+    工具结果： ask_user 状态： success 调用 ID： question-2
+    
+      完整返回内容：
+    输出 PDF，附上明细表格。
+    本批决策效果已核对；工具实际执行次数： 0
+    实际模型请求数（主 / 子）： 3 / 0
+    待执行节点 snapshot.next： ()
+    中断数（返回 / 快照）： 0 / 0
+    整次运行： 已完成
+
+
+## 8. 恢复边界、练习与清理
+
+本次实验观察到：本批决策成功和整次运行完成是两个判断；新请求需要新的人工决定。工具请求先进入 State，审批前执行次数为 0；`approve` 保留参数，`edit` 改变实际参数，`reject` 跳过调用并反馈拒绝原因，`respond` 跳过占位函数并返回人工回答。
 
 ### Checkpoint 能恢复什么？
 
@@ -677,6 +868,8 @@ Checkpoint 保存会话的 State 和执行进度，不能备份整个 Python 进
 
 把外部动作放在审批之后也不自动保证只执行一次：若邮件已经发送，程序却在保存执行结果前崩溃，恢复时仍可能再次发送。Checkpointer 本身无法消除这种重复。
 
+本实验的模型工具收窄只控制教学范围，不替代生产工具授权；执行次数断言也只证明这些观察到的运行，不承诺 exactly-once。
+
 `InMemorySaver` 的数据随内核退出而丢失。本实验只验证当前进程中的审批恢复；跨进程恢复、数据库持久化、并发审批和真实邮件投递均未验证。进一步说明见 [LangGraph 中断文档](https://docs.langchain.com/oss/python/langgraph/interrupts)与 [Checkpointer 文档](https://docs.langchain.com/oss/python/langgraph/checkpointers)。
 
 ### 改一个变量再观察
@@ -684,6 +877,7 @@ Checkpoint 保存会话的 State 和执行进度，不能备份整个 Python 进
 1. 只把 5.2 中 `EDITED_TO` 改为 `"review@example.com"`，先预测实际收件人，再重启内核并从第一格运行。
 2. 观察 5.2 的工具结果：应出现新地址，但随后固定要求 `"team@example.com"` 的断言会失败。这是“工具按新参数执行成功，却不再满足原收件人要求”的区别。
 3. 恢复 `EDITED_TO = "team@example.com"`，重启内核并全部运行。各项检查应通过；第 6 节的数量错误仍会出现，并由代码按预期捕获。
+4. 第 7 节先停在第二次中断，查看初次效果与 `snapshot.next`。不要运行下一格时，它是否已完成？看过第二问题后再修改第二回答、手动运行恢复格，核对两轮完整回答与占位工具零执行。
 
 ### 常见问题与下一步
 
@@ -692,6 +886,7 @@ Checkpoint 保存会话的 State 和执行进度，不能备份整个 Python 进
 | 没有审批中断 | 模型是否真的提出了对应工具调用，`interrupt_on` 是否包含工具名 |
 | 恢复时缺状态或没有继续 | 是否保留同一个 Agent 和 Checkpointer，并使用原来的 `thread_id` |
 | 决策报错 | 数量是否匹配、类型是否允许；再按原请求顺序核对每项决定，以免选错动作 |
+| 本批效果通过，但整次未完成 | 查看新的待审批动作、`snapshot.next` 与中断；保留原会话，等待人明确决定，不自动批准 |
 | live 断言失败 | 查看实际请求、参数和工具结果；真实模型可能没有遵循任务要求，不能用 offline 结果替代 |
 
 本实验只使用内存对象，没有启动服务或创建磁盘文件；重启内核即可清理存档与执行记录。回到[第 9 章正文](../../content/ch09-human-in-the-loop.md)了解条件审批、子 Agent 配置与自定义中断；章节作者参见[贡献指南](../CONTRIBUTING.md)。

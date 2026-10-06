@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>efac4ed82069</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>61443141db3b</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7853,7 +7853,7 @@ a.anchor-link {
 </tr>
 </tbody>
 </table>
-<p>最后观察两项工具请求的批量审批，以及决策数量不匹配时的真实报错。实验验证框架的审批与恢复机制，不以模型说“完成”作为成功证据。</p>
+<p>最后观察批量审批、决策数量不匹配的真实报错，以及同一会话的第二次中断：第一次回答已生效，不等于整次运行已完成。实验验证框架的审批与恢复机制，不以模型说“完成”作为成功证据。</p>
 </div>
 </div>
 </div>
@@ -7886,6 +7886,7 @@ uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> <
 <span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">deepagents</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_deep_agent</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain.agents.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">wrap_model_call</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">langchain.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">tool</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseCallbackHandler</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIMessage</span><span class="p">,</span> <span class="n">ToolMessage</span>
@@ -7911,10 +7912,11 @@ uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> <
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>运行模式： offline （脚本模型）
 Python： 3.12.13 平台： Darwin arm64
-deepagents==0.7.15
-langchain==1.4.2
-langgraph==1.2.11
-langchain-openai==1.6.2
+deepagents==0.7.22
+langchain==1.4.3
+langchain-core==1.6.6
+langgraph==1.2.13
+langchain-openai==1.6.7
 </pre>
 </div>
 </div>
@@ -8021,7 +8023,7 @@ model：读取工具结果，给出最终回复
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="3.-%E7%BB%84%E8%A3%85-Agent%EF%BC%8C%E5%B9%B6%E9%85%8D%E7%BD%AE%E5%AE%A1%E6%89%B9%E7%AD%96%E7%95%A5">3. 组装 Agent，并配置审批策略<a class="anchor-link" href="#3.-%E7%BB%84%E8%A3%85-Agent%EF%BC%8C%E5%B9%B6%E9%85%8D%E7%BD%AE%E5%AE%A1%E6%89%B9%E7%AD%96%E7%95%A5">¶</a></h2><p>本节创建 Agent，暂不发起任务。关键配置是 <code>interrupt_on</code>：按工具名指定是否需要审批，以及允许哪几种决定。本例的邮件工具允许 <code>approve</code>、<code>edit</code>、<code>reject</code>；询问工具只允许 <code>respond</code>。</p>
-<p>后面还要观察模型实际被调用了几次。<code>ModelRequestRecorder</code> 是一个回调：每次框架开始调用模型时，自动执行 <code>on_chat_model_start()</code>，把输入消息记入 <code>inputs</code>。它只观察，不修改模型输入或回复。</p>
+<p>后面还要观察模型实际被调用了几次。<code>ModelRequestRecorder</code> 是一个回调：每次框架开始调用模型时，自动执行 <code>on_chat_model_start()</code>，把输入消息记入 <code>inputs</code>。它只观察，不修改模型输入或回复。另存 <code>requests</code> 中的 namespace 与主/子角色：锁定版 0.7.22 的受控回归实测，主模型是 <code>model:&lt;id&gt;</code>，子模型是 <code>tools:&lt;id&gt;|model:&lt;id&gt;</code>；角色不依赖是否带有主 Agent 的反馈。</p>
 </div>
 </div>
 </div>
@@ -8034,11 +8036,19 @@ model：读取工具结果，给出最终回复
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ModelRequestRecorder</span><span class="p">(</span><span class="n">BaseCallbackHandler</span><span class="p">):</span>
+    <span class="n">raise_error</span> <span class="o">=</span> <span class="kc">True</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requests</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">on_chat_model_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">serialized</span><span class="p">,</span> <span class="n">messages</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">messages</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">namespace</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"metadata"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"langgraph_checkpoint_ns"</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">namespace</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">namespace</span><span class="p">,</span> <span class="s2">"缺少模型回调 graph namespace"</span>
+        <span class="c1"># 锁定版实测：主模型 model:&lt;id&gt;；子模型 tools:&lt;id&gt;|model:&lt;id&gt;。</span>
+        <span class="n">role</span> <span class="o">=</span> <span class="s2">"child"</span> <span class="k">if</span> <span class="s2">"|"</span> <span class="ow">in</span> <span class="n">namespace</span> <span class="k">else</span> <span class="s2">"main"</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">deepcopy</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">messages</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"namespace"</span><span class="p">:</span> <span class="n">namespace</span><span class="p">,</span> <span class="s2">"role"</span><span class="p">:</span> <span class="n">role</span><span class="p">})</span>
 </pre></div>
 </div>
 </div>
@@ -8051,9 +8061,11 @@ model：读取工具结果，给出最终回复
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><code>new_experiment(planned_calls, thread_id)</code> 把重复的组装步骤放在一个函数里。输入分别是本次要提出的工具请求和会话 ID；每次调用都创建新的 Agent、执行记录、模型和内存存档，避免不同审批实验互相影响。</p>
-<p>默认 offline 下，<code>ScriptedChatModel</code> 按 <code>responses</code> 列表返回两条预设消息：第一次提出 <code>planned_calls</code> 中的工具请求，第二次给出结束回复。它不会理解输入或判断工具结果，所以结束回复不能证明工具成功。这个响应列表会循环，每个独立实验都要使用新模型。</p>
+<p><code>new_experiment(planned_calls, thread_id, followup=None)</code> 把重复的组装步骤放在一个函数里。输入分别是本次要提出的工具请求和会话 ID；每次调用都创建新的 Agent、执行记录、模型和内存存档，避免不同审批实验互相影响。</p>
+<p>默认 offline 下，<code>ScriptedChatModel</code> 按 <code>responses</code> 列表返回两条预设消息：第一次提出 <code>planned_calls</code> 中的工具请求，第二次给出结束回复。第 7 节传入 <code>followup</code> 后，固定序列为初始调用、第二问题调用、结束回复。它不会理解输入或判断工具结果，所以结束回复不能证明工具成功。这个响应列表会循环，每个独立实验都要使用新模型。</p>
 <p><code>create_model()</code> 负责选择运行模式。live 下，任务要求会作为用户输入交给真实模型，工具请求由模型生成；没有满足要求时，后面的断言会报错。<code>deepcopy()</code> 复制请求字典，避免一个实验修改另一个实验的数据。</p>
+<p>主 Agent 的 <code>teaching_tools</code> 使用 <code>wrap_model_call</code> 与 <code>request.override(tools=...)</code>，把模型可见工具收窄到本场景的 <code>send_email</code> / <code>ask_user</code>。本批反馈进入消息后传入 <code>tools=[]</code>，让真实模型只生成总结，而不只是提示它“不要委派”。两次问答场景在第一回答后仍允许 <code>ask_user</code>，两次反馈后才清空工具。</p>
+<p><strong>这只是教学范围限制，不是生产安全边界</strong>：没有移除图中注册的其他工具，也没有建立执行权限系统。live 的调用和总结仍由真实模型生成，脚本模型也不会因工具列表变化自动理解反馈；后面的证据检查不能省略。</p>
 <p>函数返回一个字典，后面按字段取出所需对象：</p>
 <table>
 <thead>
@@ -8083,6 +8095,14 @@ model：读取工具结果，给出最终回复
 <td><code>config</code></td>
 <td>保存 <code>thread_id</code> 和记录模型输入的回调；启动与恢复共用它</td>
 </tr>
+<tr>
+<td><code>followup</code></td>
+<td>可选的第二问题，只在收到第一回答后再提出</td>
+</tr>
+<tr>
+<td><code>model_tools</code></td>
+<td>中间件为各次主模型请求选出的教学工具名</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -8096,16 +8116,50 @@ model：读取工具结果，给出最终回复
 <div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">new_experiment</span><span class="p">(</span><span class="n">planned_calls</span><span class="p">,</span> <span class="n">thread_id</span><span class="p">):</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">new_experiment</span><span class="p">(</span><span class="n">planned_calls</span><span class="p">,</span> <span class="n">thread_id</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">followup</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="n">records</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">recorder</span> <span class="o">=</span> <span class="n">ModelRequestRecorder</span><span class="p">()</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="n">ScriptedChatModel</span><span class="p">(</span><span class="n">responses</span><span class="o">=</span><span class="p">[</span>
-        <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">tool_calls</span><span class="o">=</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">planned_calls</span><span class="p">)),</span>
-        <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"本轮结束；请以执行记录和工具结果为准。"</span><span class="p">),</span>
-    <span class="p">]))</span>
+    <span class="n">experiment</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"records"</span><span class="p">:</span> <span class="n">records</span><span class="p">,</span> <span class="s2">"recorder"</span><span class="p">:</span> <span class="n">recorder</span><span class="p">,</span>
+        <span class="s2">"plan"</span><span class="p">:</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">planned_calls</span><span class="p">),</span> <span class="s2">"followup"</span><span class="p">:</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">followup</span><span class="p">),</span>
+        <span class="s2">"model_tools"</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="s2">"config"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"configurable"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"thread_id"</span><span class="p">:</span> <span class="n">thread_id</span><span class="p">},</span>
+                   <span class="s2">"callbacks"</span><span class="p">:</span> <span class="p">[</span><span class="n">recorder</span><span class="p">]},</span>
+    <span class="p">}</span>
+    <span class="n">responses</span> <span class="o">=</span> <span class="p">[</span><span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">tool_calls</span><span class="o">=</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">planned_calls</span><span class="p">))]</span>
+    <span class="k">if</span> <span class="n">followup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">planned_calls</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">planned_calls</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"ask_user"</span>
+        <span class="k">assert</span> <span class="n">followup</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"ask_user"</span>
+        <span class="n">responses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">tool_calls</span><span class="o">=</span><span class="p">[</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">followup</span><span class="p">)]))</span>
+    <span class="n">responses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"本轮结束；请以执行记录和工具结果为准。"</span><span class="p">))</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="n">ScriptedChatModel</span><span class="p">(</span><span class="n">responses</span><span class="o">=</span><span class="n">responses</span><span class="p">))</span>
+
+    <span class="nd">@wrap_model_call</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">teaching_tools</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="c1"># 只向主模型提供本场景教学工具；不是生产环境的工具执行权限边界。</span>
+        <span class="n">replies</span> <span class="o">=</span> <span class="p">[</span><span class="n">message</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">messages</span>
+                   <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
+        <span class="n">initial_calls</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"calls"</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">messages</span>
+             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">),</span> <span class="p">[]</span>
+        <span class="p">)</span>
+        <span class="n">initial_ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">initial_calls</span><span class="p">}</span>
+        <span class="n">seen_ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="k">for</span> <span class="n">reply</span> <span class="ow">in</span> <span class="n">replies</span><span class="p">}</span>
+        <span class="n">batch_received</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">initial_ids</span><span class="p">)</span> <span class="ow">and</span> <span class="n">initial_ids</span> <span class="o">&lt;=</span> <span class="n">seen_ids</span>
+        <span class="n">allowed</span> <span class="o">=</span> <span class="p">{</span><span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">planned_calls</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">batch_received</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">followup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">seen_ids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">allowed</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"ask_user"</span><span class="p">}</span>  <span class="c1"># 第一回答后允许真实模型提出第二问题。</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">allowed</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># 本批（或两轮）反馈后只生成总结。</span>
+        <span class="n">tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">tools</span> <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">in</span> <span class="n">allowed</span><span class="p">]</span>
+        <span class="n">experiment</span><span class="p">[</span><span class="s2">"model_tools"</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">item</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">tools</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">handler</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">override</span><span class="p">(</span><span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">))</span>
+
     <span class="n">agent</span> <span class="o">=</span> <span class="n">create_deep_agent</span><span class="p">(</span>
         <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
         <span class="n">tools</span><span class="o">=</span><span class="n">make_tools</span><span class="p">(</span><span class="n">records</span><span class="p">),</span>
+        <span class="n">middleware</span><span class="o">=</span><span class="p">[</span><span class="n">teaching_tools</span><span class="p">],</span>
         <span class="n">checkpointer</span><span class="o">=</span><span class="n">InMemorySaver</span><span class="p">(),</span>
         <span class="n">interrupt_on</span><span class="o">=</span><span class="p">{</span>
             <span class="s2">"send_email"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"allowed_decisions"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"approve"</span><span class="p">,</span> <span class="s2">"edit"</span><span class="p">,</span> <span class="s2">"reject"</span><span class="p">]},</span>
@@ -8113,17 +8167,15 @@ model：读取工具结果，给出最终回复
         <span class="p">},</span>
         <span class="n">system_prompt</span><span class="o">=</span><span class="p">(</span>
             <span class="s2">"只提出用户指定的工具调用，参数原样保留。不要委派或使用其他工具。"</span>
-            <span class="s2">"若有多项请求，在同一条消息中提出。"</span>
-            <span class="s2">"收到审批后的工具结果时，总结结果并结束，不要再次调用工具。"</span>
+            <span class="s2">"若有多项初始请求，在同一条消息中提出。"</span>
+            <span class="s2">"收到审批后的工具结果时，总结结果并结束，不要再次调用工具；"</span>
+            <span class="s2">"仅当用户明确要求第二问题时，在收到第一回答之后调用 ask_user 提出第二问题，"</span>
+            <span class="s2">"收到第二回答后总结两轮回答并结束。"</span>
             <span class="s2">"教学邮件只记录参数，不是真实邮件服务。"</span>
         <span class="p">),</span>
     <span class="p">)</span>
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">"agent"</span><span class="p">:</span> <span class="n">agent</span><span class="p">,</span> <span class="s2">"records"</span><span class="p">:</span> <span class="n">records</span><span class="p">,</span> <span class="s2">"recorder"</span><span class="p">:</span> <span class="n">recorder</span><span class="p">,</span>
-        <span class="s2">"plan"</span><span class="p">:</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">planned_calls</span><span class="p">),</span>
-        <span class="s2">"config"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"configurable"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"thread_id"</span><span class="p">:</span> <span class="n">thread_id</span><span class="p">},</span>
-                   <span class="s2">"callbacks"</span><span class="p">:</span> <span class="p">[</span><span class="n">recorder</span><span class="p">]},</span>
-    <span class="p">}</span>
+    <span class="n">experiment</span><span class="p">[</span><span class="s2">"agent"</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent</span>
+    <span class="k">return</span> <span class="n">experiment</span>
 </pre></div>
 </div>
 </div>
@@ -8157,6 +8209,13 @@ model：读取工具结果，给出最终回复
     <span class="n">instruction</span> <span class="o">=</span> <span class="s2">"请执行以下教学工具任务：</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
         <span class="n">requested</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
     <span class="p">)</span>
+    <span class="k">if</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"followup"</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">instruction</span> <span class="o">+=</span> <span class="p">(</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">先只提出上面的第一个问题；收到人的第一次回答后，"</span>
+            <span class="s2">"再调用 ask_user 提出第二个问题："</span>
+            <span class="o">+</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"followup"</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"question"</span><span class="p">]</span>
+            <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">收到第二回答后总结两轮完整回答并结束。"</span>
+        <span class="p">)</span>
     <span class="n">paused</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"agent"</span><span class="p">]</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
         <span class="p">{</span><span class="s2">"messages"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"user"</span><span class="p">,</span> <span class="n">instruction</span><span class="p">)]},</span>
         <span class="n">config</span><span class="o">=</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"config"</span><span class="p">],</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">,</span>
@@ -8333,12 +8392,13 @@ State 已保存的调用： send_email
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p>恢复结果保存在 <code>approved</code> 中。它包含完整消息历史，可以通过 <code>approved.value["messages"]</code> 查看；但最后一条模型回复不能单独证明邮件工具运行成功。</p>
-<p>为四种决定复用同一套检查，下面定义 <code>check_outcome()</code>。它只读取结果、核对并打印，不发起任务或调用工具。调用时提供两组预期值：</p>
+<p>下面把两类验收分开，权威判断都留在本 Notebook：</p>
 <ul>
-<li><code>expected_records</code>：工具应实际执行哪些操作；空列表表示不应执行工具。</li>
-<li><code>expected_feedback</code>：模型应收到什么反馈，每项是 <code>(状态, 内容)</code>，按原工具请求顺序排列。</li>
+<li><code>check_outcome()</code> 核对<strong>本批决策效果</strong>：全部实际执行记录必须精确匹配 <code>expected_records</code>，所以未经批准或重复执行仍会失败；围绕启动时保存的真实 <code>calls</code>，核对唯一 ID、工具名、状态与完整反馈。邮件末行 JSON 反映实际参数，<code>respond</code> 的回答必须原样保留。</li>
+<li>它按 callback 的 graph namespace 先选<strong>恢复后首个主模型请求</strong>，再核对同一批全部 <code>ToolMessage</code> 的 ID、name、status 与完整 content。不能先筛出“有反馈”的输入，再假装缺反馈的首个请求不存在；也不要求子 Agent 接收主 Agent 的反馈。</li>
+<li><code>check_run_state()</code> 展示<strong>整次运行</strong>的主/子请求数、<code>snapshot.next</code>、中断与待审批动作。四种默认决策及批量示例显式使用 <code>expect_complete=True</code> 验收最终 AI 无工具调用且无待继续节点、中断。</li>
 </ul>
-<p>函数依次检查执行记录、工具结果和恢复后的模型输入。工具结果通过 <code>tool_call_id</code> 对应原请求；嵌套列表推导式则先遍历模型消息，再取出各条消息中的 <code>tool_calls</code>。邮件结果中的末行 JSON 用 <code>json.loads()</code> 还原成字典，打印时展开字段并保留中文；人工修改参数的原始说明仍保存在消息历史中。</p>
+<p>本批效果正确之后仍可能出现合法的新审批。它不会使 <code>check_outcome()</code> 失败，但运行状态必须如实显示仍待人输入，不能宣称整次完成。</p>
 </div>
 </div>
 </div>
@@ -8350,18 +8410,24 @@ State 已保存的调用： send_email
 <div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">check_outcome</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">expected_records</span><span class="p">,</span> <span class="n">expected_feedback</span><span class="p">):</span>
-    <span class="k">assert</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">interrupts</span><span class="p">,</span> <span class="s2">"仍有未解决的中断"</span>
-    <span class="c1"># 先看工具真正做了什么，再看返回给模型的消息。</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">check_outcome</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">expected_records</span><span class="p">,</span> <span class="n">expected_feedback</span><span class="p">,</span>
+                  <span class="o">*</span><span class="p">,</span> <span class="n">calls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model_calls_before</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""核对一批已审批请求的决策效果，不把后续新中断判为本批失败。"""</span>
+    <span class="n">calls</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"calls"</span><span class="p">]</span> <span class="k">if</span> <span class="n">calls</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">calls</span>
+    <span class="n">before</span> <span class="o">=</span> <span class="p">(</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"model_calls_before"</span><span class="p">]</span> <span class="k">if</span> <span class="n">model_calls_before</span> <span class="ow">is</span> <span class="kc">None</span>
+              <span class="k">else</span> <span class="n">model_calls_before</span><span class="p">)</span>
+    <span class="c1"># 全部实际执行记录仍须精确匹配：未经批准或重复执行都失败。</span>
     <span class="k">assert</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"records"</span><span class="p">]</span> <span class="o">==</span> <span class="n">expected_records</span><span class="p">,</span> <span class="s2">"执行次数或实际参数不符"</span>
-    <span class="n">messages</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
-    <span class="n">calls</span> <span class="o">=</span> <span class="p">[</span><span class="n">call</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span>
-             <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">]</span>
-    <span class="k">assert</span> <span class="n">calls</span> <span class="o">==</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"calls"</span><span class="p">],</span> <span class="s2">"恢复后出现额外或改变的工具请求"</span>
     <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">expected_feedback</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">calls</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">({</span><span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">})</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">calls</span><span class="p">),</span> <span class="s2">"审批调用 ID 不唯一"</span>
+    <span class="n">messages</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
+    <span class="n">history_calls</span> <span class="o">=</span> <span class="p">[</span><span class="n">call</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span>
+                     <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">]</span>
     <span class="n">replies</span> <span class="o">=</span> <span class="p">[</span><span class="n">message</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
-    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">replies</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">calls</span><span class="p">),</span> <span class="s2">"工具结果数量不符"</span>
+    <span class="n">batch_replies</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">call</span><span class="p">,</span> <span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="n">expected</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">calls</span><span class="p">,</span> <span class="n">expected_feedback</span><span class="p">):</span>
+        <span class="n">matched_calls</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">history_calls</span> <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="o">==</span> <span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]]</span>
+        <span class="k">assert</span> <span class="n">matched_calls</span> <span class="o">==</span> <span class="p">[</span><span class="n">call</span><span class="p">],</span> <span class="s2">"原审批请求被改变或重复"</span>
         <span class="n">matched</span> <span class="o">=</span> <span class="p">[</span><span class="n">reply</span> <span class="k">for</span> <span class="n">reply</span> <span class="ow">in</span> <span class="n">replies</span> <span class="k">if</span> <span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="o">==</span> <span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]]</span>
         <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">matched</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"工具结果没有唯一对应到原调用"</span>
         <span class="n">reply</span> <span class="o">=</span> <span class="n">matched</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -8370,33 +8436,59 @@ State 已保存的调用： send_email
             <span class="n">actual_args</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
             <span class="k">assert</span> <span class="n">actual_args</span> <span class="o">==</span> <span class="n">expected</span><span class="p">,</span> <span class="s2">"工具返回没有反映实际参数"</span>
         <span class="k">elif</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">"error"</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="n">expected</span> <span class="ow">in</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="s2">"拒绝原因没有反馈给模型"</span>
+            <span class="k">assert</span> <span class="n">reply</span><span class="o">.</span><span class="n">content</span> <span class="o">==</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"User rejected the tool call for `</span><span class="si">{</span><span class="n">call</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span><span class="si">}</span><span class="s2">` with reason: </span><span class="si">{</span><span class="n">expected</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">),</span> <span class="s2">"完整拒绝原因没有反馈给模型"</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="n">expected</span><span class="p">,</span> <span class="s2">"人工回答没有原样成为工具结果"</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"工具结果："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"  状态："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"  调用 ID："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-            <span class="k">if</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">Tool response:</span><span class="se">\n</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s2">"框架附有人工修改参数的说明；下面展开实际执行参数。"</span><span class="p">)</span>
-            <span class="n">show_text</span><span class="p">(</span><span class="s2">"  工具实际返回的参数："</span><span class="p">,</span>
-                      <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">actual_args</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">show_text</span><span class="p">(</span><span class="s2">"  返回内容："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
-    <span class="c1"># 只检查恢复后的模型调用，它们应已收到这批工具结果。</span>
-    <span class="n">resumed_inputs</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"recorder"</span><span class="p">]</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"model_calls_before"</span><span class="p">]:]</span>
-    <span class="k">assert</span> <span class="n">resumed_inputs</span><span class="p">,</span> <span class="s2">"恢复后没有调用模型读取工具结果"</span>
-    <span class="k">for</span> <span class="n">model_input</span> <span class="ow">in</span> <span class="n">resumed_inputs</span><span class="p">:</span>
-        <span class="n">seen_ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">message</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">model_input</span>
-                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)}</span>
-        <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="ow">in</span> <span class="n">seen_ids</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">),</span> <span class="p">(</span>
-            <span class="s2">"恢复后的模型输入缺少工具结果，可能重跑了审批前的模型步骤"</span>
+            <span class="k">assert</span> <span class="n">reply</span><span class="o">.</span><span class="n">content</span> <span class="o">==</span> <span class="n">expected</span><span class="p">,</span> <span class="s2">"人工回答没有原样成为工具结果"</span>
+        <span class="n">batch_replies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reply</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"工具结果："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s2">"状态："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="s2">"调用 ID："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span><span class="p">)</span>
+        <span class="n">show_text</span><span class="p">(</span><span class="s2">"  完整返回内容："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+    <span class="n">recorder</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"recorder"</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">recorder</span><span class="o">.</span><span class="n">inputs</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">recorder</span><span class="o">.</span><span class="n">requests</span><span class="p">),</span> <span class="s2">"回调记录不完整"</span>
+    <span class="c1"># 先按 graph namespace 找恢复后的首个主请求，再检查内容；不能先筛有反馈的输入。</span>
+    <span class="n">main_indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">index</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">before</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">recorder</span><span class="o">.</span><span class="n">inputs</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">recorder</span><span class="o">.</span><span class="n">requests</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="s2">"role"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"main"</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="n">main_indices</span><span class="p">,</span> <span class="s2">"恢复后没有调用主模型读取工具结果"</span>
+    <span class="n">model_replies</span> <span class="o">=</span> <span class="p">[</span><span class="n">message</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">recorder</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="n">main_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">reply</span> <span class="ow">in</span> <span class="n">batch_replies</span><span class="p">:</span>
+        <span class="n">matched</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">model_replies</span> <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="o">==</span> <span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">matched</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"恢复后的首个主模型输入缺少唯一工具结果"</span>
+        <span class="n">actual</span> <span class="o">=</span> <span class="n">matched</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="n">actual</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">actual</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">actual</span><span class="o">.</span><span class="n">content</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span>
+            <span class="n">reply</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">content</span>
+        <span class="p">),</span> <span class="s2">"恢复后的首个主模型输入丢失或改变了完整工具反馈"</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"本批决策效果已核对；工具实际执行次数："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"records"</span><span class="p">]))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">check_run_state</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">expect_complete</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""展示整次运行状态；只有显式要求完成时才验收结束条件。"""</span>
+    <span class="n">snapshot</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"agent"</span><span class="p">]</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"config"</span><span class="p">])</span>
+    <span class="n">messages</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
+    <span class="n">complete</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">interrupts</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">interrupts</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">next</span>
+        <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">AIMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tool_calls</span>
+    <span class="p">)</span>
+    <span class="n">recorder</span> <span class="o">=</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"recorder"</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"实际模型请求数（主 / 子）："</span><span class="p">,</span>
+          <span class="nb">sum</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"role"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"main"</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">recorder</span><span class="o">.</span><span class="n">requests</span><span class="p">),</span> <span class="s2">"/"</span><span class="p">,</span>
+          <span class="nb">sum</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"role"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"child"</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">recorder</span><span class="o">.</span><span class="n">requests</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"待执行节点 snapshot.next："</span><span class="p">,</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">next</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"中断数（返回 / 快照）："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">interrupts</span><span class="p">),</span> <span class="s2">"/"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">snapshot</span><span class="o">.</span><span class="n">interrupts</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">pending</span> <span class="ow">in</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">interrupts</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">pending</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"action_requests"</span><span class="p">]:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"待审批动作："</span><span class="p">,</span> <span class="n">action</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="n">action</span><span class="p">[</span><span class="s2">"args"</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"整次运行："</span><span class="p">,</span> <span class="s2">"已完成"</span> <span class="k">if</span> <span class="n">complete</span> <span class="k">else</span> <span class="p">(</span>
+        <span class="s2">"等待下一次人工审批"</span> <span class="k">if</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">interrupts</span> <span class="k">else</span> <span class="s2">"未完成，需检查执行状态"</span>
+    <span class="p">))</span>
+    <span class="k">if</span> <span class="n">expect_complete</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">complete</span><span class="p">,</span> <span class="s2">"整次运行尚未完成"</span>
+    <span class="k">elif</span> <span class="n">expect_complete</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">complete</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">interrupts</span> <span class="ow">and</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">interrupts</span> <span class="ow">and</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">next</span><span class="p">,</span> <span class="p">(</span>
+            <span class="s2">"应保留等待人工审批的恢复状态"</span>
         <span class="p">)</span>
-    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">AIMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tool_calls</span>
-    <span class="k">assert</span> <span class="ow">not</span> <span class="n">experiment</span><span class="p">[</span><span class="s2">"agent"</span><span class="p">]</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"config"</span><span class="p">])</span><span class="o">.</span><span class="n">next</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"工具实际执行次数："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"records"</span><span class="p">]))</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"实际模型请求数（暂停前 / 完成后）："</span><span class="p">,</span>
-          <span class="n">experiment</span><span class="p">[</span><span class="s2">"model_calls_before"</span><span class="p">],</span> <span class="s2">"/"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">experiment</span><span class="p">[</span><span class="s2">"recorder"</span><span class="p">]</span><span class="o">.</span><span class="n">inputs</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">snapshot</span>
 </pre></div>
 </div>
 </div>
@@ -8415,6 +8507,7 @@ State 已保存的调用： send_email
     <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"send_email"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">ORIGINAL_ARGS</span><span class="p">}],</span>
     <span class="p">[(</span><span class="s2">"success"</span><span class="p">,</span> <span class="n">ORIGINAL_ARGS</span><span class="p">)],</span>
 <span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">check_run_state</span><span class="p">(</span><span class="n">approve_case</span><span class="p">,</span> <span class="n">approved</span><span class="p">,</span> <span class="n">expect_complete</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8427,18 +8520,15 @@ State 已保存的调用： send_email
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>工具结果： send_email
-  状态： success
-  调用 ID： mail-1
+<pre>工具结果： send_email 状态： success 调用 ID： mail-1
 
-  工具实际返回的参数：
-{
-  "to": "all@example.com",
-  "subject": "上线通知",
-  "body": "测试与构建已通过，计划明天上线。"
-}
-工具实际执行次数： 1
-实际模型请求数（暂停前 / 完成后）： 1 / 2
+  完整返回内容：
+{"to": "all@example.com", "subject": "上线通知", "body": "测试与构建已通过，计划明天上线。"}
+本批决策效果已核对；工具实际执行次数： 1
+实际模型请求数（主 / 子）： 2 / 0
+待执行节点 snapshot.next： ()
+中断数（返回 / 快照）： 0 / 0
+整次运行： 已完成
 </pre>
 </div>
 </div>
@@ -8451,7 +8541,7 @@ State 已保存的调用： send_email
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>执行记录和成功的工具结果都显示：原参数执行了一次。offline 下，模型请求数从 <strong>1</strong> 变成 <strong>2</strong>；第二次请求已包含邮件结果，是工具执行之后的新模型步骤。审批前生成工具请求的模型步骤没有重跑。</p>
+<p>执行记录和成功的工具结果都显示：原参数执行了一次。offline 下，模型请求数从 <strong>1</strong> 变成 <strong>2</strong>；第二次请求已包含邮件结果，是工具执行之后的新模型步骤。本批证据通过，且 <code>check_run_state(..., expect_complete=True)</code> 确认本示例整次结束。其他流程若在读取反馈后提出新请求，应另行查看运行状态，而不是把新中断判为本批决策失败。</p>
 <h3 id="5.2-edit%EF%BC%9A%E4%BF%AE%E6%94%B9%E6%94%B6%E4%BB%B6%E4%BA%BA%E5%86%8D%E6%89%A7%E8%A1%8C">5.2 edit：修改收件人再执行<a class="anchor-link" href="#5.2-edit%EF%BC%9A%E4%BF%AE%E6%94%B9%E6%94%B6%E4%BB%B6%E4%BA%BA%E5%86%8D%E6%89%A7%E8%A1%8C">¶</a></h3><p>创建独立实验，仍让模型提出原来的收件人。人类把它改为 <code>team@example.com</code>，保留主题和正文。<code>edited_action</code> 必须提供工具 <code>name</code> 与完整的 <code>args</code>。</p>
 <p><code>{**ORIGINAL_ARGS, "to": EDITED_TO}</code> 先复制原字典中的字段，再覆盖收件人；原始请求、主题和正文保持不变。在锁定版本中，消息历史仍保留模型原始请求，真正执行时才使用修改后的参数。因此要查看执行记录和工具返回，核对实际收件人。</p>
 </div>
@@ -8486,6 +8576,7 @@ State 已保存的调用： send_email
 <span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"原请求收件人："</span><span class="p">,</span> <span class="n">ORIGINAL_ARGS</span><span class="p">[</span><span class="s2">"to"</span><span class="p">])</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"实际执行收件人："</span><span class="p">,</span> <span class="n">edit_case</span><span class="p">[</span><span class="s2">"records"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"to"</span><span class="p">])</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">check_run_state</span><span class="p">(</span><span class="n">edit_case</span><span class="p">,</span> <span class="n">edited</span><span class="p">,</span> <span class="n">expect_complete</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8510,21 +8601,26 @@ State 已保存的调用： send_email
 }
   允许决策： approve, edit, reject
 工具执行次数： 0
-工具结果： send_email
-  状态： success
-  调用 ID： mail-1
-框架附有人工修改参数的说明；下面展开实际执行参数。
+工具结果： send_email 状态： success 调用 ID： mail-1
 
-  工具实际返回的参数：
-{
-  "to": "team@example.com",
-  "subject": "上线通知",
-  "body": "测试与构建已通过，计划明天上线。"
-}
-工具实际执行次数： 1
-实际模型请求数（暂停前 / 完成后）： 1 / 2
+  完整返回内容：
+Note: a human reviewer replaced this tool call before it ran. The call
+  recorded in your message is the one you produced, not the one that
+  executed. This was intentional and authorized. Do not re-issue your
+  original call. Executed instead: send_email with arguments {"to":
+  "team@example.com", "subject": "\u4e0a\u7ebf\u901a\u77e5", "body": "\u6d4b
+  \u8bd5\u4e0e\u6784\u5efa\u5df2\u901a\u8fc7\uff0c\u8ba1\u5212\u660e\u5929\u
+  4e0a\u7ebf\u3002"}.
+
+Tool response:
+{"to": "team@example.com", "subject": "上线通知", "body": "测试与构建已通过，计划明天上线。"}
+本批决策效果已核对；工具实际执行次数： 1
 原请求收件人： all@example.com
 实际执行收件人： team@example.com
+实际模型请求数（主 / 子）： 2 / 0
+待执行节点 snapshot.next： ()
+中断数（返回 / 快照）： 0 / 0
+整次运行： 已完成
 </pre>
 </div>
 </div>
@@ -8558,6 +8654,7 @@ State 已保存的调用： send_email
     <span class="n">config</span><span class="o">=</span><span class="n">reject_case</span><span class="p">[</span><span class="s2">"config"</span><span class="p">],</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">check_outcome</span><span class="p">(</span><span class="n">reject_case</span><span class="p">,</span> <span class="n">rejected</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[(</span><span class="s2">"error"</span><span class="p">,</span> <span class="n">REJECT_REASON</span><span class="p">)])</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">check_run_state</span><span class="p">(</span><span class="n">reject_case</span><span class="p">,</span> <span class="n">rejected</span><span class="p">,</span> <span class="n">expect_complete</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8582,15 +8679,16 @@ State 已保存的调用： send_email
 }
   允许决策： approve, edit, reject
 工具执行次数： 0
-工具结果： send_email
-  状态： error
-  调用 ID： mail-1
+工具结果： send_email 状态： error 调用 ID： mail-1
 
-  返回内容：
+  完整返回内容：
 User rejected the tool call for `send_email` with reason:
   用户拒绝发送，请只保留草稿，不要重试发送。
-工具实际执行次数： 0
-实际模型请求数（暂停前 / 完成后）： 1 / 2
+本批决策效果已核对；工具实际执行次数： 0
+实际模型请求数（主 / 子）： 2 / 0
+待执行节点 snapshot.next： ()
+中断数（返回 / 快照）： 0 / 0
+整次运行： 已完成
 </pre>
 </div>
 </div>
@@ -8625,6 +8723,7 @@ User rejected the tool call for `send_email` with reason:
     <span class="n">config</span><span class="o">=</span><span class="n">respond_case</span><span class="p">[</span><span class="s2">"config"</span><span class="p">],</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">check_outcome</span><span class="p">(</span><span class="n">respond_case</span><span class="p">,</span> <span class="n">responded</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[(</span><span class="s2">"success"</span><span class="p">,</span> <span class="n">HUMAN_ANSWER</span><span class="p">)])</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">check_run_state</span><span class="p">(</span><span class="n">respond_case</span><span class="p">,</span> <span class="n">responded</span><span class="p">,</span> <span class="n">expect_complete</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8647,14 +8746,15 @@ User rejected the tool call for `send_email` with reason:
 }
   允许决策： respond
 工具执行次数： 0
-工具结果： ask_user
-  状态： success
-  调用 ID： question-1
+工具结果： ask_user 状态： success 调用 ID： question-1
 
-  返回内容：
+  完整返回内容：
 按季度汇总，并排除测试数据。
-工具实际执行次数： 0
-实际模型请求数（暂停前 / 完成后）： 1 / 2
+本批决策效果已核对；工具实际执行次数： 0
+实际模型请求数（主 / 子）： 2 / 0
+待执行节点 snapshot.next： ()
+中断数（返回 / 快照）： 0 / 0
+整次运行： 已完成
 </pre>
 </div>
 </div>
@@ -8701,6 +8801,7 @@ User rejected the tool call for `send_email` with reason:
     <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"send_email"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">BATCH_CALLS</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">]}],</span>
     <span class="p">[(</span><span class="s2">"success"</span><span class="p">,</span> <span class="n">BATCH_CALLS</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">]),</span> <span class="p">(</span><span class="s2">"error"</span><span class="p">,</span> <span class="n">BATCH_REASON</span><span class="p">)],</span>
 <span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">check_run_state</span><span class="p">(</span><span class="n">batch_case</span><span class="p">,</span> <span class="n">batch_result</span><span class="p">,</span> <span class="n">expect_complete</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8735,31 +8836,20 @@ User rejected the tool call for `send_email` with reason:
 }
   允许决策： approve, edit, reject
 工具执行次数： 0
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>工具结果： send_email
-  状态： success
-  调用 ID： batch-team
+工具结果： send_email 状态： success 调用 ID： batch-team
 
-  工具实际返回的参数：
-{
-  "to": "team@example.com",
-  "subject": "上线通知",
-  "body": "测试与构建已通过，计划明天上线。"
-}
-工具结果： send_email
-  状态： error
-  调用 ID： batch-all
+  完整返回内容：
+{"to": "team@example.com", "subject": "上线通知", "body": "测试与构建已通过，计划明天上线。"}
+工具结果： send_email 状态： error 调用 ID： batch-all
 
-  返回内容：
+  完整返回内容：
 User rejected the tool call for `send_email` with reason:
   只通知项目组，取消全员通知，不要重试。
-工具实际执行次数： 1
-实际模型请求数（暂停前 / 完成后）： 1 / 2
+本批决策效果已核对；工具实际执行次数： 1
+实际模型请求数（主 / 子）： 2 / 0
+待执行节点 snapshot.next： ()
+中断数（返回 / 快照）： 0 / 0
+整次运行： 已完成
 </pre>
 </div>
 </div>
@@ -8845,14 +8935,165 @@ Number of human decisions (1) does not match number of hanging tool calls
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ed2e14b4">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ch09-invalid-summary">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p>错误信息中的 <code>(1)</code> 和 <code>(2)</code> 分别表示提交的决定数与待审批调用数。工具执行次数为 <strong>0</strong>，说明数量校验失败时尚未执行邮件工具。</p>
-<h2 id="7.-%E6%81%A2%E5%A4%8D%E8%BE%B9%E7%95%8C%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">7. 恢复边界、练习与清理<a class="anchor-link" href="#7.-%E6%81%A2%E5%A4%8D%E8%BE%B9%E7%95%8C%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">¶</a></h2><p>本次实验观察到：工具请求先进入 State，审批前执行次数为 0；<code>approve</code> 保留参数，<code>edit</code> 改变实际参数，<code>reject</code> 跳过调用并反馈拒绝原因，<code>respond</code> 跳过占位函数并返回人工回答。</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ch09-followup-0">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="7.-%E7%AC%AC%E4%B8%80%E5%9B%9E%E7%AD%94%E5%B7%B2%E7%94%9F%E6%95%88%EF%BC%8C%E7%AC%AC%E4%BA%8C%E9%97%AE%E9%A2%98%E4%BB%8D%E5%BE%85%E5%AE%A1%E6%89%B9">7. 第一回答已生效，第二问题仍待审批<a class="anchor-link" href="#7.-%E7%AC%AC%E4%B8%80%E5%9B%9E%E7%AD%94%E5%B7%B2%E7%94%9F%E6%95%88%EF%BC%8C%E7%AC%AC%E4%BA%8C%E9%97%AE%E9%A2%98%E4%BB%8D%E5%BE%85%E5%AE%A1%E6%89%B9">¶</a></h2><p>另建一条会话，但两次问答共用<strong>同一个 Agent、thread_id 与 Checkpointer</strong>。先问汇总周期，收到 <code>respond</code> 后才问报告格式。offline 的三条固定响应仅安排调用与结束消息；两次中断及恢复是真实框架行为。live 则由真实模型提出两次问题，第一回答后仍只提供 <code>ask_user</code>，两次回答后传 <code>tools=[]</code>。</p>
+<p>下面只提交<strong>第一回答</strong>。预期本批效果检查通过，而整次运行仍有第二个待审批动作；不自动批准或回答第二问题。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch09-followup-pause" id="cell-id=ch09-followup-1">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [16]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">FOLLOWUP_CALL</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"ask_user"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"question"</span><span class="p">:</span> <span class="s2">"报告输出 PDF 还是表格？"</span><span class="p">},</span>
+    <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"question-2"</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">followup_case</span> <span class="o">=</span> <span class="n">new_experiment</span><span class="p">([</span><span class="n">ASK_CALL</span><span class="p">],</span> <span class="s2">"ch09-followup"</span><span class="p">,</span> <span class="n">followup</span><span class="o">=</span><span class="n">FOLLOWUP_CALL</span><span class="p">)</span>
+<span class="n">start_experiment</span><span class="p">(</span><span class="n">followup_case</span><span class="p">)</span>
+<span class="n">FIRST_ANSWER</span> <span class="o">=</span> <span class="s2">"按季度汇总，并排除测试数据。"</span>
+<span class="n">second_pause</span> <span class="o">=</span> <span class="n">followup_case</span><span class="p">[</span><span class="s2">"agent"</span><span class="p">]</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
+    <span class="n">Command</span><span class="p">(</span><span class="n">resume</span><span class="o">=</span><span class="p">{</span><span class="s2">"decisions"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"respond"</span><span class="p">,</span> <span class="s2">"message"</span><span class="p">:</span> <span class="n">FIRST_ANSWER</span><span class="p">}]}),</span>
+    <span class="n">config</span><span class="o">=</span><span class="n">followup_case</span><span class="p">[</span><span class="s2">"config"</span><span class="p">],</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">check_outcome</span><span class="p">(</span><span class="n">followup_case</span><span class="p">,</span> <span class="n">second_pause</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[(</span><span class="s2">"success"</span><span class="p">,</span> <span class="n">FIRST_ANSWER</span><span class="p">)])</span>
+<span class="n">second_snapshot</span> <span class="o">=</span> <span class="n">check_run_state</span><span class="p">(</span><span class="n">followup_case</span><span class="p">,</span> <span class="n">second_pause</span><span class="p">,</span> <span class="n">expect_complete</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">second_actions</span> <span class="o">=</span> <span class="n">second_pause</span><span class="o">.</span><span class="n">interrupts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"action_requests"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">action</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">action</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">second_actions</span><span class="p">]</span> <span class="o">==</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">FOLLOWUP_CALL</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">FOLLOWUP_CALL</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span>
+<span class="p">]</span>
+<span class="n">second_calls</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">second_pause</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">second_calls</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">second_calls</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"id"</span><span class="p">]</span> <span class="o">!=</span> <span class="n">followup_case</span><span class="p">[</span><span class="s2">"calls"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"id"</span><span class="p">]</span>
+<span class="n">before_second_resume</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">followup_case</span><span class="p">[</span><span class="s2">"recorder"</span><span class="p">]</span><span class="o">.</span><span class="n">inputs</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"第一回答已生效；第二问题仍待你回答。尚未完成。"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>线程： ch09-followup
+待审批动作 1：ask_user
+  调用 ID： question-1
+
+  参数：
+{
+  "question": "报告按月还是按季度汇总？"
+}
+  允许决策： respond
+工具执行次数： 0
+工具结果： ask_user 状态： success 调用 ID： question-1
+
+  完整返回内容：
+按季度汇总，并排除测试数据。
+本批决策效果已核对；工具实际执行次数： 0
+实际模型请求数（主 / 子）： 2 / 0
+待执行节点 snapshot.next： ('HumanInTheLoopMiddleware.after_model',)
+中断数（返回 / 快照）： 1 / 1
+待审批动作： ask_user {'question': '报告输出 PDF 还是表格？'}
+整次运行： 等待下一次人工审批
+第一回答已生效；第二问题仍待你回答。尚未完成。
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ch09-followup-2">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%E7%9C%8B%E8%BF%87%E7%AC%AC%E4%BA%8C%E9%97%AE%E9%A2%98%E5%90%8E%EF%BC%8C%E6%89%8B%E5%8A%A8%E8%BF%90%E8%A1%8C%E4%B8%8B%E4%B8%80%E6%A0%BC">看过第二问题后，手动运行下一格<a class="anchor-link" href="#%E7%9C%8B%E8%BF%87%E7%AC%AC%E4%BA%8C%E9%97%AE%E9%A2%98%E5%90%8E%EF%BC%8C%E6%89%8B%E5%8A%A8%E8%BF%90%E8%A1%8C%E4%B8%8B%E4%B8%80%E6%A0%BC">¶</a></h3><p><code>SECOND_ANSWER</code> 是人的明确第二回答。先查看上格待审批内容，按你的选择修改，然后<strong>单独运行</strong>本格，以 <code>Command</code> 恢复原会话；它不是循环自动批准。顺序执行全部单元格的离线演示相当于显式采用这里写出的人工回答。</p>
+<p>为核对结束前主模型收到<strong>两轮完整回答</strong>，<code>check_outcome</code> 的可选 <code>calls</code> 合并两轮实际请求，<code>model_calls_before</code> 指向第二次恢复前。初始 <code>followup_case["calls"]</code> 不覆盖，仍可用于单独核对第一批。最终整次运行必须完成，占位工具执行记录仍为空。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch09-followup-resume" id="cell-id=ch09-followup-3">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [17]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">SECOND_ANSWER</span> <span class="o">=</span> <span class="s2">"输出 PDF，附上明细表格。"</span>
+<span class="n">followup_result</span> <span class="o">=</span> <span class="n">followup_case</span><span class="p">[</span><span class="s2">"agent"</span><span class="p">]</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
+    <span class="n">Command</span><span class="p">(</span><span class="n">resume</span><span class="o">=</span><span class="p">{</span><span class="s2">"decisions"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"respond"</span><span class="p">,</span> <span class="s2">"message"</span><span class="p">:</span> <span class="n">SECOND_ANSWER</span><span class="p">}]}),</span>
+    <span class="n">config</span><span class="o">=</span><span class="n">followup_case</span><span class="p">[</span><span class="s2">"config"</span><span class="p">],</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">check_outcome</span><span class="p">(</span>
+    <span class="n">followup_case</span><span class="p">,</span> <span class="n">followup_result</span><span class="p">,</span> <span class="p">[],</span>
+    <span class="p">[(</span><span class="s2">"success"</span><span class="p">,</span> <span class="n">FIRST_ANSWER</span><span class="p">),</span> <span class="p">(</span><span class="s2">"success"</span><span class="p">,</span> <span class="n">SECOND_ANSWER</span><span class="p">)],</span>
+    <span class="n">calls</span><span class="o">=</span><span class="n">followup_case</span><span class="p">[</span><span class="s2">"calls"</span><span class="p">]</span> <span class="o">+</span> <span class="n">second_calls</span><span class="p">,</span>
+    <span class="n">model_calls_before</span><span class="o">=</span><span class="n">before_second_resume</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">check_run_state</span><span class="p">(</span><span class="n">followup_case</span><span class="p">,</span> <span class="n">followup_result</span><span class="p">,</span> <span class="n">expect_complete</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>工具结果： ask_user 状态： success 调用 ID： question-1
+
+  完整返回内容：
+按季度汇总，并排除测试数据。
+工具结果： ask_user 状态： success 调用 ID： question-2
+
+  完整返回内容：
+输出 PDF，附上明细表格。
+本批决策效果已核对；工具实际执行次数： 0
+实际模型请求数（主 / 子）： 3 / 0
+待执行节点 snapshot.next： ()
+中断数（返回 / 快照）： 0 / 0
+整次运行： 已完成
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ed2e14b4">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="8.-%E6%81%A2%E5%A4%8D%E8%BE%B9%E7%95%8C%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">8. 恢复边界、练习与清理<a class="anchor-link" href="#8.-%E6%81%A2%E5%A4%8D%E8%BE%B9%E7%95%8C%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">¶</a></h2><p>本次实验观察到：本批决策成功和整次运行完成是两个判断；新请求需要新的人工决定。工具请求先进入 State，审批前执行次数为 0；<code>approve</code> 保留参数，<code>edit</code> 改变实际参数，<code>reject</code> 跳过调用并反馈拒绝原因，<code>respond</code> 跳过占位函数并返回人工回答。</p>
 <h3 id="Checkpoint-%E8%83%BD%E6%81%A2%E5%A4%8D%E4%BB%80%E4%B9%88%EF%BC%9F">Checkpoint 能恢复什么？<a class="anchor-link" href="#Checkpoint-%E8%83%BD%E6%81%A2%E5%A4%8D%E4%BB%80%E4%B9%88%EF%BC%9F">¶</a></h3><p>Checkpoint 保存会话的 State 和执行进度，不能备份整个 Python 进程或函数调用栈。它也不限于每个 prompt 结束后保存一次：LangGraph 通常在图的执行步骤之间保存快照，具体写入时机还受运行配置影响。</p>
 <p>恢复 <code>interrupt()</code> 时，LangGraph 会重新执行发生中断的节点（或包含中断的任务）。中断之前的普通代码可能再运行一次。对照本例的三个步骤更容易理解：</p>
 <table>
@@ -8879,11 +9120,13 @@ Number of human decisions (1) does not match number of hanging tool calls
 </table>
 <p>如果你在同一个节点里先调用 LLM 或写外部数据，再调用 <code>interrupt()</code>，恢复可能重复前面的调用。可以把审批前的工作拆成独立节点；对不能重复的外部动作还要设计<strong>幂等性</strong>，也就是同一业务请求重复执行时，不产生重复效果，例如用唯一业务 ID 防止重复发送。</p>
 <p>把外部动作放在审批之后也不自动保证只执行一次：若邮件已经发送，程序却在保存执行结果前崩溃，恢复时仍可能再次发送。Checkpointer 本身无法消除这种重复。</p>
+<p>本实验的模型工具收窄只控制教学范围，不替代生产工具授权；执行次数断言也只证明这些观察到的运行，不承诺 exactly-once。</p>
 <p><code>InMemorySaver</code> 的数据随内核退出而丢失。本实验只验证当前进程中的审批恢复；跨进程恢复、数据库持久化、并发审批和真实邮件投递均未验证。进一步说明见 <a href="https://docs.langchain.com/oss/python/langgraph/interrupts">LangGraph 中断文档</a>与 <a href="https://docs.langchain.com/oss/python/langgraph/checkpointers">Checkpointer 文档</a>。</p>
 <h3 id="%E6%94%B9%E4%B8%80%E4%B8%AA%E5%8F%98%E9%87%8F%E5%86%8D%E8%A7%82%E5%AF%9F">改一个变量再观察<a class="anchor-link" href="#%E6%94%B9%E4%B8%80%E4%B8%AA%E5%8F%98%E9%87%8F%E5%86%8D%E8%A7%82%E5%AF%9F">¶</a></h3><ol>
 <li>只把 5.2 中 <code>EDITED_TO</code> 改为 <code>"review@example.com"</code>，先预测实际收件人，再重启内核并从第一格运行。</li>
 <li>观察 5.2 的工具结果：应出现新地址，但随后固定要求 <code>"team@example.com"</code> 的断言会失败。这是“工具按新参数执行成功，却不再满足原收件人要求”的区别。</li>
 <li>恢复 <code>EDITED_TO = "team@example.com"</code>，重启内核并全部运行。各项检查应通过；第 6 节的数量错误仍会出现，并由代码按预期捕获。</li>
+<li>第 7 节先停在第二次中断，查看初次效果与 <code>snapshot.next</code>。不要运行下一格时，它是否已完成？看过第二问题后再修改第二回答、手动运行恢复格，核对两轮完整回答与占位工具零执行。</li>
 </ol>
 <h3 id="%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E4%B8%8E%E4%B8%8B%E4%B8%80%E6%AD%A5">常见问题与下一步<a class="anchor-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E4%B8%8E%E4%B8%8B%E4%B8%80%E6%AD%A5">¶</a></h3><table>
 <thead>
@@ -8904,6 +9147,10 @@ Number of human decisions (1) does not match number of hanging tool calls
 <tr>
 <td>决策报错</td>
 <td>数量是否匹配、类型是否允许；再按原请求顺序核对每项决定，以免选错动作</td>
+</tr>
+<tr>
+<td>本批效果通过，但整次未完成</td>
+<td>查看新的待审批动作、<code>snapshot.next</code> 与中断；保留原会话，等待人明确决定，不自动批准</td>
 </tr>
 <tr>
 <td>live 断言失败</td>
