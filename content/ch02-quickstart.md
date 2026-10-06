@@ -2,6 +2,8 @@
 
 > 上一章我们理解了 Deep Agents 的设计定位。本章进入实操环节——从安装到运行，带你完成第一个能搜索网络、撰写报告的研究助手。
 
+配套实验：[第 2 章 Notebook（一）：快速上手与自定义工具](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch02/01-quickstart.ipynb)、[第 2 章 Notebook（二）：研究助手](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch02/02-research-assistant.ipynb)。
+
 ## 环境准备
 
 ### 安装 Deep Agents

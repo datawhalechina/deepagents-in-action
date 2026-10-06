@@ -11,6 +11,8 @@
 |---|---|---|---|
 | 作者模板 | [Notebook](_template/01-minimal-tool.ipynb) · [Markdown](_template/01-minimal-tool.md) · [HTML](_template/01-minimal-tool.html) | 实际 echo 工具、调用与返回关联 | 默认脚本模型；可选真实模型 |
 | 第 1 章：Agent Harness | [Notebook](ch01/01-agent-harness.ipynb) · [Markdown](ch01/01-agent-harness.md) · [HTML](ch01/01-agent-harness.html) | echo 成功、消息循环、默认工具差异 | 默认脚本模型；可选真实模型 |
+| 第 2 章：快速上手与自定义工具 | [Notebook](ch02/01-quickstart.ipynb) · [Markdown](ch02/01-quickstart.md) · [HTML](ch02/01-quickstart.html) | 工具 Schema 三要素、换算与计算的调用链、两类工具错误 | 默认脚本模型；可选真实模型 |
+| 第 2 章：研究助手 | [Notebook](ch02/02-research-assistant.ipynb) · [Markdown](ch02/02-research-assistant.md) · [HTML](ch02/02-research-assistant.html) | 搜索结果、Todo 状态与虚拟文件 | 默认脚本模型与本地搜索样例；live 需 Tavily Key 与 search 依赖组 |
 | 第 5 章：同步子 Agent | [Notebook](ch05/01-subagent-delegation.ipynb) · [Markdown](ch05/01-subagent-delegation.md) · [HTML](ch05/01-subagent-delegation.html) | 消息隔离、文件共享与显式读取 | 默认脚本模型；可选真实模型 |
 | 第 6 章：异步子 Agent | [Notebook](ch06/01-async-subagent-lifecycle.ipynb) · [Markdown](ch06/01-async-subagent-lifecycle.md) · [HTML](ch06/01-async-subagent-lifecycle.html) | 五个异步工具、服务状态与失败清理 | 默认脚本模型；真实本地 Agent Server；server 依赖组 |
 <!-- course-notebook-index:end -->
@@ -19,7 +21,7 @@
 
 ## 第一次学习，从哪里开始？
 
-建议按 **最小工具实验（作者模板）→ 第 1 章 → 第 5 章 → 第 6 章** 的顺序。先理解“模型请求、工具执行、结果返回”，再看默认工具、同步委派，最后看后台任务。章节编号沿用课程正文，不表示中间章节已经有 Notebook。
+建议按 **最小工具实验（作者模板）→ 第 1 章 → 第 2 章 → 第 5 章 → 第 6 章** 的顺序。先理解“模型请求、工具执行、结果返回”，再看默认工具、自定义工具与研究助手、同步委派，最后看后台任务。章节编号沿用课程正文，不表示中间章节已经有 Notebook。
 
 | 你现在想做什么 | 入口 |
 |---|---|
@@ -83,13 +85,15 @@ uv run --project notebooks --locked python -m ipykernel install --user --name de
 
 默认 `offline`：不读取 `.env` 里的模型配置，不向模型供应商发送请求。脚本模型按公开规则产生工具调用，框架、工具函数、状态变化仍真实执行。这个模式验证机制，不证明真实模型会正确选工具；服务类实验仍需要本机启动真实服务。
 
-公共 `ScriptedChatModel` 是 LangChain 官方 `FakeMessagesListChatModel` 的薄适配器，只补充 `bind_tools()` 和可选的消息回调。模板与第 1 章使用官方响应列表；第 5、6 章通过回调读取当前消息、当前工具集合或运行时任务 ID。响应列表会循环，独立实验应创建新实例；回调不依赖共享调用次数。预设的结束消息不是成功证据，仍须核对真实工具结果。
+公共 `ScriptedChatModel` 是 LangChain 官方 `FakeMessagesListChatModel` 的薄适配器，只补充 `bind_tools()` 和可选的消息回调。模板与第 1、2 章使用官方响应列表；第 5、6 章通过回调读取当前消息、当前工具集合或运行时任务 ID。响应列表会循环，独立实验应创建新实例；回调不依赖共享调用次数。预设的结束消息不是成功证据，仍须核对真实工具结果。
 
 需要真实模型时，把 [`.env.example`](../.env.example) 复制为仓库根目录未提交的 `.env`，再明确选择 `live`：
 
 ```bash
 uv run --project notebooks --locked python -m course_notebooks.run template --mode live
 ```
+
+第 2 章研究助手在 live 模式下还会真实调用 Tavily 搜索：需要在 `.env` 中设置 `TAVILY_API_KEY`，安装和运行命令都加上 `--extra search`（完整命令见该 Notebook 开头）。offline 模式使用本地搜索样例，不需要这些。
 
 默认提供商使用 `SILICONFLOW_API_KEY`，可选 `SILICONFLOW_BASE_URL`、`MODEL_NAME`。其他 OpenAI 兼容提供商必须同时设置 `MODEL_API_KEY`、`MODEL_BASE_URL`、`MODEL_NAME`。模型必须支持工具调用；实际网络请求可能收费。复杂实验需要更可靠的工具调用能力，不能由入门实验的结果推断所有模型均适用。
 
