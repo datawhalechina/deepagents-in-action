@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`116d592ca8c8`。
+> 本次执行模式：**offline**。源码指纹：`42558308e80f`。
 
 # 第 7 章实验：Skill 的说明何时进入模型上下文？
 
@@ -37,8 +37,8 @@ from tempfile import TemporaryDirectory
 
 from deepagents import create_deep_agent
 from deepagents.backends.filesystem import FilesystemBackend
-from langchain.agents.middleware import wrap_model_call
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 
 from course_notebooks.model_config import create_model
 from course_notebooks.nbtools import show_runtime, show_text
@@ -49,10 +49,11 @@ show_runtime()
 
     运行模式： offline （脚本模型）
     Python： 3.12.13 平台： Darwin arm64
-    deepagents==0.7.15
-    langchain==1.4.2
-    langgraph==1.2.11
-    langchain-openai==1.6.2
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
 
 
 ## 2. 准备一个最小技能包
@@ -156,11 +157,11 @@ def scripted_reply(messages, tool_names):
 
 `FilesystemBackend(root_dir=..., virtual_mode=True)` 让 Agent 使用 `/skills/...` 虚拟路径，对应临时目录中的文件。`skills=["/skills/"]` 给的是**技能目录的父目录**，让 Skills 中间件发现 `release-check`。中间件会扫描文件并把技能名称、用途和路径加入提示词；它读取磁盘以完成扫描，不等于把整份正文都放进模型上下文。
 
-`@wrap_model_call` 把一个 Python 函数注册为模型调用前后的中间件。本例只用它观察输入，不更改请求。`run_agent(root)` 分三步：
+`BaseCallbackHandler.on_chat_model_start` 在聊天模型开始调用时收到最终消息；`messages[0]` 是本次调用的消息列表，包含 Skills 中间件已加入技能目录的系统提示。本例只记录这些消息，不更改输入。自定义 `wrap_model_call` 在当前版本先于 Skills 中间件执行，不能用来观察最终提示词。`run_agent(root)` 分三步：
 
-1. `observe_request` 在每次模型调用前抄下当时的提示词、消息文本和已有工具返回 ID，然后把请求原样交给下一层；它只观察，不生成回复。
+1. `ObserveRequest` 回调在每次模型开始调用时抄下系统提示、全部消息文本和已有工具返回 ID；它只观察，不生成回复。
 2. `create_deep_agent(...)` 组装后端、Skills 中间件和模型。
-3. `invoke(...)` 送入用户任务。框架反复调用模型与 `read_file`，直到模型不再请求工具。`recursion_limit=12` 给循环设置上限。
+3. `invoke(...)` 送入用户任务，并通过 `config` 的 `callbacks` 注册观察器。框架反复调用模型与文件工具，直到模型不再请求工具。`recursion_limit=12` 给循环设置上限。
 
 记录的 `requests` 是**模型在各时刻实际收到的内容**；`result["messages"]` 则保存用户消息、模型提出的工具请求和工具执行后的返回。后面会用两者核对披露顺序。
 
@@ -169,22 +170,21 @@ def scripted_reply(messages, tool_names):
 def run_agent(root):
     requests = []
 
-    @wrap_model_call
-    def observe_request(request, handler):
-        system = request.system_message.text if request.system_message else ""
-        requests.append({
-            "system": system,
-            "context": "\n".join([system, *(m.text for m in request.messages)]),
-            "tool_ids": {m.tool_call_id for m in request.messages
-                         if isinstance(m, ToolMessage)},
-        })
-        return handler(request)
+    class ObserveRequest(BaseCallbackHandler):
+        def on_chat_model_start(self, serialized, messages, **kwargs):
+            model_messages = messages[0]
+            requests.append({
+                "system": "\n".join(m.text for m in model_messages
+                                      if isinstance(m, SystemMessage)),
+                "context": "\n".join(m.text for m in model_messages),
+                "tool_ids": {m.tool_call_id for m in model_messages
+                             if isinstance(m, ToolMessage)},
+            })
 
     agent = create_deep_agent(
         model=create_model(ScriptedChatModel(responder=scripted_reply)),
         backend=FilesystemBackend(root_dir=str(root), virtual_mode=True),
         skills=["/skills/"],
-        middleware=[observe_request],
         system_prompt="用中文完成本地技能任务；不要联网、委派或写文件。",
     )
     result = agent.invoke({"messages": [{
@@ -192,7 +192,7 @@ def run_agent(root):
         "content": "请使用 release-check 技能列出发布前检查项。"
                    "先读取技能正文，再读取它指定的资料。"
                    "资料缺失时报告路径并停止，不要猜测。",
-    }]}, config={"recursion_limit": 12})
+    }]}, config={"recursion_limit": 12, "callbacks": [ObserveRequest()]})
     return result, requests
 ```
 
@@ -200,7 +200,7 @@ def run_agent(root):
 
 下面先在临时目录写出两份文件，运行一次任务；随后**只删除参考清单**，用新的 Agent 和空对话重跑同一任务。这样失败场景不会借用上一轮已经读到的清单。
 
-`show_reads` 按调用 ID 把 `AIMessage.tool_calls` 与 `ToolMessage` 配对，打印每次读取的路径、状态和返回文本。`with TemporaryDirectory()` 管理整个生命周期：离开代码块时会清理目录，即使中途出错也一样。这里的最终答复用纯文本打印，清单标题不会变成 Notebook 的章节标题。
+`show_reads` 按调用 ID 把 `AIMessage.tool_calls` 与 `ToolMessage` 配对，保留所有工具记录，打印实际工具名、完整参数、调用 ID、状态和返回文本；live 模式若调用 `ls(path='/')`，也会如实展示，不会误标成 `read_file`。这只是展示，不替代第 6 节 `check_disclosure` 对读取证据和披露顺序的验收。下一格只定义展示函数，再下一格执行两个场景。`with TemporaryDirectory()` 管理整个生命周期：离开代码块时会清理目录，即使中途出错也一样。这里的最终答复用纯文本打印，清单标题不会变成 Notebook 的章节标题。
 
 
 ```python
@@ -211,12 +211,14 @@ def show_reads(label, result):
     for message in result["messages"]:
         if isinstance(message, ToolMessage):
             call = calls[message.tool_call_id]
-            print(f"read_file({call['args']['file_path']}) "
+            print(f"{call['name']}({call['args']}) "
                   f"[id={message.tool_call_id}] → {message.status}")
             show_text("工具返回：", message.text, width=78)
     show_text("最终答复：", result["messages"][-1].text)
+```
 
 
+```python
 with TemporaryDirectory(prefix="ch07-skills-") as directory:
     root = Path(directory)
     skill_file = root / SKILL_PATH.lstrip("/")
@@ -238,7 +240,7 @@ print("\n临时技能目录已清理。")
 
     
     === 资料存在 ===
-    read_file(/skills/release-check/SKILL.md) [id=read-1] → success
+    read_file({'file_path': '/skills/release-check/SKILL.md'}) [id=read-1] → success
     
     工具返回：
     @@ lines 1-8 of 8 @@
@@ -250,7 +252,7 @@ print("\n临时技能目录已清理。")
     1. 使用 read_file 读取 `/skills/release-check/references/checks.md`。
     2. 只按参考清单列出检查项，不要添加资料中没有的要求。
     3. 如果读取失败，报告缺失路径并停止，不要猜测检查项。
-    read_file(/skills/release-check/references/checks.md) [id=read-2] → success
+    read_file({'file_path': '/skills/release-check/references/checks.md'}) [id=read-2] → success
     
     工具返回：
     @@ lines 1-3 of 3 @@
@@ -266,7 +268,7 @@ print("\n临时技能目录已清理。")
     - 构建产物中没有调试日志
     
     === 资料缺失 ===
-    read_file(/skills/release-check/SKILL.md) [id=read-1] → success
+    read_file({'file_path': '/skills/release-check/SKILL.md'}) [id=read-1] → success
     
     工具返回：
     @@ lines 1-8 of 8 @@
@@ -278,7 +280,7 @@ print("\n临时技能目录已清理。")
     1. 使用 read_file 读取 `/skills/release-check/references/checks.md`。
     2. 只按参考清单列出检查项，不要添加资料中没有的要求。
     3. 如果读取失败，报告缺失路径并停止，不要猜测检查项。
-    read_file(/skills/release-check/references/checks.md) [id=read-2] → error
+    read_file({'file_path': '/skills/release-check/references/checks.md'}) [id=read-2] → error
     
     工具返回：
     Error: File '/skills/release-check/references/checks.md' not found

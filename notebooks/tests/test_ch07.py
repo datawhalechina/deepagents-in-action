@@ -25,6 +25,46 @@ def experiment(tmp_path, monkeypatch):
     return namespace, result, requests, tmp_path
 
 
+def test_show_reads_preserves_mixed_tool_records(experiment, monkeypatch, capsys):
+    ns, _, _, root = experiment
+    assert "success" not in ns, "Loading definitions must not run the demo scenarios."
+    calls = [
+        {"name": "read_file", "args": {
+            "file_path": ns["SKILL_PATH"], "offset": 0, "limit": 20,
+        }, "id": "mixed-skill"},
+        {"name": "ls", "args": {"path": "/"}, "id": "mixed-ls"},
+        {"name": "read_file", "args": {
+            "file_path": ns["REFERENCE_PATH"], "offset": 0, "limit": 20,
+        }, "id": "mixed-reference"},
+    ]
+
+    def mixed_reply(messages, tool_names):
+        assert {"read_file", "ls"} <= set(tool_names)
+        replies = [m for m in messages if isinstance(m, ns["ToolMessage"])]
+        if len(replies) < len(calls):
+            return ns["AIMessage"](content="", tool_calls=[calls[len(replies)]])
+        return ns["AIMessage"](content=replies[-1].text)
+
+    monkeypatch.setitem(ns, "scripted_reply", mixed_reply)
+    result, requests = ns["run_agent"](root)
+    ns["check_disclosure"](result, requests, resource_exists=True)
+    replies = [m for m in result["messages"] if isinstance(m, ns["ToolMessage"])]
+    assert [m.name for m in replies] == [call["name"] for call in calls]
+    assert all(m.status == "success" for m in replies)
+
+    capsys.readouterr()
+    ns["show_reads"]("mixed tools", result)
+    output = capsys.readouterr().out
+    assert output.count("工具返回：") == len(calls)
+    for call, reply in zip(calls, replies, strict=True):
+        header = (f"{call['name']}({call['args']}) "
+                  f"[id={reply.tool_call_id}] → {reply.status}")
+        assert output.count(header) == 1
+        assert reply.tool_call_id == call["id"]
+        assert reply.text
+        assert " ".join(reply.text.split()) in " ".join(output.split())
+
+
 @pytest.mark.parametrize("damage", [
     "early_body", "early_reference", "missing_read", "wrong_id", "wrong_content",
 ])
