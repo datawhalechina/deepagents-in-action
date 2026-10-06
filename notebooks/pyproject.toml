@@ -19,6 +19,7 @@ server = [
   "langgraph-cli[inmem]==0.4.32", "langgraph-sdk==0.4.5",
   "langgraph-api==0.15.1", "langgraph-runtime-inmem==0.35.1",
 ]
+search = ["tavily-python==0.8.4"]
 
 [dependency-groups]
 dev = ["pytest>=9.1.1,<10"]
