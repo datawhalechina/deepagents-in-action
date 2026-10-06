@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>e3d0c0ffb48c</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>566d3146ac96</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7836,6 +7836,9 @@ uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> <
 <p>逐格学习时，先运行各个定义格，最后在第 7 节一起执行三个阶段。<strong>定义 <code>async def</code> 函数不会启动任务</strong>，直到后面 <code>await</code> 调用它才执行。第 3 节的检查函数第一次可先理解输入输出，核心观察在第 4～7 节。</p>
 <p>默认 offline 仅替换模型选择工具的方式，服务、SDK 和后台任务都真实运行。无需模型 Key、远程部署或 LangSmith Key；live 才请求真实模型，可能产生费用。</p>
 <p>下一格定位仓库目录，并把本章目录加入 Python 模块搜索路径，以便导入章内辅助类 <code>LocalAgentServer</code>。它负责启动和清理进程，不是需要另行安装的第三方包。</p>
+<h3 id="%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">硅流真实模型（live）<a class="anchor-link" href="#%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">¶</a></h3><p><strong>待验证</strong>（2026-10-06 核对）：当前版本尚无整本 live 通过记录，暂不列出已验证型号。先用 offline 学习；补验后再填写完整型号、日期、验证版本和记录链接。</p>
+<p>配置：在未提交的根目录 <code>.env</code> 中填写 <code>SILICONFLOW_API_KEY</code> 和完整 <code>MODEL_NAME</code>；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 <a href="../README.md#live-records">README 模型记录说明</a>。随附输出仍为 offline。</p>
+<p>范围与服务：仅主 Agent 选择异步工具时使用真实模型，服务端 researcher 是等待后固定回显的图。需真实本地 Agent Server 和 <code>server</code> 依赖组；不代表两个真实模型完成研究。</p>
 </div>
 </div>
 </div>
@@ -8565,7 +8568,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 start_async_task
-Launched async subagent. task_id: 01a1108b-2e05-7c50-8545-faf12a70a658
+Launched async subagent. task_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4
 主 Agent 已返回，后台 run 仍为： pending
 </pre>
 </div>
@@ -8576,7 +8579,7 @@ Launched async subagent. task_id: 01a1108b-2e05-7c50-8545-faf12a70a658
 <pre>
 list_async_tasks
 1 tracked task(s):
-- task_id: 01a1108b-2e05-7c50-8545-faf12a70a658  agent: researcher  status:
+- task_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4  agent: researcher  status:
   running
 </pre>
 </div>
@@ -8587,7 +8590,7 @@ list_async_tasks
 <pre>
 check_async_task
 status: running
-thread_id: 01a1108b-2e05-7c50-8545-faf12a70a658
+thread_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4
 </pre>
 </div>
 </div>
@@ -8597,7 +8600,7 @@ thread_id: 01a1108b-2e05-7c50-8545-faf12a70a658
 <pre>
 check_async_task
 status: success
-thread_id: 01a1108b-2e05-7c50-8545-faf12a70a658
+thread_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4
 result: Research completed: 总结异步任务的状态变化
 
 阶段二：更新 → 新 run → 读取新结果
@@ -8609,7 +8612,7 @@ result: Research completed: 总结异步任务的状态变化
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 start_async_task
-Launched async subagent. task_id: 01a1108b-58f9-7672-ad93-307534596527
+Launched async subagent. task_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
 </pre>
 </div>
 </div>
@@ -8618,7 +8621,7 @@ Launched async subagent. task_id: 01a1108b-58f9-7672-ad93-307534596527
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 update_async_task
-Updated async subagent. task_id: 01a1108b-58f9-7672-ad93-307534596527
+Updated async subagent. task_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
 </pre>
 </div>
 </div>
@@ -8628,7 +8631,7 @@ Updated async subagent. task_id: 01a1108b-58f9-7672-ad93-307534596527
 <pre>
 check_async_task
 status: running
-thread_id: 01a1108b-58f9-7672-ad93-307534596527
+thread_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
 </pre>
 </div>
 </div>
@@ -8638,7 +8641,7 @@ thread_id: 01a1108b-58f9-7672-ad93-307534596527
 <pre>
 check_async_task
 status: success
-thread_id: 01a1108b-58f9-7672-ad93-307534596527
+thread_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
 result: Research completed: 追加要求：使用三条要点
 已验证：task ID 不变、run ID 更新、追加指令传递成功。
 
@@ -8651,7 +8654,7 @@ result: Research completed: 追加要求：使用三条要点
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 start_async_task
-Launched async subagent. task_id: 01a1108b-840c-7ff3-9e10-11b813a8ec80
+Launched async subagent. task_id: 01a111c7-69ea-7153-8e6f-d78f43ab1735
 </pre>
 </div>
 </div>
@@ -8660,7 +8663,7 @@ Launched async subagent. task_id: 01a1108b-840c-7ff3-9e10-11b813a8ec80
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
 cancel_async_task
-Cancelled async subagent task: 01a1108b-840c-7ff3-9e10-11b813a8ec80
+Cancelled async subagent task: 01a111c7-69ea-7153-8e6f-d78f43ab1735
 </pre>
 </div>
 </div>
@@ -8670,11 +8673,11 @@ Cancelled async subagent task: 01a1108b-840c-7ff3-9e10-11b813a8ec80
 <pre>
 list_async_tasks
 3 tracked task(s):
-- task_id: 01a1108b-2e05-7c50-8545-faf12a70a658  agent: researcher  status:
+- task_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4  agent: researcher  status:
   success
-- task_id: 01a1108b-58f9-7672-ad93-307534596527  agent: researcher  status:
+- task_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4  agent: researcher  status:
   success
-- task_id: 01a1108b-840c-7ff3-9e10-11b813a8ec80  agent: researcher  status:
+- task_id: 01a111c7-69ea-7153-8e6f-d78f43ab1735  agent: researcher  status:
   cancelled
 本次创建的任务、thread、服务进程与临时状态已清理。
 

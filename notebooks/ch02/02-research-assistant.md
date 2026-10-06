@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`03d11acd550f`。
+> 本次执行模式：**offline**。源码指纹：`fb164bd0074b`。
 
 # 第 2 章 Notebook（二）：研究助手
 
@@ -43,6 +43,14 @@ uv run --project notebooks --locked --extra search python -m course_notebooks.ru
 ```
 
 offline 模式下，框架、`write_todos`、`write_file` 以及 `internet_search` 这个 Python 函数都会真实运行，只是函数返回本地样例而不请求 Tavily。它验证的是 Agent 的运行机制，不证明真实模型会这样规划，也不代表搜索结果的质量。
+
+### 硅流真实模型（live）
+
+**待验证**（2026-10-06 核对）：当前版本尚无整本 live 通过记录，暂不列出已验证型号。先用 offline 学习；补验后再填写完整型号、日期、验证版本和记录链接。
+
+配置：在未提交的根目录 `.env` 中填写 `SILICONFLOW_API_KEY` 和完整 `MODEL_NAME`；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 [README 模型记录说明](../README.md#live-records)。随附输出仍为 offline。
+
+范围与服务：真实模型选择研究工具，搜索真实调用 Tavily；另需 `TAVILY_API_KEY` 和 `search` 依赖组。
 
 
 ```python

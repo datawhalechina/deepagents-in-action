@@ -121,3 +121,73 @@ def test_failed_write_back_preserves_source_and_reading_copies(tmp_path):
     assert path.read_bytes() == original
     for suffix in (".html", ".md"):
         assert path.with_suffix(suffix).read_text() == "previous reading copy"
+
+
+@pytest.mark.parametrize("generic", [False, True])
+def test_live_artifacts_record_the_kernel_model_without_credentials(tmp_path, monkeypatch, generic):
+    import os
+    for key in list(os.environ):
+        if key.startswith(("MODEL_", "SILICONFLOW_", "OPENAI_", "COURSE_")):
+            monkeypatch.delenv(key)
+    # Construct the real client, but do not call an external API in this regression.
+    entries = make_repo(tmp_path, {"configured": (
+        "from course_notebooks.model_config import create_model\n"
+        "from course_notebooks.nbtools import show_runtime\n"
+        "model = create_model(None)\nshow_runtime()\nprint(model.model_name)"
+    )})
+    if generic:
+        configuration = (
+            "MODEL_API_KEY=runner-secret-key\n"
+            "MODEL_BASE_URL=https://private-user:private-password@api.example.test/v1?token=url-secret-token\n"
+        )
+        provider, host = "openai-compatible", "api.example.test"
+    else:
+        configuration = "SILICONFLOW_API_KEY=runner-secret-key\n"
+        provider, host = "siliconflow", "api.siliconflow.cn"
+    (tmp_path / ".env").write_text(configuration + "MODEL_NAME=dotenv-model\n")
+    monkeypatch.setenv("MODEL_NAME", "environment-model")
+    output = tmp_path / "output"
+    report = run_entries(entries, tmp_path, output, mode="live", timeout=30)
+    result = report["results"][0]
+    assert result["status"] == "passed"
+    expected = {
+        "provider": provider, "model_name": "environment-model", "api_host": host,
+        "temperature": 0, "timeout_seconds": 60, "max_retries": 1,
+    }
+    assert result["model_configuration"] == expected
+    saved = nbformat.read(output / "configured.ipynb", as_version=4)
+    assert saved.metadata.course_run.model_configuration == expected
+    for filename in ("report.json", "configured.ipynb", "configured.md", "configured.html"):
+        text = (output / filename).read_text()
+        assert "environment-model" in text
+        for secret in ("runner-secret-key", "private-user", "private-password", "url-secret-token"):
+            assert secret not in text
+
+
+def test_live_missing_model_fails_before_executing_cells(tmp_path, monkeypatch):
+    import os
+    for key in list(os.environ):
+        if key.startswith(("MODEL_", "SILICONFLOW_", "OPENAI_", "COURSE_")):
+            monkeypatch.delenv(key)
+    entries = make_repo(tmp_path, {"bad": "raise RuntimeError('cell must not execute')"})
+    (tmp_path / ".env").write_text("SILICONFLOW_API_KEY=runner-secret-key\n")
+    report = run_entries(entries, tmp_path, tmp_path / "output", mode="live", timeout=30)
+    assert report["results"][0]["status"] == "failed"
+    assert report["results"][0]["error"] == "ValueError"
+    saved = nbformat.read(tmp_path / "output/bad.ipynb", as_version=4)
+    assert saved.cells[0].outputs == []
+
+
+def test_credentials_in_model_metadata_withhold_artifacts_and_report_value(tmp_path, monkeypatch):
+    import os
+    for key in list(os.environ):
+        if key.startswith(("MODEL_", "SILICONFLOW_", "OPENAI_", "COURSE_")):
+            monkeypatch.delenv(key)
+    entries = make_repo(tmp_path, {"bad": "print('no model name printed')"})
+    (tmp_path / ".env").write_text("SILICONFLOW_API_KEY=runner-secret-key\nMODEL_NAME=runner-secret-key\n")
+    output = tmp_path / "output"
+    report = run_entries(entries, tmp_path, output, mode="live", timeout=30)
+    assert report["results"][0]["status"] == "failed"
+    assert "artifacts withheld" in report["results"][0]["error"]
+    assert "runner-secret-key" not in (output / "report.json").read_text()
+    assert not (output / "bad.ipynb").exists()

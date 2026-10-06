@@ -2,6 +2,8 @@
 
 > 能写文件、运行 Shell、安装依赖的 Agent，已经不只是“回答问题”的模型，而是能改变运行环境的执行者。本章把这份能力放进隔离沙箱：既让 Agent 可以编程、分析数据和运行测试，也让宿主机的文件、进程和凭证留在边界之外。
 
+配套实验：[沙箱执行与文件传输 Notebook](../notebooks/ch10/01-sandbox-execution-and-files.ipynb)（[Markdown 阅读版](../notebooks/ch10/01-sandbox-execution-and-files.md) · [HTML 阅读版](../notebooks/ch10/01-sandbox-execution-and-files.html)）。默认无需模型 Key，但需要 Docker Engine；通过真实本地容器观察执行、输入上传、产物下载、失败退出码与资源回收。它演示 Backend 接口，不验证远程托管 Provider。
+
 本章覆盖三层不同的能力，先分清再组合：
 
 1. **Deep Agents Python Backend**：把远程沙箱接到 `create_deep_agent()`，为 Agent 提供文件系统工具与 `execute`。
@@ -34,6 +36,8 @@ Agent 向 `execute` 传入 `command` 字符串，得到：
 - 合并后的标准输出与错误输出
 - 命令退出码
 - 输出过大时的截断提示
+
+应用直接调用时应检查 `result.exit_code`；Agent 的 `execute` 结果在锁定版本中也会把退出码放在 `ToolMessage.artifact["exit_code"]`。工具接口成功返回结果时，消息状态可能仍是 `success`，即使命令退出码非零；不要只凭消息状态判断程序成功。
 
 过大的输出不会直接塞进模型上下文，而会保存为文件，并提示 Agent 用 `read_file` 分段查看。这使得编译日志、测试报告和大数据输出不会挤占上下文窗口。
 
@@ -408,14 +412,14 @@ Auth Proxy 是“沙箱需要访问已认证服务”时比复制 API Key 更好
 
 ### Python Agent：实现 SandboxBackendProtocol
 
-普通 `BackendProtocol` 覆盖 `ls`、`read`、`write`、`edit`、`glob`、`grep`，可选 `delete`；要获得 `execute`，实现扩展后的 `SandboxBackendProtocol`。沙箱基类会在 `execute()` 上构建文件系统工具。
+普通 `BackendProtocol` 覆盖 `ls`、`read`、`write`、`edit`、`glob`、`grep`，可选 `delete`；要获得 `execute`，实现扩展后的 `SandboxBackendProtocol`。`BaseSandbox` 提供文件工具的默认实现；继承它时还需实现 `id`、`upload_files()`、`download_files()` 和 `execute()`。其中读取、搜索等会调用 `execute()`，写入会使用上传接口。
 
 v0.7 的工具语义在沙箱内同样成立：`write_file` 可以完整覆盖已有文件，`grep`、`glob` 可能返回带 `truncated=True` 的部分结果。沙箱限制的是副作用范围，不会把部分搜索结果自动变成全集；消费工具结果的 Agent 和宿主应用仍要检查分页与截断信息。
 
 实现规则：
 
 - `execute()` 运行 Shell 命令并返回结构化结果
-- 失败时在结果的 `error` 字段报告，不要抛出异常
+- `execute()` 返回 `ExecuteResponse(output, exit_code, truncated)`，没有 `error` 字段；命令失败用非零 `exit_code` 表示，并在 `output` 中保留说明。上传、下载等文件操作才使用各自结果的 `error` 字段。接口参数错误或通信故障需按后端约定处理，不能伪装成命令成功
 - 未实现 `delete` 时，模型会自动看不到删除工具
 - 文件权限可在 Backend 调用之前应用于内置文件工具；这与第 9 章的 HITL / 权限策略可以组合
 

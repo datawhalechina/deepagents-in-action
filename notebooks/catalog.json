@@ -66,6 +66,16 @@
       "source_issue": 128
     },
     {
+      "id": "ch07-skills",
+      "chapter_id": "ch07-skills",
+      "title": "Skills 的渐进式加载与资源读取",
+      "path": "ch07/01-skills-progressive-disclosure.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
+      "source_issue": 105
+    },
+    {
       "id": "ch08-long-term-memory",
       "chapter_id": "ch08-long-term-memory",
       "title": "跨线程记忆与文件隔离",
@@ -73,6 +83,28 @@
       "dependencies": [],
       "model": "optional",
       "services": [],
+      "source_issue": 105
+    },
+    {
+      "id": "ch09-human-in-the-loop",
+      "chapter_id": "ch09-human-in-the-loop",
+      "title": "工具审批与中断恢复",
+      "path": "ch09/01-tool-approval-and-resume.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
+      "source_issue": 105
+    },
+    {
+      "id": "ch10-sandboxes",
+      "chapter_id": "ch10-sandboxes",
+      "title": "沙箱执行与输入、产物传输",
+      "path": "ch10/01-sandbox-execution-and-files.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [
+        "local-docker"
+      ],
       "source_issue": 105
     },
     {
