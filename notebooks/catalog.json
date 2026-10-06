@@ -22,6 +22,26 @@
       "source_issue": 116
     },
     {
+      "id": "ch02-quickstart",
+      "chapter_id": "ch02-quickstart",
+      "title": "快速上手与自定义工具",
+      "path": "ch02/01-quickstart.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
+      "source_issue": 123
+    },
+    {
+      "id": "ch02-research-assistant",
+      "chapter_id": "ch02-quickstart",
+      "title": "研究助手：搜索、Todo 与虚拟文件",
+      "path": "ch02/02-research-assistant.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
+      "source_issue": 123
+    },
+    {
       "id": "ch05-subagents",
       "chapter_id": "ch05-subagents",
       "title": "子 Agent 委派与上下文隔离",
@@ -55,6 +75,16 @@
       "services": [
         "local-docker"
       ],
+      "source_issue": 105
+    },
+    {
+      "id": "ch14-streaming",
+      "chapter_id": "ch14-streaming",
+      "title": "Streaming v3 的委派、工具与订阅时机",
+      "path": "ch14/01-streaming-projections.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
       "source_issue": 105
     }
   ]
