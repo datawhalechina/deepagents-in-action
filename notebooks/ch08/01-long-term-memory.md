@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`1969d8d57bf8`。
+> 本次执行模式：**offline**。源码指纹：`e9a5c6f575c5`。
 
 # 第 8 章 Notebook：跨线程记忆与文件隔离
 
@@ -30,6 +30,14 @@ uv run --project notebooks --locked python -m course_notebooks.run ch08-long-ter
 
 `show_runtime()` 展示当前模式与依赖版本；`show_text()` 把工具输出折行。
 
+### 硅流真实模型（live）
+
+**待验证**（2026-10-06 核对）：当前版本尚无整本 live 通过记录。真实模型复测曾在保存场景反复提交同一组错误的 `edit_file` 参数；本节据此补上了文本参数的具体写法，以及重复错误的上限。暂不列出已验证型号，补验后再填写完整型号、日期、验证版本和记录链接。
+
+配置：在未提交的根目录 `.env` 中填写 `SILICONFLOW_API_KEY` 和完整 `MODEL_NAME`；公共入口不提供隐含模型默认值。模型必须支持工具调用。API 地址、固定参数与报告字段见 [README 模型记录说明](../README.md#live-records)。随附输出仍为 offline。
+
+范围与服务：模型选择文件工具并填写参数；Backend、Store、Checkpointer、工具参数校验与证据核对真实执行。数据都在内存里，无额外服务。
+
 
 ```python
 from dataclasses import dataclass
@@ -42,6 +50,7 @@ from course_notebooks.testing import ScriptedChatModel
 from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 from deepagents.backends.utils import create_file_data
+from langchain.agents.middleware import AgentMiddleware, hook_config
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
@@ -108,6 +117,10 @@ print("已初始化两个用户的偏好文件；虚拟路由：/memories/ → S
 | 旧线程 | `read_file` 草稿 |
 | 其他用户 | `read_file` 偏好 |
 
+`edit_file` 的 `old_string`、`new_string` 是**字符串**参数：`old_string` 用 `read_file` 返回的原文件正文，`new_string` 用 `json.dumps(对象, ensure_ascii=False)` 得到的文本。传 JSON 对象会被工具的真实参数校验拒绝，工具层不会替模型把对象转成字符串。
+
+同一个工具以完全相同的参数反复失败达到上限时，`StopRepeatedToolErrors` 会在下一次模型请求前结束本次执行，`run_scene` 先展示这些实际请求和工具返回，再明确失败。
+
 最后一句“已完成”由脚本预设，不能当证据。`tool_names` 是 Agent 当次提供的工具名；本例先核对所需工具确实注册。真实模型模式下 `create_model` 会选用 README 中配置的模型，这张固定调用表不再决定其行为。
 
 
@@ -151,6 +164,44 @@ class ModelRequestRecorder(BaseCallbackHandler):
     def on_chat_model_start(self, serialized, messages, **kwargs):
         self.requests.append(list(messages[0]))
 
+
+class StopRepeatedToolErrors(AgentMiddleware):
+    """同一个工具以完全相同参数反复失败到上限时，显式结束本次执行。
+
+    结果仍然保留：调用方先展示实际请求与工具返回，再判定失败。
+    真实模型一直提交同一组错误参数时，不会重试到限流或超时。
+    """
+
+    def __init__(self, stop_after=2):
+        super().__init__()
+        self.stop_after = stop_after
+        self.stopped = []
+
+    def before_agent(self, state, runtime):
+        # 每次 invoke 都是一次新的执行，重新统计。
+        self.stopped = []
+        return None
+
+    @hook_config(can_jump_to=["end"])
+    def before_model(self, state, runtime):
+        calls, counts = {}, {}
+        for message in state["messages"]:
+            if isinstance(message, AIMessage):
+                for call in message.tool_calls:
+                    calls[call["id"]] = call
+            elif isinstance(message, ToolMessage) and message.status == "error":
+                call = calls.get(message.tool_call_id)
+                if call is not None:
+                    signature = (call["name"], json.dumps(
+                        call["args"], sort_keys=True, ensure_ascii=False))
+                    counts[signature] = counts.get(signature, 0) + 1
+        self.stopped = [signature for signature, count in counts.items()
+                        if count >= self.stop_after]
+        return {"jump_to": "end"} if self.stopped else None
+
+
+tool_error_guard = StopRepeatedToolErrors()
+
 agent = create_deep_agent(
     model=model,
     backend=backend,
@@ -158,9 +209,13 @@ agent = create_deep_agent(
     checkpointer=InMemorySaver(),
     context_schema=UserContext,
     memory=[MEMORY_PATH],
+    middleware=[tool_error_guard],
     system_prompt=(
-        f"用户要求记住偏好时，先读取 {MEMORY_PATH}，再用 edit_file 更新原文件；"
-        "偏好文件只保存用户指定的 JSON 对象，替换整个旧对象，不加日期或其他字段。"
+        f"用户要求记住偏好时，先读取 {MEMORY_PATH}，再用 edit_file 更新原文件。"
+        "偏好文件只保存用户指定的两字段 JSON 对象，不加日期或其他字段；"
+        "edit_file 的 old_string 用 read_file 返回的原文件正文，"
+        "new_string 用 json.dumps(偏好对象, ensure_ascii=False) 得到的字符串；"
+        "两个参数都必须是字符串，工具不会把 JSON 对象自动转成字符串。"
         f"然后继续用 write_file 将本轮临时草稿写到 {DRAFT_PATH}。"
         "用户要求查看文件时，用 read_file 回答。工具出错时不要声称读到了内容。"
     ),
@@ -178,6 +233,8 @@ print("Agent 已组装；尚未执行任何场景。")
 旧线程的历史也会出现在返回值里，所以辅助函数只截取**本次最新用户消息之后**的记录。它逐条打印工具名、参数、状态和折行后的结果，同时按 `tool_call_id` 将工具结果与请求对应。回调记录的第一条请求用于检查这次执行起步时注入了哪份记忆。
 
 锁定版本的 `read_file` 以 `@@ lines 1-N of N @@` 标明完整范围，后面才是文件正文；辅助函数核对范围和正文行数，拒绝不完整分页。Store 正文、工具正文和系统 memory 正文统一用 `json.loads` 解析，要求整个对象严格相等：换序和空白可接受，缺字段、错值、额外日期都失败。
+
+同一个工具以完全相同参数连续失败达到上限时，`StopRepeatedToolErrors` 会在下一次模型请求前结束本次执行：`jump_to="end"` 让结果仍完整保留，`run_scene` 先打印这些实际请求与工具返回，再明确失败。这样模型重复提交同一组错误参数时不会一直重试到限流或超时。
 
 
 ```python
@@ -221,6 +278,23 @@ def run_scene(scene, thread_id, user_id, instruction):
         print(f"  {call['id']}: {call['name']}({call['args'].get('file_path')}) → "
               f"{reply.status}")
         show_text("  工具返回：", reply.text, width=78)
+    if tool_error_guard.stopped:
+        # 相同参数反复失败：已显式结束，先展示实际请求与工具返回再判定失败。
+        for name, arguments in tool_error_guard.stopped:
+            for call in calls:
+                signature = (call["name"], json.dumps(
+                    call["args"], sort_keys=True, ensure_ascii=False))
+                if signature != (name, arguments):
+                    continue
+                reply = next(item for item in returns
+                             if item.tool_call_id == call["id"])
+                show_text(f"重复失败的 {name} 请求 {call['id']}：",
+                          json.dumps(call["args"], ensure_ascii=False, indent=2))
+                show_text("  对应工具返回：", reply.text, width=78)
+        raise AssertionError(
+            "同一个工具以相同参数反复失败，本次执行已按上限结束；"
+            "上面是实际请求与工具返回。"
+        )
     return run
 
 
@@ -277,15 +351,19 @@ def validate_preferences(run, user_id, expected):
 
 def validate_saved(run):
     """先读再编辑、草稿写入成功及最终产物是验收目标，不限制额外工具调用。"""
-    replies = []
-    for name, path in (("read_file", MEMORY_PATH), ("edit_file", MEMORY_PATH),
-                       ("write_file", DRAFT_PATH)):
-        reply = tool_reply(run, name, path)
-        assert reply is not None and reply.status == "success", f"{name}({path}) 未成功"
-        replies.append(reply)
+    read = tool_reply(run, "read_file", MEMORY_PATH)
+    assert read is not None and read.status == "success", "read_file 未成功"
+    # 参数错误被拒绝后可以重试；这里取真正成功的那次 edit_file，仍要求先读再编辑。
+    edits = [reply for call in run["calls"]
+             if call["name"] == "edit_file" and call["args"].get("file_path") == MEMORY_PATH
+             for reply in run["returns"] if reply.tool_call_id == call["id"]]
+    edit = next((reply for reply in edits if reply.status == "success"), None)
+    assert edit is not None, "edit_file 未成功"
+    draft = tool_reply(run, "write_file", DRAFT_PATH)
+    assert draft is not None and draft.status == "success", "write_file 未成功"
     call_ids = [call["id"] for call in run["calls"]]
-    assert call_ids.index(replies[0].tool_call_id) < call_ids.index(replies[1].tool_call_id), "必须先读再编辑"
-    parse_preferences(read_file_content(replies[0]), {})
+    assert call_ids.index(read.tool_call_id) < call_ids.index(edit.tool_call_id), "必须先读再编辑"
+    parse_preferences(read_file_content(read), {})
     parse_preferences(memory_content(run["first_request"]), {})
     record = store.get(("alice", "memories"), STORE_KEY)
     assert record is not None, "Alice 的 namespace 中没有保存偏好"
@@ -298,16 +376,19 @@ def validate_saved(run):
 
 ### 4.1 第一段对话：更新偏好并写草稿
 
-`edit_file` 更新 Store 中已有偏好；`write_file` 写入 State 中的草稿。验收检查偏好先读再编辑、所需工具成功，再核对 Alice 的 Store JSON 和 State 草稿；额外工具调用完整保留，不因此判错。即使工具报告成功，写错 namespace 或内容也不能通过。此时用户 `alice` 的记忆提示词仍是本轮开始时加载的旧对象 `{}`；写入后的值要在**新线程**检查。
+`edit_file` 更新 Store 中已有偏好；`write_file` 写入 State 中的草稿。验收检查偏好先读再编辑、所需工具成功，再核对 Alice 的 Store JSON 和 State 草稿；额外工具调用完整保留，不因此判错。`edit_file` 的两个正文参数是字符串：`old_string` 用读取到的原文，`new_string` 用 `json.dumps(偏好对象, ensure_ascii=False)`；传 JSON 对象会被工具参数校验拒绝。即使工具报告成功，写错 namespace 或内容也不能通过。此时用户 `alice` 的记忆提示词仍是本轮开始时加载的旧对象 `{}`；写入后的值要在**新线程**检查。
 
 
 ```python
 saved = run_scene(
     "保存", "alice-original", "alice",
-    f"请将 {MEMORY_PATH} 保存为 JSON 对象 {PREFERENCE_JSON}，"
+    f"请把 {MEMORY_PATH} 更新为 JSON 对象 {PREFERENCE_JSON}，"
     '字段 comment_language 必须为 "zh"，variable_language 必须为 "en"；'
-    "只保留这两个字段，不添加日期或其他字段。先用 read_file 读取原文件，"
-    "再用 edit_file 将整个旧对象 {} 替换为该 JSON 对象；"
+    "只保留这两个字段，不添加日期或其他字段。"
+    "先用 read_file 读取原文件，再用 edit_file 替换整个文件："
+    'old_string 用 read_file 返回的原文件正文（初始是字符串 "{}"），'
+    f"new_string 用字符串 {PREFERENCE_JSON!r}；"
+    "这两个参数都必须是字符串，不要传 JSON 对象。"
     f"然后继续用 write_file 写临时草稿 {DRAFT_PATH}，内容是“{DRAFT_TEXT}”。",
 )
 validate_saved(saved)
@@ -448,6 +529,8 @@ print("Bob 的工具结果、Store 文件和首次模型请求均严格匹配 Bo
 2. 新线程读取旧草稿得到工具错误；旧线程读取成功，checkpoint 的 State 中仍有草稿。
 3. `bob` 的工具结果、Store 文件和首次模型请求使用另一 namespace。
 4. 这些记录都在内存里；**跨线程共享**是本实验的结论，不是进程重启后的持久化保证。也没有测试访问控制：实际用户身份应由服务入口认证。
+
+保存场景的 `edit_file` 参数必须是字符串；同一组错误参数重复到上限时，`StopRepeatedToolErrors` 会显式结束并展示实际请求与返回，不会重试到限流或超时。
 
 **改一个变量再观察**：把 4.2 中 `run_scene` 的线程 ID 从 `"alice-fresh"` 改成 `"alice-original"`，保持用户仍为 `alice`。先预测草稿读取的状态：它应从预期错误变成成功，后面的 `assert draft_miss.status == "error"` 会停止。看打印出来的 `read_file` 结果核对原因。然后恢复线程 ID、重启内核并从第一格全部运行，四个场景应重新通过。
 

@@ -46,6 +46,86 @@ def controlled_run(chapter, content):
             "first_request": [SystemMessage(content=memory_prompt(chapter, content))]}
 
 
+def tool_error_agent(chapter, responder):
+    """Rebuild the notebook Agent with the repeated-tool-error guard and a scripted model."""
+    model = chapter["create_model"](chapter["ScriptedChatModel"](responder=responder))
+    chapter["agent"] = chapter["create_deep_agent"](
+        model=model, backend=chapter["backend"], store=chapter["store"],
+        checkpointer=chapter["InMemorySaver"](), context_schema=chapter["UserContext"],
+        memory=[chapter["MEMORY_PATH"]], middleware=[chapter["tool_error_guard"]],
+        system_prompt=(
+            "保存偏好时先读取偏好文件，再用 edit_file 更新；"
+            "edit_file 的两个正文参数必须是字符串。"
+        ),
+    )
+
+
+def edit_file_call(chapter, *, as_string):
+    args = {"file_path": chapter["MEMORY_PATH"]}
+    if as_string:
+        args.update({"old_string": "{}", "new_string": chapter["PREFERENCE_JSON"]})
+    else:
+        # 评审复现的错误形态：把 JSON 对象直接传给文本参数。
+        args.update({"old_string": {},
+                     "new_string": chapter["EXPECTED_PREFERENCES"]})
+    return args
+
+
+def scripted_save(chapter, *, object_attempts):
+    """Run read_file, N object-argument edit_file attempts, then a string one."""
+
+    def responder(messages, tool_names):
+        latest = max(i for i, m in enumerate(messages) if isinstance(m, HumanMessage))
+        returned = [m for m in messages[latest + 1:] if isinstance(m, ToolMessage)]
+        steps = [("read_file", {"file_path": chapter["MEMORY_PATH"]})]
+        steps += [("edit_file", edit_file_call(chapter, as_string=False))] * object_attempts
+        steps += [("edit_file", edit_file_call(chapter, as_string=True)),
+                  ("write_file", {"file_path": chapter["DRAFT_PATH"],
+                                  "content": chapter["DRAFT_TEXT"]})]
+        if len(returned) >= len(steps):
+            return AIMessage(content="已完成保存；请检查工具结果。")
+        name, args = steps[len(returned)]
+        assert name in tool_names
+        return AIMessage(content="", tool_calls=[{
+            "id": f"retry-{len(returned)}", "name": name, "args": args,
+        }])
+
+    return responder
+
+
+def test_object_arguments_are_rejected_then_string_arguments_save(chapter):
+    """错误对象参数被真实工具拒绝后，同一场景能用字符串参数完成保存。"""
+    chapter["store"].put(("alice", "memories"), chapter["STORE_KEY"],
+                         chapter["create_file_data"]("{}"))
+    tool_error_agent(chapter, scripted_save(chapter, object_attempts=1))
+    run = chapter["run_scene"]("保存", "retry-ok", "alice", "保存偏好")
+    edits = [reply for reply in run["returns"] if reply.name == "edit_file"]
+    assert [reply.status for reply in edits] == ["error", "success"]
+    assert "valid string" in edits[0].text
+    chapter["validate_saved"](run)
+    assert chapter["tool_error_guard"].stopped == []
+    assert chapter["store"].get(("alice", "memories"), chapter["STORE_KEY"]) is not None
+
+
+def test_repeated_object_arguments_stop_and_show_requests(chapter, capsys):
+    """同一组错误参数反复失败时，执行按上限显式结束并展示实际请求与返回。"""
+    chapter["store"].put(("alice", "memories"), chapter["STORE_KEY"],
+                         chapter["create_file_data"]("{}"))
+    tool_error_agent(chapter, scripted_save(chapter, object_attempts=5))
+    with pytest.raises(AssertionError, match="同一个工具以相同参数反复失败"):
+        chapter["run_scene"]("保存", "retry-stop", "alice", "保存偏好")
+    output = capsys.readouterr().out
+    assert "重复失败的 edit_file 请求" in output
+    assert "valid string" in output
+    assert len(chapter["tool_error_guard"].stopped) == 1
+    # 已按 stop_after 截断，不会把 5 次错误参数全部重试完。
+    state = chapter["agent"].get_state({"configurable": {"thread_id": "retry-stop"}})
+    edit_calls = [call for message in state.values["messages"]
+                  if isinstance(message, AIMessage)
+                  for call in message.tool_calls if call["name"] == "edit_file"]
+    assert len(edit_calls) == chapter["tool_error_guard"].stop_after
+
+
 def test_real_offline_scenes_preserve_thread_and_user_boundaries(chapter):
     # Execute the notebook's own assertions against real tools, backends and checkpoints.
     execute_tag(chapter, "ch08-scenarios")
