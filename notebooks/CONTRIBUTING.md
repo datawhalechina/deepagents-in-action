@@ -28,6 +28,24 @@
 
 ## 模型与验证
 
+每份 Notebook 在开头的环境与模式说明中加入“硅流真实模型（live）”，与 [README 验证表](README.md#live-models) 同步维护：
+
+- 写完整的 `MODEL_NAME`，包括供应商目录和 `Pro/` 前缀。没有当前版本整本 live 通过记录时写“待验证”，不要把候选型号、平台能力或 offline 结果写成已验证。
+- 已验证时写日期、验证代码版本和记录链接；保留对应报告的源码指纹、依赖锁及实际模型配置。执行代码或模型调用依赖变化后补验；只改说明时注明沿用哪次记录。
+- 明确模型参与哪些场景，哪些组件仍是固定响应，以及实际需要的服务与依赖组，例如 Tavily、Agent Server、Docker。
+- Key 仅在未提交的根目录 `.env` 或进程环境中填写；`MODEL_NAME` 必须明确设置。使用公共 `create_model()` / `show_runtime()`，live 报告自动记录脱敏配置，不能用型号标注替代实际调用和结果断言。
+
+可复制的标注格式（提交时填写，未实测就保留待验证）：
+
+```markdown
+### 硅流真实模型（live）
+
+状态：待验证。当前版本尚无整本 live 通过记录。
+完成验证后填写：完整 MODEL_NAME、日期、验证提交、报告或评审链接。
+配置：在根目录 .env 填写 SILICONFLOW_API_KEY 和 MODEL_NAME；参数见公共 README。
+范围与服务：说明哪些场景使用真实模型、哪些使用固定响应，以及外部服务和依赖组。
+```
+
 - 默认脚本模型使用公共 `ScriptedChatModel` 对官方 `FakeMessagesListChatModel` 的薄适配。固定流程优先传 `responses=[AIMessage(...), ...]`；需要根据消息、子 Agent 工具集合或运行时 ID 分支时才提供 `responder(messages, tool_names)`。工具仍由框架实际执行，不能直接构造最终 Agent 状态来冒充执行。
 - 响应列表按调用顺序循环，不会理解输入或验证工具结果。每个独立实验创建新模型实例；预设结束消息后仍要核对实际 ToolMessage、状态与产物。需要并发或重复轮询的实验使用无共享计数器的回调。
 - 同一机制通过公共 `create_model` 切换到 live；live 配置错误必须失败。

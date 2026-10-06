@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>edec4739e74e</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>2e3d9c28f8fe</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7830,6 +7830,10 @@ a.anchor-link {
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">1. 环境与模式<a class="anchor-link" href="#1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">¶</a></h2><p>按 <a href="../README.md">统一安装说明</a> 准备 Python 3.12 环境，在项目内核中从第一格依次运行。代码格左侧出现执行编号，表示该格运行过；没有打印内容的定义格也可能正常完成。</p>
 <p>下一格的 <code>show_runtime()</code> 打印环境，<code>TEXT</code> 是我们准备交给工具的文本。<code>course_notebooks</code> 是随课程安装的辅助包：<code>create_model()</code> 选择 offline 或 live，<code>ScriptedChatModel</code> 提供离线响应。先保持默认 offline，学会观察结果后再切换真实模型。</p>
+<h3 id="%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">硅流真实模型（live）<a class="anchor-link" href="#%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">¶</a></h3><p><strong>待验证</strong>（2026-10-06 核对）：当前版本尚无整本 live 通过记录，暂不列出已验证型号。先用 offline 学习；补验后再填写完整型号、日期、验证版本和记录链接。</p>
+<p>配置：在未提交的根目录 <code>.env</code> 中填写 <code>SILICONFLOW_API_KEY</code> 和完整 <code>MODEL_NAME</code>；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 <a href="../README.md#live-records">README 模型记录说明</a>。随附输出仍为 offline。</p>
+<p>范围与服务：模型选择 <code>echo</code> 工具；Python 工具在本地执行，无额外服务。</p>
+<p>作者复制后，请按 <a href="../CONTRIBUTING.md">制作指南</a> 替换本段状态和范围；未经实测保留“待验证”。</p>
 </div>
 </div>
 </div>

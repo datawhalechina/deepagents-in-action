@@ -29,6 +29,54 @@ def test_live_requires_credentials_without_fallback(tmp_path):
         create_model(None, root=tmp_path, mode="live")
 
 
+def test_siliconflow_requires_an_explicit_model_name(tmp_path, monkeypatch):
+    monkeypatch.setenv("SILICONFLOW_API_KEY", "example-siliconflow-key")
+    with pytest.raises(ValueError, match="MODEL_NAME"):
+        create_model(None, root=tmp_path, mode="live")
+
+
+def test_model_configuration_matches_the_requested_siliconflow_model(tmp_path, monkeypatch):
+    from course_notebooks.model_config import model_configuration
+
+    monkeypatch.setenv("SILICONFLOW_API_KEY", "example-siliconflow-key")
+    monkeypatch.setenv("MODEL_NAME", "Qwen/Qwen3-Coder-30B-A3B-Instruct")
+    model = create_model(None, root=tmp_path, mode="live")
+    info = model_configuration(root=tmp_path, mode="live")
+    assert info == {
+        "provider": "siliconflow", "model_name": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+        "api_host": "api.siliconflow.cn", "temperature": 0,
+        "timeout_seconds": 60, "max_retries": 1,
+    }
+    assert info["model_name"] == model.model_name
+    assert info["temperature"] == model.temperature
+    assert info["timeout_seconds"] == model.request_timeout
+    assert info["max_retries"] == model.max_retries
+
+
+def test_offline_model_configuration_does_not_load_dotenv(tmp_path, monkeypatch):
+    from course_notebooks.model_config import model_configuration
+    import os
+
+    (tmp_path / ".env").write_text("MODEL_NAME=must-not-load\nSILICONFLOW_API_KEY=secret\n")
+    assert model_configuration(root=tmp_path, mode="offline") is None
+    assert "MODEL_NAME" not in os.environ
+
+
+def test_live_runtime_displays_the_model_from_dotenv(tmp_path, monkeypatch, capsys):
+    from course_notebooks.nbtools import show_runtime
+
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts/chapters.json").write_text("{}")
+    (tmp_path / ".env").write_text("SILICONFLOW_API_KEY=runtime-secret-key\nMODEL_NAME=deepseek-ai/DeepSeek-V3.2\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("COURSE_MODE", "live")
+    show_runtime()
+    displayed = capsys.readouterr().out
+    assert "deepseek-ai/DeepSeek-V3.2" in displayed
+    assert "api.siliconflow.cn" in displayed
+    assert "runtime-secret-key" not in displayed
+
+
 def test_generic_provider_configuration_cannot_mix_with_siliconflow(tmp_path, monkeypatch):
     monkeypatch.setenv("MODEL_API_KEY", "example-generic-key")
     monkeypatch.setenv("SILICONFLOW_API_KEY", "example-siliconflow-key")

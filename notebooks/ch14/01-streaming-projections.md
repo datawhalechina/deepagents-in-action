@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`073615e22e15`。
+> 本次执行模式：**offline**。源码指纹：`52826379f8b2`。
 
 # 第 14 章实验：主 Agent 委派以后，怎样看见谁在做什么？
 
@@ -45,6 +45,14 @@ uv run --project notebooks --locked python -m course_notebooks.run ch14-streamin
 ```
 
 显式接入真实模型时加 `--mode live`；交互式内核则在创建模型前设置 `os.environ["COURSE_MODE"] = "live"`。不要把密钥写入代码格。
+
+### 硅流真实模型（live）
+
+**已验证**：`Qwen/Qwen3-Coder-30B-A3B-Instruct`、`deepseek-ai/DeepSeek-V3.2`，2026-10-06 各整本 live 通过一次。记录与版本关系见 [README 验证表](../README.md#live-models) 和 [#140 修复说明](https://github.com/datawhalechina/deepagents-in-action/pull/140#issuecomment-6013556021)。本次说明更新沿用这份记录；普通 DeepSeek 路由记录不涵盖 `Pro/` 路由。
+
+配置：在未提交的根目录 `.env` 中填写 `SILICONFLOW_API_KEY`，以及 `MODEL_NAME=Qwen/Qwen3-Coder-30B-A3B-Instruct`（本章也可填写 `MODEL_NAME=deepseek-ai/DeepSeek-V3.2`）。API 地址、固定参数与报告字段见 [README 模型记录说明](../README.md#live-records)。随附输出仍为 offline。
+
+范围与服务：主、子 Agent 使用真实模型，完整运行 typed、raw、晚订阅三个场景；笔记为固定教学数据，不调用搜索服务，也不需要 Agent Server 或 Docker。
 
 
 ```python
@@ -250,7 +258,7 @@ with agent.stream_events(
     子 Agent： researcher 状态： started
     
     本次委派 path：
-    ('tools:5c58fb76-b4bc-f452-ea4e-4305842f4c5e',)
+    ('tools:a87e5d9c-3f46-8a11-70d0-d581c9ad3706',)
     
     researcher 消息：
     正在读取笔记。
@@ -390,7 +398,7 @@ show_text("本次 raw 子 Agent path：", raw_path)
       custom: 2
     
     本次 raw 子 Agent path：
-    ('tools:37254e35-0e31-0c30-1888-f2d94454c8f8',)
+    ('tools:0f451a5d-0631-72f9-fb83-b76efd67c759',)
 
 
 ### 5.1 校验 seq、取证路径与完整消息
