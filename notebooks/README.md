@@ -16,6 +16,7 @@
 | 第 5 章：同步子 Agent | [Notebook](ch05/01-subagent-delegation.ipynb) · [Markdown](ch05/01-subagent-delegation.md) · [HTML](ch05/01-subagent-delegation.html) | 消息隔离、文件共享与显式读取 | 默认脚本模型；可选真实模型 |
 | 第 6 章：异步子 Agent | [Notebook](ch06/01-async-subagent-lifecycle.ipynb) · [Markdown](ch06/01-async-subagent-lifecycle.md) · [HTML](ch06/01-async-subagent-lifecycle.html) | 五个异步工具、服务状态与失败清理 | 默认脚本模型；真实本地 Agent Server；server 依赖组 |
 | 第 7 章：Skills | [Notebook](ch07/01-skills-progressive-disclosure.ipynb) · [Markdown](ch07/01-skills-progressive-disclosure.md) · [HTML](ch07/01-skills-progressive-disclosure.html) | 元数据注入、分阶段文件读取与缺失资源 | 默认脚本模型；可选真实模型 |
+| 第 9 章：Human-in-the-Loop | [Notebook](ch09/01-tool-approval-and-resume.ipynb) · [Markdown](ch09/01-tool-approval-and-resume.md) · [HTML](ch09/01-tool-approval-and-resume.html) | 四种决策、审批前零执行、参数修改与批量校验 | 默认脚本模型；可选真实模型；无需外部服务 |
 | 第 14 章：Streaming | [Notebook](ch14/01-streaming-projections.ipynb) · [Markdown](ch14/01-streaming-projections.md) · [HTML](ch14/01-streaming-projections.html) | 主、子投影与工具结果；custom、raw 顺序和晚订阅 | 默认脚本模型；可选真实模型 |
 <!-- course-notebook-index:end -->
 

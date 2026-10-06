@@ -76,6 +76,16 @@
       "source_issue": 105
     },
     {
+      "id": "ch09-human-in-the-loop",
+      "chapter_id": "ch09-human-in-the-loop",
+      "title": "工具审批与中断恢复",
+      "path": "ch09/01-tool-approval-and-resume.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
+      "source_issue": 105
+    },
+    {
       "id": "ch14-streaming",
       "chapter_id": "ch14-streaming",
       "title": "Streaming v3 的委派、工具与订阅时机",

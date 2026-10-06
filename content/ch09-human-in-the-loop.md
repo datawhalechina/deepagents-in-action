@@ -2,6 +2,8 @@
 
 > Agent 越自主，就越需要安全边界。当 Agent 准备删除文件、发送邮件或调用付费 API 时，你是否希望它先"问一声"？本章学习 Human-in-the-Loop（人机协作），为敏感操作添加人工审批。
 
+配套实验：[工具审批与中断恢复 Notebook](../notebooks/ch09/01-tool-approval-and-resume.ipynb)（[Markdown 阅读版](../notebooks/ch09/01-tool-approval-and-resume.md) · [HTML 阅读版](../notebooks/ch09/01-tool-approval-and-resume.html)）。从第一格独立运行，观察四种决策、实际执行记录与 Checkpoint；默认无需模型 Key，不发送真实邮件，也不需要 Agent Server。
+
 ## 为什么需要 Human-in-the-Loop？
 
 Agent 的自主性是一把双刃剑：
@@ -185,8 +187,10 @@ print(result.value["messages"][-1].content)
 
 - **必须配置 Checkpointer**：HITL 依赖状态持久化，没有 Checkpointer 无法恢复
 - **必须使用相同的 `thread_id`**：中断和恢复必须在同一个线程中
-- **必须使用 `version="v2"`**：HITL 需要 v2 版本的 invoke 接口
+- **区分返回格式**：本章使用 `version="v2"`，通过 `result.interrupts` 和 `result.value` 读取结果；默认 `invoke()` 也支持 HITL，中断在返回字典的 `__interrupt__` 中，v2 不是必要条件
 - **决策数量和顺序必须匹配**：`decisions` 要和 `action_requests` 一一对应，顺序不能乱
+
+恢复时，LangGraph 会重新进入发生中断的节点，而不是恢复 Python 调用栈。在本章的 `interrupt_on` 场景中，内置审批发生在独立的 `after_model` 中间件节点：模型生成的工具请求已经进入 State，恢复审批会复用该请求，随后执行批准的工具。若自行在同一个节点内先调用模型或执行外部写操作、再调用 `interrupt()`，中断前的代码可能再次执行；Checkpointer 不会自动保证这些操作幂等。
 
 > 字段名说明：Deep Agents 文档示例里常见 `action_request["args"]`，LangChain 标准 `HumanInTheLoopMiddleware` 示例里展示的是 `action_request["arguments"]`。如果你的审批界面要兼容两种入口，可以像上面的代码一样读取 `arguments`，没有时再回退到 `args`。但恢复 `edit` 决策时，`edited_action` 仍然使用 `args`。
 
