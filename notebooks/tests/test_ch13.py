@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import json
+
 import nbformat
 import pytest
 
@@ -69,8 +71,9 @@ def test_nonoffline_cells_reject_false_satisfied_from_real_middleware(experiment
     scope["selected_mode"] = lambda: "live"
 
     def false_grader(messages, tool_names):
-        assert "check_report" in tool_names and "GraderResponse" in tool_names
+        assert "GraderResponse" in tool_names
         if fault != "no-tool" and not isinstance(messages[-1], scope["ToolMessage"]):
+            assert "check_report" in tool_names
             report = scope["GOOD_REPORT"] if fault == "stale-report" else scope["BAD_REPORT"]
             return scope["AIMessage"](content="", tool_calls=[{
                 "id": "controlled-check", "name": "check_report", "args": {"report": report},
@@ -155,3 +158,61 @@ def test_scripted_grader_rejects_unrelated_tool_evidence(experiment):
     ]
     with pytest.raises(AssertionError):
         scope["scripted_grader"](messages, ("check_report", "GraderResponse"))
+
+
+def _repeat_happy_grader(scope, *, always_repeat):
+    """Once evidence exists, ask for check_report again unless it was hidden."""
+
+    def grader(messages, tool_names):
+        if isinstance(messages[-1], scope["ToolMessage"]):
+            requests = [
+                call for message in messages if isinstance(message, scope["AIMessage"])
+                for call in message.tool_calls if call["name"] == "check_report"
+            ]
+            if always_repeat or "check_report" in tool_names:
+                return scope["AIMessage"](content="", tool_calls=[{
+                    "id": f"repeat-{len(requests)}", "name": "check_report",
+                    "args": dict(requests[-1]["args"]),
+                }])
+            evidence = json.loads(messages[-1].text)
+            return scope["AIMessage"](content="", tool_calls=[{
+                "id": "grader-verdict", "name": "GraderResponse",
+                "args": {
+                    "result": "satisfied" if evidence["ok"] else "needs_revision",
+                    "explanation": "证据齐全，返回结论。" if evidence["ok"] else "请修订。",
+                    "criteria": evidence["criteria"],
+                },
+            }])
+        transcript = messages[-1].text
+        latest = transcript.rsplit("[assistant] ", 1)[-1]
+        data, _ = json.JSONDecoder().raw_decode(latest)
+        return scope["AIMessage"](content="", tool_calls=[{
+            "id": "check-1", "name": "check_report",
+            "args": {"report": json.dumps(data, ensure_ascii=False, indent=2)},
+        }])
+
+    return grader
+
+
+def test_repeated_evidence_is_narrowed_and_still_grades(experiment):
+    """评分模型在已有本候选证据后仍重复取证：收窄可见工具后仍完成结构化评分。"""
+    scope, _ = experiment
+    result, evaluations, records = scope["run_report"](
+        grader=_repeat_happy_grader(scope, always_repeat=False),
+    )
+    assert scope["accepted"](result, evaluations, records)
+    assert [e["result"] for e in evaluations] == ["needs_revision", "satisfied"]
+    # 每个候选只真实执行一次检查；重复请求没有被再次执行。
+    assert [record["evidence"]["ok"] for record in records] == [False, True]
+
+
+def test_unbounded_evidence_repetition_fails_closed(experiment):
+    """评分模型无视收窄、一直重复取证时，本次评分必须明确结束并拒绝交付。"""
+    scope, _ = experiment
+    result, evaluations, records = scope["run_report"](
+        grader=_repeat_happy_grader(scope, always_repeat=True),
+    )
+    assert evaluations[-1]["result"] == "grader_error"
+    assert not scope["accepted"](result, evaluations, records)
+    # 有上限：重复取证被截断，而不是无限制调用检查工具。
+    assert 1 <= len(records) <= 7
