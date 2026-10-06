@@ -1,4 +1,5 @@
 """Chapter-only Docker adapter; commands and file transfers run inside a container."""
+import asyncio
 import json
 from pathlib import PurePosixPath
 import shutil
@@ -7,7 +8,7 @@ from textwrap import dedent
 from uuid import uuid4
 
 from deepagents.backends.protocol import (
-    ExecuteResponse, FileDownloadResponse, FileUploadResponse,
+    ExecuteOffloadResult, ExecuteResponse, FileDownloadResponse, FileUploadResponse,
 )
 from deepagents.backends.sandbox import BaseSandbox
 
@@ -30,9 +31,10 @@ EXECUTE_SCRIPT = dedent("""
             process.wait()
             code = 124
         log.seek(0)
-        data = log.read(32769)
-        print(json.dumps({"output": data[:32768].decode("utf-8", errors="replace"),
-                          "exit_code": code, "truncated": len(data) > 32768}))
+        # BaseSandbox uses execute() for file-operation protocols too.
+        # Never clip that transport; command display has its own entry point.
+        print(json.dumps({"output": log.read().decode("utf-8", errors="replace"),
+                          "exit_code": code, "truncated": False}))
 """)
 
 TRANSFER_SCRIPT = dedent("""
@@ -136,6 +138,31 @@ class DockerSandbox(BaseSandbox):
             self.close()
             raise TimeoutError("Docker 传输超时，容器已回收；本次实验终止。") from None
         return ExecuteResponse(**json.loads(data))
+
+    def execute_with_offload(self, command, capture_path, *, max_inline_bytes,
+                             max_capture_bytes=None, timeout=None):
+        """Bound ordinary Agent command display without clipping file protocols.
+
+        This teaching adapter does not offload logs or write capture_path.
+        Raw execute() remains complete for every inherited file operation.
+        """
+        if not isinstance(max_inline_bytes, int) or max_inline_bytes < 0:
+            raise ValueError("命令展示预算必须是非负整数字节数。")
+        response = self.execute(command, timeout=timeout)
+        limit = min(32768, max_inline_bytes)
+        data = response.output.encode("utf-8")
+        if len(data) > limit:
+            response.output = data[:limit].decode("utf-8", errors="ignore")
+            response.truncated = True
+        return ExecuteOffloadResult(offloaded=False, response=response)
+
+    async def aexecute_with_offload(self, command, capture_path, *, max_inline_bytes,
+                                   max_capture_bytes=None, timeout=None):
+        return await asyncio.to_thread(
+            self.execute_with_offload, command, capture_path,
+            max_inline_bytes=max_inline_bytes, max_capture_bytes=max_capture_bytes,
+            timeout=timeout,
+        )
 
     def _transfer(self, operation, path, content=None):
         target = PurePosixPath(path)

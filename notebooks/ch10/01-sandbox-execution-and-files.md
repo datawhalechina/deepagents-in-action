@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`49c81ae1afe9`。
+> 本次执行模式：**offline**。源码指纹：`ec27f36cb4ac`。
 
 # 第 10 章实验：Agent 在哪里运行代码，报告怎样带回来？
 
@@ -57,13 +57,12 @@ show_text("固定的容器镜像：", IMAGE, width=90)
 
     运行模式： offline （脚本模型）
     Python： 3.12.13 平台： Darwin arm64
-    deepagents==0.7.15
-    langchain==1.4.2
-    langgraph==1.2.11
-    langchain-openai==1.6.2
-
-
-    Docker Engine： 29.1.3
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
+    Docker Engine： 29.8.1
     
     固定的容器镜像：
     python@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
@@ -163,7 +162,7 @@ print("预期总额：2 × 10 + 3 × 5 + 1 × 40 = 75")
 
 `DockerSandbox` 是本章自定义的教学后端，不是 Deep Agents 官方内置类。它通过 Docker CLI 创建、操作和回收真实容器；上传、下载把字节交给容器里的固定 Python 脚本，不调用模型，也不把传输包装成 Agent 的 `execute` 请求。[查看适配源码](docker_sandbox.py)。远程 Provider 的原生传输方式仍应参考对应 SDK。
 
-容器使用非 root 用户、只读根文件系统，只有 `/workspace` 和 `/tmp` 各有 16 MiB 可写空间；上限为 256 MiB 内存、1 个 CPU、64 个进程。单条命令最多 30 秒，日志最多读取 32 KiB，更多输出标为 `truncated`。命令超时返回退出码 124；若 Docker 通信本身超时，则回收容器并终止实验。这些是本实验的配置，不是所有 Provider 的默认值。
+容器使用非 root 用户、只读根文件系统，只有 `/workspace` 和 `/tmp` 各有 16 MiB 可写空间；上限为 256 MiB 内存、1 个 CPU、64 个进程。单条命令最多 30 秒。底层 `execute()` 完整返回输出，因为基类的读取、目录列举、搜索等文件操作也用它传输结构化协议；不能把这些 JSON 结果当作日志裁剪。Agent 的普通命令展示通过 `execute_with_offload()` 单独限制为最多 32 KiB（框架给出更小预算时沿用该预算），超出部分标为 `truncated`；异步入口沿用同一限制。本适配器不另存完整命令日志。文件读取继续沿用基类的行分页和大内容续读提示，不受命令展示预算影响。命令超时返回退出码 124；若 Docker 通信本身超时，则回收容器并终止实验。这些是本实验的配置，不是所有 Provider 的默认值。
 
 `task_input()` 把工具名和参数整理成用户消息；`make_agent()` 为每个实验组装 Agent，并创建新模型。offline 的响应列表按当前实验的 `planned_calls` 依次提出请求，最后给出结束回复；它不会检查工具结果，列表也会循环。下面仍要验证真实调用、退出码和文件内容。live 使用公共 `create_model()` 配置真实模型，任务不符合要求时断言报错。
 
@@ -398,7 +397,7 @@ print("命令确实失败；执行结果已返回；失败实验的容器也已�
 - 验证真实本地容器、Backend 接口、Agent 工具循环、文件传输与正常/异常退出清理；offline 不验证模型推理或自动编程质量。
 - 不验证 LangSmith、Daytona 等远程 Provider 的账号、网络、费用、TTL 或复用行为。换成远程 Backend 时仍要沿用对应 Provider 的创建与销毁接口。
 - 容器的网络、挂载与资源限制是实验配置，不是对恶意代码的完整安全保证；容器仍依赖 Docker Engine 的隔离机制。下载产物也应由应用检查后使用，本例只解析 JSON，不执行下载的代码。
-- Backend 将超过 32 KiB 的命令输出标为 `truncated=True`；部分输出不能当作完整日志。本例输出很短，不演示正文的长日志保存流程。
+- Agent 的命令展示入口将超过预算的输出标为 `truncated=True`；部分输出不能当作完整日志。底层文件操作协议不截断；本章真实容器回归核对 41,000 字节文本的完整/分页读取和 400 项目录集合，以及同步/异步通路。本例输出很短，不演示正文的长日志保存流程。
 - `with` 会处理正常返回和 Python 异常；若 Docker Engine 不可达，回收会明确报错，不能把连接失败当作“容器已经不存在”。镜像缓存与 Docker Engine 本身不由本实验删除或关闭。
 
 | 现象 | 检查什么 |

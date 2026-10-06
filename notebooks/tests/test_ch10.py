@@ -1,4 +1,5 @@
 """Real Docker execution, artifact accuracy, and resource ownership for chapter 10."""
+import asyncio
 from copy import deepcopy
 from pathlib import Path
 import subprocess
@@ -92,12 +93,70 @@ def test_timeout_and_truncation_are_not_reported_as_complete_success(chapter):
     namespace, _ = chapter
     with namespace["DockerSandbox"]() as backend:
         name = backend.id
-        long_output = backend.execute("python -c 'print(\"x\" * 40000)'")
-        assert long_output.exit_code == 0 and long_output.truncated
-        assert len(long_output.output.encode()) == 32768
+        command = "python -c 'print(\"x\" * 40000)'"
+        for offload in [
+            backend.execute_with_offload(command, "/workspace/unused-log", max_inline_bytes=32768),
+            asyncio.run(backend.aexecute_with_offload(
+                command, "/workspace/unused-log", max_inline_bytes=32768,
+            )),
+        ]:
+            assert not offload.offloaded
+            assert offload.response.exit_code == 0 and offload.response.truncated
+            assert len(offload.response.output.encode()) == 32768
+        calls = [{"name": "execute", "args": {"command": command}, "id": "long-log"}]
+        result = namespace["make_agent"](backend, calls).invoke(namespace["task_input"](calls))
+        reply = namespace["check_loop"](result, calls)[0]
+        assert reply.artifact["exit_code"] == 0
+        assert "Output was truncated due to size limits" in reply.text
         timed_out = backend.execute("python -c 'import time; time.sleep(20)'", timeout=1)
         assert timed_out.exit_code == 124
         assert backend.execute("python -c 'print(123)'").output.strip() == "123"
+    assert not namespace["container_exists"](name)
+
+
+def test_large_file_and_directory_protocols_survive_command_display_limit(chapter):
+    namespace, _ = chapter
+    lines = [f"{index:04d} " + "x" * 35 for index in range(1000)]
+    content = "\n".join(lines) + "\n"
+    assert len(content.encode()) == 41000
+    directory = "/workspace/many"
+    paths = {f"{directory}/{index:04d}-" + "n" * 100 for index in range(400)}
+    with namespace["DockerSandbox"]() as backend:
+        name = backend.id
+        upload = backend.upload_files([("/workspace/large.txt", content.encode())])[0]
+        assert upload.error is None
+        created = backend.execute(
+            "python - <<'PY'\nfrom pathlib import Path\n"
+            f"root = Path({directory!r})\nroot.mkdir()\n"
+            "for index in range(400):\n"
+            "    (root / (f'{index:04d}-' + 'n' * 100)).touch()\nPY"
+        )
+        assert created.exit_code == 0
+        for read in [backend.read("/workspace/large.txt"),
+                     asyncio.run(backend.aread("/workspace/large.txt"))]:
+            assert read.error is None and read.file_data["content"] == "\n".join(lines)
+            assert (read.start_line, read.end_line, read.total_lines, read.next_offset) == (1, 1000, 1000, None)
+        pages, offset = [], 0
+        while True:
+            page = backend.read("/workspace/large.txt", offset=offset, limit=100)
+            assert page.error is None and page.start_line == offset + 1
+            pages.extend(page.file_data["content"].splitlines())
+            if page.next_offset is None:
+                break
+            assert page.next_offset > offset
+            offset = page.next_offset
+        assert pages == lines
+        for listing in [backend.ls(directory), asyncio.run(backend.als(directory))]:
+            assert listing.error is None
+            assert len(listing.entries) == 400
+            assert {entry["path"] for entry in listing.entries} == paths
+        # Sibling file helpers share raw execute(), so their protocols must also stay complete.
+        matches = backend.glob("*", directory)
+        assert matches.error is None and not matches.truncated
+        assert {entry["path"] for entry in matches.matches} == paths
+        grep = backend.grep("x", "/workspace/large.txt")
+        assert grep.error is None and not grep.truncated
+        assert [match["text"] for match in grep.matches] == lines
     assert not namespace["container_exists"](name)
 
 
