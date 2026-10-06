@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`208916a35d23`。
+> 本次执行模式：**offline**。源码指纹：`0bc42aa4a8a9`。
 
 # 第 11 章实验：允许写工作区，为什么还会写到别处？
 
@@ -166,7 +166,6 @@ def task_input(calls):
     tasks = [{"name": call["name"], "args": call["args"]} for call in calls]
     return {"messages": [("user", "依次请求以下工具：\n" +
                           json.dumps(tasks, ensure_ascii=False, indent=2))]}
-
 ```
 
 `check_calls()` 从模型消息中提取实际请求，先输出预期与实际的差异，再核对任务匹配和结果关联。仅 `WRITE_NOTES`、`WRITE_OUTSIDE`、`WRITE_REVIEW` 明确指定的教学 `content` 允许有或没有一个末尾 `\n`；正文其他差异、工具名、路径、其他参数和调用顺序仍严格比较。不使用全局 `.strip()`，也不改写实际请求。随后各实验独立核对读取/拒绝状态、错误内容和真实文件效果。嵌套推导式先遍历模型消息，再取出各条消息中的工具调用；`zip()` 将请求与结果逐项配对。
@@ -465,7 +464,6 @@ Checkpointer 不会保存暂停在某一行的 Python 调用栈；恢复时会�
 下一格在同一临时目录生命周期内完成暂停与批准：先打印模型实际发出的工具请求、实际工具返回和当前文件内容，再看有没有产生审批。确有待审批动作后，检查实际文件未变、尚无写入 ToolMessage；按有限换行容差确认它符合任务后，先用 `deepcopy` 保存实际 `action_requests` 和调用 ID，再用 `Command(resume=...)` 提交 approve。恢复后按实际批准请求严格核对工具关联和参数，最终文件必须与实际批准的 `content` 逐字相同；这里不能再用预设的 `WRITE_REVIEW` 正文代替批准内容。`get_state(config)` 读取已保存的快照，`next` 表示还有待继续执行的节点。更完整的决策与恢复说明见[第 9 章正文](../../content/ch09-human-in-the-loop.md)。
 
 
-
 ```python
 REVIEW_RULES = [
     FilesystemPermission(operations=["write"], paths=["/review/**"], mode="interrupt"),
@@ -529,7 +527,6 @@ with TemporaryDirectory(prefix="course-ch11-review-") as folder:
 
 assert not review_root.exists(), "审批实验留下了教学目录"
 print("审批实验目录已清理。")
-
 ```
 
     
@@ -587,7 +584,6 @@ print("审批实验目录已清理。")
 下一格用同一套真实权限中间件与 `FilesystemBackend` 运行这个错误路径：写入必须返回权限错误，全部教学文件与 `SEED` 逐字相同，也不会产生审批。模型故意写错路径，我们不替它改成目标路径。
 
 
-
 ```python
 WRONG_REVIEW = deepcopy(WRITE_REVIEW)
 WRONG_REVIEW["args"]["file_path"] = "/report/report.txt"
@@ -597,7 +593,6 @@ assert wrong_case["replies"][0].status == "error"
 assert "permission denied" in wrong_case["replies"][0].text
 assert wrong_case["files"] == SEED, "未获批准的写入改变了文件"
 print("写错路径已被兜底拒绝；没有写入，也没有产生审批。")
-
 ```
 
     
