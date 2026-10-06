@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`59b98af0b568`。
+> 本次执行模式：**offline**。源码指纹：`fadbfa15b079`。
 
 # 第 13 章实验：报告写完了，为什么还不能交付？
 
@@ -30,7 +30,7 @@
 
 每份 Notebook 都建立自己的变量。**内核**是执行代码的 Python 进程；请从第一格顺序运行，不依赖其他章节的内核。安装与内核选择见 [Notebook README](../README.md)。
 
-- 锁定环境：Python 3.12；deepagents 0.7.15、langchain 1.4.2、langgraph 1.2.11、langchain-openai 1.6.2；以 [依赖锁](../uv.lock)为准。
+- 锁定环境：Python 3.12；deepagents 0.7.22、langchain 1.4.3、langgraph 1.2.13、langchain-openai 1.6.7；以 [依赖锁](../uv.lock)为准。
 - 已验证环境和运行模式由下一格输出，并随本次执行保存。
 - 默认 `offline` 不需要 Key，不请求模型 API；工作与评分响应由公开脚本安排，框架、工具、结构化输出校验和反馈循环真实执行。它验证运行机制，不证明模型会自行发现缺项或正确修订。
 - `live` 通过公共 `create_model` 接入 README 约定的模型配置。两个角色分别创建模型实例，使用同一提供商和模型配置；模型需支持工具调用和结构化输出，可能产生费用。真实模型可能首轮就通过，不能要求必然出现两轮。
@@ -71,10 +71,11 @@ warnings.filterwarnings(
 
     运行模式： offline （脚本模型）
     Python： 3.12.13 平台： Darwin arm64
-    deepagents==0.7.15
-    langchain==1.4.2
-    langgraph==1.2.11
-    langchain-openai==1.6.2
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
 
 
 ## 2. 先把“合格报告”说清楚
@@ -250,7 +251,7 @@ print("\n独立检查：缺总额会失败，完整报告通过，非法 JSON �
 
 `GraderResponse` 是 LangChain 为结构化评审提供的输出工具，接收结论、解释和标准列表；它不是检查报告的业务工具。框架会校验这些字段，RubricMiddleware 再决定是否修订。
 
-下一格的文本截取只用于读取 v0.7.15 的教学评分记录格式，不是模型理解报告的能力，也不是应用应依赖的公共数据协议。live 模式不使用这段脚本。
+下一格的文本截取只用于读取 v0.7.22 的教学评分记录格式，不是模型理解报告的能力，也不是应用应依赖的公共数据协议。live 模式不使用这段脚本。
 
 
 ```python
@@ -337,9 +338,21 @@ def run_report(max_iterations=2, *, with_rubric=True):
     return result, evaluations, records
 
 
-def accepted(evaluations):
-    # 没有评审记录时也拒绝，只依据本次调用的最后结论。
-    return bool(evaluations) and evaluations[-1]["result"] == "satisfied"
+def accepted(result, evaluations, records):
+    """本次最后评审明确通过，且最新候选有实际、通过的工具证据，才可交付。"""
+    if not evaluations or evaluations[-1].get("result") != "satisfied":
+        return False
+    candidates = [m for m in result["messages"] if isinstance(m, AIMessage)]
+    assert candidates and not candidates[-1].tool_calls, "没有已完成的最新候选"
+    assert records and all(
+        isinstance(record.get("call_id"), str) and record["call_id"]
+        for record in records
+    ), "没有实际执行检查工具或调用 ID 无效"
+    latest = candidates[-1].text
+    assert json.loads(records[-1]["report"]) == json.loads(latest), "最后取证不对应最新候选"
+    assert records[-1]["evidence"]["ok"] is True, "最后工具证据未通过"
+    assert assess_report(latest)["ok"], "最新候选业务检查未通过"
+    return True
 ```
 
 ### 5.1 两轮预算：让缺项报告进入真实修订循环
@@ -359,14 +372,9 @@ feedback = [
     if isinstance(m, HumanMessage) and m.name == "rubric_grader"
 ]
 assert candidates and all(not m.tool_calls for m in candidates)
-assert records and all(record["call_id"] for record in records)
 assert len({e["grading_run_id"] for e in evaluations}) == 1
 assert [e["iteration"] for e in evaluations] == list(range(len(evaluations)))
-assert accepted(evaluations), "没有明确通过，不能交付报告。"
-# 核对取证版本与最新候选对应，而不只看评分模型声称通过。
-assert json.loads(records[-1]["report"]) == json.loads(candidates[-1].text)
-assert records[-1]["evidence"]["ok"]
-assert assess_report(candidates[-1].text)["ok"]
+assert accepted(result, evaluations, records), "没有明确通过，不能交付报告。"
 
 if selected_mode() == "offline":
     assert [e["result"] for e in evaluations] == ["needs_revision", "satisfied"]
@@ -380,7 +388,7 @@ for index, candidate in enumerate(candidates):
     show_text(f"工作模型候选 {index}：", candidate.text)
 for message in feedback:
     show_text("中间件交回工作模型的反馈：", message.text)
-print("\n本次是否交付：", accepted(evaluations))
+print("\n本次是否交付：", accepted(result, evaluations, records))
 ```
 
     
@@ -508,13 +516,13 @@ satisfied → 应用允许交付
 
 这里并没有手动把第二份报告塞进最终状态。两份候选来自工作模型的两次实际调用，反馈和循环由中间件产生。offline 预设第二份候选，不能证明模型理解了反馈；live 才能检验所选模型的修订能力。
 
-`accepted()` 是本教学应用的验收门。`satisfied` 仍是评分结论，不是无误证明；因此实验额外核查工具证据确实对应最新报告且全部通过。
+`accepted(result, evaluations, records)` 是唯一交付门：没有评审或最后结论不是 `satisfied` 时返回 `False`。声称通过时，仍须有实际工具记录与有效调用 ID，最后取证的报告须对应最新候选，工具 `ok` 为真，最新候选也须通过 `assess_report()`。缺少证据、拿旧报告充数或业务检查失败会触发断言，不能显示为可交付。两轮、一轮和不传 Rubric 场景都调用同一个门，offline/live 也共用；仅固定轮数、固定候选数量等脚本预期按模式区分。
 
 ### 5.2 一轮预算：有最终消息，也可能没有通过
 
 重新创建独立实验，只把 `max_iterations` 改成 1。默认候选仍缺总额，唯一一次评分之后预算已经用完，不再调用工作模型修订。
 
-在锁定的 deepagents 0.7.15 中，中间件会先将最后结论改为 `max_iterations_reached`，再调用回调；不能把它当成 `satisfied`。真实模型若首轮就正确，则可能在一轮预算内通过。
+在锁定的 deepagents 0.7.22 中，中间件会先将最后结论改为 `max_iterations_reached`，再调用回调；不能把它当成 `satisfied`。真实模型若首轮就正确，则可能在一轮预算内通过；但 `satisfied` 只是模型结论，还必须通过同一 `accepted()` 的最新候选与工具证据检查，不能绕过取证。
 
 
 ```python
@@ -526,12 +534,12 @@ assert limited_evaluations[0]["result"] in {
 }
 if selected_mode() == "offline":
     assert limited_evaluations[0]["result"] == "max_iterations_reached"
-    assert not accepted(limited_evaluations)
+    assert not accepted(limited_result, limited_evaluations, limited_records)
     assert len(limited_records) == 1 and not limited_records[0]["evidence"]["ok"]
     assert len([m for m in limited_result["messages"] if isinstance(m, AIMessage)]) == 1
 show_text("预算内最后候选：", limited_result["messages"][-1].text)
 print("最后结论：", limited_evaluations[-1]["result"])
-print("是否交付：", accepted(limited_evaluations))
+print("是否交付：", accepted(limited_result, limited_evaluations, limited_records))
 ```
 
     
@@ -597,10 +605,10 @@ print("是否交付：", accepted(limited_evaluations))
 unchecked_result, unchecked_evaluations, unchecked_records = run_report(with_rubric=False)
 assert unchecked_result["messages"]
 assert unchecked_evaluations == [] and unchecked_records == []
-assert not accepted(unchecked_evaluations)
+assert not accepted(unchecked_result, unchecked_evaluations, unchecked_records)
 print("评分记录数：", len(unchecked_evaluations))
 print("证据工具执行次数：", len(unchecked_records))
-print("是否交付：", accepted(unchecked_evaluations))
+print("是否交付：", accepted(unchecked_result, unchecked_evaluations, unchecked_records))
 ```
 
     评分记录数： 0
@@ -629,12 +637,12 @@ print("是否交付：", accepted(unchecked_evaluations))
 | live 两轮仍不通过 | 查看具体差距，先核对标准与输出，不要仅增加预算 |
 | 重跑出现不同轮数 | offline 应稳定；live 可以首轮通过或继续修订 |
 
-**验证范围**：本实验通过真实中间件、工具与消息验证修订路径、预算终止和未评分拒绝。`failed`（标准无法评估）与 `grader_error`（评分链路异常）的独立触发、事件流、跨线程恢复、并发记录和真实模型质量不在默认实验的验证范围内。验收函数仅对本次顺序调用的最后结论做判断，不能直接充当生产审计系统。
+**验证范围**：本实验通过真实中间件、工具与消息验证修订路径、预算终止和未评分拒绝。`failed`（标准无法评估）与 `grader_error`（评分链路异常）的独立触发、事件流、跨线程恢复、并发记录和真实模型质量不在默认实验的验证范围内。验收函数只核对本次顺序调用的最后结论、最新候选和实际工具记录，不提供跨调用证据追踪或生产审计保证。
 
 检查工具只验证这里明确写出的 JSON 结构、明细与总额，不评估报告文风、预测或所有业务正确性。当前明细按 Python 字典相等性比较；这不是覆盖所有 JSON 类型规则的通用 Schema 验证器。
 
 **清理**：只有内核里的模型、消息和列表，无文件、进程或网络服务需要回收。重启内核即可释放实验变量；内存记录不会跨进程保存。无需手动执行最后一个清理格。
 
-**结论**：候选生成完、检查工具运行完、报告通过验收，是三个不同事件。评分闭环把具体差距送回生成环节；应用只有在本次调用明确通过时才交付。
+**结论**：候选生成完、检查工具运行完、报告通过验收，是三个不同事件。评分闭环把具体差距送回生成环节；应用只有在本次调用明确通过、实际证据与最新候选均合格时才交付。
 
 下一步：回到[第 13 章正文](../../content/ch13-grading-rubrics.md)，把报告检查替换成适合你任务的证据工具；事件流的观察方法见[第 14 章](../../content/ch14-streaming.md)。

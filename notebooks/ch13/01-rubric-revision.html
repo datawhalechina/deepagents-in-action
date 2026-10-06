@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>59b98af0b568</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>fadbfa15b079</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7865,7 +7865,7 @@ a.anchor-link {
 <h2 id="1.-%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">1. 运行环境与模式<a class="anchor-link" href="#1.-%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">¶</a></h2><p>需要基础 Python、JSON 的对象和数组概念。JSON 是一种文本格式：对象用 <code>{}</code>、数组用 <code>[]</code> 表示，Python 可以用 <code>json.loads()</code> 将文本解析成字典或列表。</p>
 <p>每份 Notebook 都建立自己的变量。<strong>内核</strong>是执行代码的 Python 进程；请从第一格顺序运行，不依赖其他章节的内核。安装与内核选择见 <a href="../README.md">Notebook README</a>。</p>
 <ul>
-<li>锁定环境：Python 3.12；deepagents 0.7.15、langchain 1.4.2、langgraph 1.2.11、langchain-openai 1.6.2；以 <a href="../uv.lock">依赖锁</a>为准。</li>
+<li>锁定环境：Python 3.12；deepagents 0.7.22、langchain 1.4.3、langgraph 1.2.13、langchain-openai 1.6.7；以 <a href="../uv.lock">依赖锁</a>为准。</li>
 <li>已验证环境和运行模式由下一格输出，并随本次执行保存。</li>
 <li>默认 <code>offline</code> 不需要 Key，不请求模型 API；工作与评分响应由公开脚本安排，框架、工具、结构化输出校验和反馈循环真实执行。它验证运行机制，不证明模型会自行发现缺项或正确修订。</li>
 <li><code>live</code> 通过公共 <code>create_model</code> 接入 README 约定的模型配置。两个角色分别创建模型实例，使用同一提供商和模型配置；模型需支持工具调用和结构化输出，可能产生费用。真实模型可能首轮就通过，不能要求必然出现两轮。</li>
@@ -7921,10 +7921,11 @@ a.anchor-link {
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>运行模式： offline （脚本模型）
 Python： 3.12.13 平台： Darwin arm64
-deepagents==0.7.15
-langchain==1.4.2
-langgraph==1.2.11
-langchain-openai==1.6.2
+deepagents==0.7.22
+langchain==1.4.3
+langchain-core==1.6.6
+langgraph==1.2.13
+langchain-openai==1.6.7
 </pre>
 </div>
 </div>
@@ -8178,7 +8179,7 @@ langchain-openai==1.6.2
 <li>收到真实工具返回的 <code>ToolMessage</code> 时，核对请求与结果关联，再按 <code>ok</code> 和 <code>criteria</code> 请求 <code>GraderResponse</code>。</li>
 </ol>
 <p><code>GraderResponse</code> 是 LangChain 为结构化评审提供的输出工具，接收结论、解释和标准列表；它不是检查报告的业务工具。框架会校验这些字段，RubricMiddleware 再决定是否修订。</p>
-<p>下一格的文本截取只用于读取 v0.7.15 的教学评分记录格式，不是模型理解报告的能力，也不是应用应依赖的公共数据协议。live 模式不使用这段脚本。</p>
+<p>下一格的文本截取只用于读取 v0.7.22 的教学评分记录格式，不是模型理解报告的能力，也不是应用应依赖的公共数据协议。live 模式不使用这段脚本。</p>
 </div>
 </div>
 </div>
@@ -8286,9 +8287,21 @@ langchain-openai==1.6.2
     <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">evaluations</span><span class="p">,</span> <span class="n">records</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">accepted</span><span class="p">(</span><span class="n">evaluations</span><span class="p">):</span>
-    <span class="c1"># 没有评审记录时也拒绝，只依据本次调用的最后结论。</span>
-    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">evaluations</span><span class="p">)</span> <span class="ow">and</span> <span class="n">evaluations</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">"result"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"satisfied"</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">accepted</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">evaluations</span><span class="p">,</span> <span class="n">records</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""本次最后评审明确通过，且最新候选有实际、通过的工具证据，才可交付。"""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">evaluations</span> <span class="ow">or</span> <span class="n">evaluations</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"result"</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"satisfied"</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)]</span>
+    <span class="k">assert</span> <span class="n">candidates</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">candidates</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">,</span> <span class="s2">"没有已完成的最新候选"</span>
+    <span class="k">assert</span> <span class="n">records</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"call_id"</span><span class="p">),</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">record</span><span class="p">[</span><span class="s2">"call_id"</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span>
+    <span class="p">),</span> <span class="s2">"没有实际执行检查工具或调用 ID 无效"</span>
+    <span class="n">latest</span> <span class="o">=</span> <span class="n">candidates</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+    <span class="k">assert</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">records</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">"report"</span><span class="p">])</span> <span class="o">==</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">latest</span><span class="p">),</span> <span class="s2">"最后取证不对应最新候选"</span>
+    <span class="k">assert</span> <span class="n">records</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">"evidence"</span><span class="p">][</span><span class="s2">"ok"</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">"最后工具证据未通过"</span>
+    <span class="k">assert</span> <span class="n">assess_report</span><span class="p">(</span><span class="n">latest</span><span class="p">)[</span><span class="s2">"ok"</span><span class="p">],</span> <span class="s2">"最新候选业务检查未通过"</span>
+    <span class="k">return</span> <span class="kc">True</span>
 </pre></div>
 </div>
 </div>
@@ -8322,14 +8335,9 @@ langchain-openai==1.6.2
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">HumanMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="n">m</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"rubric_grader"</span>
 <span class="p">]</span>
 <span class="k">assert</span> <span class="n">candidates</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="ow">not</span> <span class="n">m</span><span class="o">.</span><span class="n">tool_calls</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">records</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">record</span><span class="p">[</span><span class="s2">"call_id"</span><span class="p">]</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span><span class="p">)</span>
 <span class="k">assert</span> <span class="nb">len</span><span class="p">({</span><span class="n">e</span><span class="p">[</span><span class="s2">"grading_run_id"</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">evaluations</span><span class="p">})</span> <span class="o">==</span> <span class="mi">1</span>
 <span class="k">assert</span> <span class="p">[</span><span class="n">e</span><span class="p">[</span><span class="s2">"iteration"</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">evaluations</span><span class="p">]</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">evaluations</span><span class="p">)))</span>
-<span class="k">assert</span> <span class="n">accepted</span><span class="p">(</span><span class="n">evaluations</span><span class="p">),</span> <span class="s2">"没有明确通过，不能交付报告。"</span>
-<span class="c1"># 核对取证版本与最新候选对应，而不只看评分模型声称通过。</span>
-<span class="k">assert</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">records</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">"report"</span><span class="p">])</span> <span class="o">==</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">candidates</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">records</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">"evidence"</span><span class="p">][</span><span class="s2">"ok"</span><span class="p">]</span>
-<span class="k">assert</span> <span class="n">assess_report</span><span class="p">(</span><span class="n">candidates</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">)[</span><span class="s2">"ok"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="n">accepted</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">evaluations</span><span class="p">,</span> <span class="n">records</span><span class="p">),</span> <span class="s2">"没有明确通过，不能交付报告。"</span>
 
 <span class="k">if</span> <span class="n">selected_mode</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"offline"</span><span class="p">:</span>
     <span class="k">assert</span> <span class="p">[</span><span class="n">e</span><span class="p">[</span><span class="s2">"result"</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">evaluations</span><span class="p">]</span> <span class="o">==</span> <span class="p">[</span><span class="s2">"needs_revision"</span><span class="p">,</span> <span class="s2">"satisfied"</span><span class="p">]</span>
@@ -8343,7 +8351,7 @@ langchain-openai==1.6.2
     <span class="n">show_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">"工作模型候选 </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">："</span><span class="p">,</span> <span class="n">candidate</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">feedback</span><span class="p">:</span>
     <span class="n">show_text</span><span class="p">(</span><span class="s2">"中间件交回工作模型的反馈："</span><span class="p">,</span> <span class="n">message</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">本次是否交付："</span><span class="p">,</span> <span class="n">accepted</span><span class="p">(</span><span class="n">evaluations</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">本次是否交付："</span><span class="p">,</span> <span class="n">accepted</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">evaluations</span><span class="p">,</span> <span class="n">records</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -8487,7 +8495,7 @@ needs_revision → 中间件注入包含 total=80 的差距反馈
 satisfied → 应用允许交付
 </pre></div>
 <p>这里并没有手动把第二份报告塞进最终状态。两份候选来自工作模型的两次实际调用，反馈和循环由中间件产生。offline 预设第二份候选，不能证明模型理解了反馈；live 才能检验所选模型的修订能力。</p>
-<p><code>accepted()</code> 是本教学应用的验收门。<code>satisfied</code> 仍是评分结论，不是无误证明；因此实验额外核查工具证据确实对应最新报告且全部通过。</p>
+<p><code>accepted(result, evaluations, records)</code> 是唯一交付门：没有评审或最后结论不是 <code>satisfied</code> 时返回 <code>False</code>。声称通过时，仍须有实际工具记录与有效调用 ID，最后取证的报告须对应最新候选，工具 <code>ok</code> 为真，最新候选也须通过 <code>assess_report()</code>。缺少证据、拿旧报告充数或业务检查失败会触发断言，不能显示为可交付。两轮、一轮和不传 Rubric 场景都调用同一个门，offline/live 也共用；仅固定轮数、固定候选数量等脚本预期按模式区分。</p>
 </div>
 </div>
 </div>
@@ -8499,7 +8507,7 @@ satisfied → 应用允许交付
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="5.2-%E4%B8%80%E8%BD%AE%E9%A2%84%E7%AE%97%EF%BC%9A%E6%9C%89%E6%9C%80%E7%BB%88%E6%B6%88%E6%81%AF%EF%BC%8C%E4%B9%9F%E5%8F%AF%E8%83%BD%E6%B2%A1%E6%9C%89%E9%80%9A%E8%BF%87">5.2 一轮预算：有最终消息，也可能没有通过<a class="anchor-link" href="#5.2-%E4%B8%80%E8%BD%AE%E9%A2%84%E7%AE%97%EF%BC%9A%E6%9C%89%E6%9C%80%E7%BB%88%E6%B6%88%E6%81%AF%EF%BC%8C%E4%B9%9F%E5%8F%AF%E8%83%BD%E6%B2%A1%E6%9C%89%E9%80%9A%E8%BF%87">¶</a></h3><p>重新创建独立实验，只把 <code>max_iterations</code> 改成 1。默认候选仍缺总额，唯一一次评分之后预算已经用完，不再调用工作模型修订。</p>
-<p>在锁定的 deepagents 0.7.15 中，中间件会先将最后结论改为 <code>max_iterations_reached</code>，再调用回调；不能把它当成 <code>satisfied</code>。真实模型若首轮就正确，则可能在一轮预算内通过。</p>
+<p>在锁定的 deepagents 0.7.22 中，中间件会先将最后结论改为 <code>max_iterations_reached</code>，再调用回调；不能把它当成 <code>satisfied</code>。真实模型若首轮就正确，则可能在一轮预算内通过；但 <code>satisfied</code> 只是模型结论，还必须通过同一 <code>accepted()</code> 的最新候选与工具证据检查，不能绕过取证。</p>
 </div>
 </div>
 </div>
@@ -8519,12 +8527,12 @@ satisfied → 应用允许交付
 <span class="p">}</span>
 <span class="k">if</span> <span class="n">selected_mode</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"offline"</span><span class="p">:</span>
     <span class="k">assert</span> <span class="n">limited_evaluations</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"result"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"max_iterations_reached"</span>
-    <span class="k">assert</span> <span class="ow">not</span> <span class="n">accepted</span><span class="p">(</span><span class="n">limited_evaluations</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="ow">not</span> <span class="n">accepted</span><span class="p">(</span><span class="n">limited_result</span><span class="p">,</span> <span class="n">limited_evaluations</span><span class="p">,</span> <span class="n">limited_records</span><span class="p">)</span>
     <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">limited_records</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">limited_records</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"evidence"</span><span class="p">][</span><span class="s2">"ok"</span><span class="p">]</span>
     <span class="k">assert</span> <span class="nb">len</span><span class="p">([</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">limited_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)])</span> <span class="o">==</span> <span class="mi">1</span>
 <span class="n">show_text</span><span class="p">(</span><span class="s2">"预算内最后候选："</span><span class="p">,</span> <span class="n">limited_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"最后结论："</span><span class="p">,</span> <span class="n">limited_evaluations</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s2">"result"</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"是否交付："</span><span class="p">,</span> <span class="n">accepted</span><span class="p">(</span><span class="n">limited_evaluations</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"是否交付："</span><span class="p">,</span> <span class="n">accepted</span><span class="p">(</span><span class="n">limited_result</span><span class="p">,</span> <span class="n">limited_evaluations</span><span class="p">,</span> <span class="n">limited_records</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -8623,10 +8631,10 @@ satisfied → 应用允许交付
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">unchecked_result</span><span class="p">,</span> <span class="n">unchecked_evaluations</span><span class="p">,</span> <span class="n">unchecked_records</span> <span class="o">=</span> <span class="n">run_report</span><span class="p">(</span><span class="n">with_rubric</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">assert</span> <span class="n">unchecked_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
 <span class="k">assert</span> <span class="n">unchecked_evaluations</span> <span class="o">==</span> <span class="p">[]</span> <span class="ow">and</span> <span class="n">unchecked_records</span> <span class="o">==</span> <span class="p">[]</span>
-<span class="k">assert</span> <span class="ow">not</span> <span class="n">accepted</span><span class="p">(</span><span class="n">unchecked_evaluations</span><span class="p">)</span>
+<span class="k">assert</span> <span class="ow">not</span> <span class="n">accepted</span><span class="p">(</span><span class="n">unchecked_result</span><span class="p">,</span> <span class="n">unchecked_evaluations</span><span class="p">,</span> <span class="n">unchecked_records</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"评分记录数："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">unchecked_evaluations</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"证据工具执行次数："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">unchecked_records</span><span class="p">))</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"是否交付："</span><span class="p">,</span> <span class="n">accepted</span><span class="p">(</span><span class="n">unchecked_evaluations</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"是否交付："</span><span class="p">,</span> <span class="n">accepted</span><span class="p">(</span><span class="n">unchecked_result</span><span class="p">,</span> <span class="n">unchecked_evaluations</span><span class="p">,</span> <span class="n">unchecked_records</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -8706,10 +8714,10 @@ satisfied → 应用允许交付
 </tr>
 </tbody>
 </table>
-<p><strong>验证范围</strong>：本实验通过真实中间件、工具与消息验证修订路径、预算终止和未评分拒绝。<code>failed</code>（标准无法评估）与 <code>grader_error</code>（评分链路异常）的独立触发、事件流、跨线程恢复、并发记录和真实模型质量不在默认实验的验证范围内。验收函数仅对本次顺序调用的最后结论做判断，不能直接充当生产审计系统。</p>
+<p><strong>验证范围</strong>：本实验通过真实中间件、工具与消息验证修订路径、预算终止和未评分拒绝。<code>failed</code>（标准无法评估）与 <code>grader_error</code>（评分链路异常）的独立触发、事件流、跨线程恢复、并发记录和真实模型质量不在默认实验的验证范围内。验收函数只核对本次顺序调用的最后结论、最新候选和实际工具记录，不提供跨调用证据追踪或生产审计保证。</p>
 <p>检查工具只验证这里明确写出的 JSON 结构、明细与总额，不评估报告文风、预测或所有业务正确性。当前明细按 Python 字典相等性比较；这不是覆盖所有 JSON 类型规则的通用 Schema 验证器。</p>
 <p><strong>清理</strong>：只有内核里的模型、消息和列表，无文件、进程或网络服务需要回收。重启内核即可释放实验变量；内存记录不会跨进程保存。无需手动执行最后一个清理格。</p>
-<p><strong>结论</strong>：候选生成完、检查工具运行完、报告通过验收，是三个不同事件。评分闭环把具体差距送回生成环节；应用只有在本次调用明确通过时才交付。</p>
+<p><strong>结论</strong>：候选生成完、检查工具运行完、报告通过验收，是三个不同事件。评分闭环把具体差距送回生成环节；应用只有在本次调用明确通过、实际证据与最新候选均合格时才交付。</p>
 <p>下一步：回到<a href="../../content/ch13-grading-rubrics.md">第 13 章正文</a>，把报告检查替换成适合你任务的证据工具；事件流的观察方法见<a href="../../content/ch14-streaming.md">第 14 章</a>。</p>
 </div>
 </div>
