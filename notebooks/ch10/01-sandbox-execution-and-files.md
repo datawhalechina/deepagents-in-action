@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`ec27f36cb4ac`。
+> 本次执行模式：**offline**。源码指纹：`fb777c29baf1`。
 
 # 第 10 章实验：Agent 在哪里运行代码，报告怎样带回来？
 
@@ -32,6 +32,14 @@ uv run --project notebooks --locked python -m course_notebooks.run ch10-sandboxe
 
 使用真实模型时，按 README 配置未提交的根目录 `.env`，在执行命令末尾添加 `--mode live`。交互式内核先执行 `import os` 并设置 `os.environ["COURSE_MODE"] = "live"`，再从导入格顺序运行。模型 API 可能收费；live 失败不会退回 offline。本例在两种模式中都运行预先提供的分析程序，验证的不是模型自行编程能力。
 
+### 硅流真实模型（live）
+
+**已验证**：`Qwen/Qwen3-Coder-30B-A3B-Instruct`，2026-10-06 整本 live 通过。验证版本 [`b46217f`](https://github.com/datawhalechina/deepagents-in-action/commit/b46217faf2ae217131e4ccc1c33c4a406c06b659)，记录见 [#136 评审](https://github.com/datawhalechina/deepagents-in-action/pull/136#pullrequestreview-5429857769)；本次说明更新沿用这份记录。
+
+配置：在未提交的根目录 `.env` 中填写 `SILICONFLOW_API_KEY`，以及 `MODEL_NAME=Qwen/Qwen3-Coder-30B-A3B-Instruct`。API 地址、固定参数与报告字段见 [README 模型记录说明](../README.md#live-records)。随附输出仍为 offline。
+
+范围与服务：真实模型选择 `execute` 和 `read_file`；分析程序预先提供，仍需真实 Docker，首次下载镜像需网络。这个记录不代表模型独立编写了程序。
+
 
 ```python
 import json
@@ -56,13 +64,13 @@ show_text("固定的容器镜像：", IMAGE, width=90)
 ```
 
     运行模式： offline （脚本模型）
-    Python： 3.12.13 平台： Darwin arm64
+    Python： 3.12.11 平台： Darwin arm64
     deepagents==0.7.22
     langchain==1.4.3
     langchain-core==1.6.6
     langgraph==1.2.13
     langchain-openai==1.6.7
-    Docker Engine： 29.8.1
+    Docker Engine： 29.4.0
     
     固定的容器镜像：
     python@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e

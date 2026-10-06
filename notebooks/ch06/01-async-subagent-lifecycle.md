@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`e3d0c0ffb48c`。
+> 本次执行模式：**offline**。源码指纹：`566d3146ac96`。
 
 # 第 6 章｜异步子 Agent 的完整生命周期
 
@@ -24,6 +24,14 @@ uv run --project notebooks --locked --extra server python -m course_notebooks.ru
 默认 offline 仅替换模型选择工具的方式，服务、SDK 和后台任务都真实运行。无需模型 Key、远程部署或 LangSmith Key；live 才请求真实模型，可能产生费用。
 
 下一格定位仓库目录，并把本章目录加入 Python 模块搜索路径，以便导入章内辅助类 `LocalAgentServer`。它负责启动和清理进程，不是需要另行安装的第三方包。
+
+### 硅流真实模型（live）
+
+**待验证**（2026-10-06 核对）：当前版本尚无整本 live 通过记录，暂不列出已验证型号。先用 offline 学习；补验后再填写完整型号、日期、验证版本和记录链接。
+
+配置：在未提交的根目录 `.env` 中填写 `SILICONFLOW_API_KEY` 和完整 `MODEL_NAME`；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 [README 模型记录说明](../README.md#live-records)。随附输出仍为 offline。
+
+范围与服务：仅主 Agent 选择异步工具时使用真实模型，服务端 researcher 是等待后固定回显的图。需真实本地 Agent Server 和 `server` 依赖组；不代表两个真实模型完成研究。
 
 
 ```python
@@ -530,27 +538,27 @@ for observation in observations:
 
     
     start_async_task
-    Launched async subagent. task_id: 01a1108b-2e05-7c50-8545-faf12a70a658
+    Launched async subagent. task_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4
     主 Agent 已返回，后台 run 仍为： pending
 
 
     
     list_async_tasks
     1 tracked task(s):
-    - task_id: 01a1108b-2e05-7c50-8545-faf12a70a658  agent: researcher  status:
+    - task_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4  agent: researcher  status:
       running
 
 
     
     check_async_task
     status: running
-    thread_id: 01a1108b-2e05-7c50-8545-faf12a70a658
+    thread_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4
 
 
     
     check_async_task
     status: success
-    thread_id: 01a1108b-2e05-7c50-8545-faf12a70a658
+    thread_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4
     result: Research completed: 总结异步任务的状态变化
     
     阶段二：更新 → 新 run → 读取新结果
@@ -558,24 +566,24 @@ for observation in observations:
 
     
     start_async_task
-    Launched async subagent. task_id: 01a1108b-58f9-7672-ad93-307534596527
+    Launched async subagent. task_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
 
 
     
     update_async_task
-    Updated async subagent. task_id: 01a1108b-58f9-7672-ad93-307534596527
+    Updated async subagent. task_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
 
 
     
     check_async_task
     status: running
-    thread_id: 01a1108b-58f9-7672-ad93-307534596527
+    thread_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
 
 
     
     check_async_task
     status: success
-    thread_id: 01a1108b-58f9-7672-ad93-307534596527
+    thread_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
     result: Research completed: 追加要求：使用三条要点
     已验证：task ID 不变、run ID 更新、追加指令传递成功。
     
@@ -584,22 +592,22 @@ for observation in observations:
 
     
     start_async_task
-    Launched async subagent. task_id: 01a1108b-840c-7ff3-9e10-11b813a8ec80
+    Launched async subagent. task_id: 01a111c7-69ea-7153-8e6f-d78f43ab1735
 
 
     
     cancel_async_task
-    Cancelled async subagent task: 01a1108b-840c-7ff3-9e10-11b813a8ec80
+    Cancelled async subagent task: 01a111c7-69ea-7153-8e6f-d78f43ab1735
 
 
     
     list_async_tasks
     3 tracked task(s):
-    - task_id: 01a1108b-2e05-7c50-8545-faf12a70a658  agent: researcher  status:
+    - task_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4  agent: researcher  status:
       success
-    - task_id: 01a1108b-58f9-7672-ad93-307534596527  agent: researcher  status:
+    - task_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4  agent: researcher  status:
       success
-    - task_id: 01a1108b-840c-7ff3-9e10-11b813a8ec80  agent: researcher  status:
+    - task_id: 01a111c7-69ea-7153-8e6f-d78f43ab1735  agent: researcher  status:
       cancelled
     本次创建的任务、thread、服务进程与临时状态已清理。
     

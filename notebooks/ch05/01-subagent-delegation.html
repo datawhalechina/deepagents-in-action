@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>a14c406605a2</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>dad84428d5c2</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7901,6 +7901,9 @@ researcher：lookup_case 查资料 → write_file 写报告 → 返回简短结�
 </pre></div>
 <p>默认 offline 使用公开的脚本规则选择工具，task、lookup_case、write_file、read_file 与 StateBackend 均真实执行。随附输出来自这个模式，验证消息与文件边界，不证明真实模型会遵从委派指令。</p>
 <p>要观察真实模型选择工具，按 README 配置模型并在命令后添加 <code>--mode live</code>；需要网络且可能产生费用。除模型 API 外，本章不需要搜索、数据库或沙箱。</p>
+<h3 id="%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">硅流真实模型（live）<a class="anchor-link" href="#%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">¶</a></h3><p><strong>待验证</strong>（2026-10-06 核对）：当前版本尚无整本 live 通过记录，暂不列出已验证型号。先用 offline 学习；补验后再填写完整型号、日期、验证版本和记录链接。</p>
+<p>配置：在未提交的根目录 <code>.env</code> 中填写 <code>SILICONFLOW_API_KEY</code> 和完整 <code>MODEL_NAME</code>；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 <a href="../README.md#live-records">README 模型记录说明</a>。随附输出仍为 offline。</p>
+<p>范围与服务：主、子 Agent 使用真实模型；研究资料为本地固定样例，不调用搜索服务。</p>
 </div>
 </div>
 </div>

@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>073615e22e15</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>52826379f8b2</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7857,6 +7857,9 @@ researcher 摘要 → 主 Agent 汇总
 <div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>course_notebooks.run<span class="w"> </span>ch14-streaming
 </pre></div>
 <p>显式接入真实模型时加 <code>--mode live</code>；交互式内核则在创建模型前设置 <code>os.environ["COURSE_MODE"] = "live"</code>。不要把密钥写入代码格。</p>
+<h3 id="%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">硅流真实模型（live）<a class="anchor-link" href="#%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">¶</a></h3><p><strong>已验证</strong>：<code>Qwen/Qwen3-Coder-30B-A3B-Instruct</code>、<code>deepseek-ai/DeepSeek-V3.2</code>，2026-10-06 各整本 live 通过一次。记录与版本关系见 <a href="../README.md#live-models">README 验证表</a> 和 <a href="https://github.com/datawhalechina/deepagents-in-action/pull/140#issuecomment-6013556021">#140 修复说明</a>。本次说明更新沿用这份记录；普通 DeepSeek 路由记录不涵盖 <code>Pro/</code> 路由。</p>
+<p>配置：在未提交的根目录 <code>.env</code> 中填写 <code>SILICONFLOW_API_KEY</code>，以及 <code>MODEL_NAME=Qwen/Qwen3-Coder-30B-A3B-Instruct</code>（本章也可填写 <code>MODEL_NAME=deepseek-ai/DeepSeek-V3.2</code>）。API 地址、固定参数与报告字段见 <a href="../README.md#live-records">README 模型记录说明</a>。随附输出仍为 offline。</p>
+<p>范围与服务：主、子 Agent 使用真实模型，完整运行 typed、raw、晚订阅三个场景；笔记为固定教学数据，不调用搜索服务，也不需要 Agent Server 或 Docker。</p>
 </div>
 </div>
 </div>
@@ -8180,7 +8183,7 @@ custom 进度由工具显式发送，不是模型生成的文字。
 子 Agent： researcher 状态： started
 
 本次委派 path：
-('tools:5c58fb76-b4bc-f452-ea4e-4305842f4c5e',)
+('tools:a87e5d9c-3f46-8a11-70d0-d581c9ad3706',)
 
 researcher 消息：
 正在读取笔记。
@@ -8384,7 +8387,7 @@ inspect_notes：
   custom: 2
 
 本次 raw 子 Agent path：
-('tools:37254e35-0e31-0c30-1888-f2d94454c8f8',)
+('tools:0f451a5d-0631-72f9-fb83-b76efd67c759',)
 </pre>
 </div>
 </div>
