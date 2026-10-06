@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`9bad9627b4a3`。
+> 本次执行模式：**offline**。源码指纹：`7247413fd58f`。
 
 # 第 2 章 Notebook（一）：快速上手与自定义工具
 
@@ -28,7 +28,7 @@ uv sync --project notebooks --locked
 uv run --project notebooks --locked python -m course_notebooks.run ch02-quickstart
 ```
 
-核心依赖：deepagents 0.7.15、langchain 1.4.2、langgraph 1.2.11、langchain-openai 1.6.2；完整依赖由 uv.lock 锁定。下一格输出本次实际环境。
+核心依赖：deepagents 0.7.22、langchain 1.4.3、langchain-core 1.6.6、langgraph 1.2.13、langchain-openai 1.6.7；完整依赖由 uv.lock 锁定。下一格输出本次实际环境。
 
 默认 **offline** 模式使用脚本模型：模型消息是预先写好的，工具函数和 Agent 框架仍真实执行。随附输出来自这个模式；它验证框架机制，不证明真实模型会正确选择工具。需要真实模型时，按 [统一配置说明](../README.md) 准备 Key，再在上面的命令末尾加 `--mode live`。live 需要网络，可能产生调用费用；缺配置或调用失败会直接报错，不会退回脚本模型。
 
@@ -40,11 +40,12 @@ show_runtime()
 ```
 
     运行模式： offline （脚本模型）
-    Python： 3.12.13 平台： Windows AMD64
-    deepagents==0.7.15
-    langchain==1.4.2
-    langgraph==1.2.11
-    langchain-openai==1.6.2
+    Python： 3.12.11 平台： Darwin arm64
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
 
 
 ## 1. Hello World：最简单的 Deep Agent
@@ -330,9 +331,7 @@ for message in calc_result["messages"]:
         print("  返回", message.name, message.status, message.content, "ID:", message.tool_call_id)
 ```
 
-    请求
-
-     convert_currency {'amount': 100, 'from_currency': 'USD'} ID: ch02-convert
+    请求 convert_currency {'amount': 100, 'from_currency': 'USD'} ID: ch02-convert
       返回 convert_currency success {"amount": 720.0, "currency": "CNY"} ID: ch02-convert
     请求 calculate {'expression': '720.0 * 1.08'} ID: ch02-calculate
       返回 calculate success 777.6 ID: ch02-calculate
@@ -433,14 +432,10 @@ else:
     raise AssertionError("预期 rates['JPY'] 抛出 KeyError。")
 ```
 
-    状态：
-
-     error
+    状态： error
     内容： Error invoking tool 'convert_currency' with kwargs {'amount': 'a lot', 'from_currency': 'USD'} with error:
      amount: Input should be a valid number, unable to parse string as a number
      Please fix the error and try again.
-
-
     
     函数内部异常中断了 invoke()：KeyError 'JPY'
 
