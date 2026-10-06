@@ -7803,7 +7803,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>7247413fd58f</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>22c5256933d6</code>。</p>
 </blockquote>
 </div>
 </div>
@@ -7852,6 +7852,9 @@ uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> <
 </pre></div>
 <p>核心依赖：deepagents 0.7.22、langchain 1.4.3、langchain-core 1.6.6、langgraph 1.2.13、langchain-openai 1.6.7；完整依赖由 uv.lock 锁定。下一格输出本次实际环境。</p>
 <p>默认 <strong>offline</strong> 模式使用脚本模型：模型消息是预先写好的，工具函数和 Agent 框架仍真实执行。随附输出来自这个模式；它验证框架机制，不证明真实模型会正确选择工具。需要真实模型时，按 <a href="../README.md">统一配置说明</a> 准备 Key，再在上面的命令末尾加 <code>--mode live</code>。live 需要网络，可能产生调用费用；缺配置或调用失败会直接报错，不会退回脚本模型。</p>
+<h3 id="%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">硅流真实模型（live）<a class="anchor-link" href="#%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">¶</a></h3><p><strong>待验证</strong>（2026-10-06 核对）：当前版本尚无整本 live 通过记录，暂不列出已验证型号。先用 offline 学习；补验后再填写完整型号、日期、验证版本和记录链接。</p>
+<p>配置：在未提交的根目录 <code>.env</code> 中填写 <code>SILICONFLOW_API_KEY</code> 和完整 <code>MODEL_NAME</code>；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 <a href="../README.md#live-records">README 模型记录说明</a>。随附输出仍为 offline。</p>
+<p>范围与服务：正常的天气、换算和计算场景使用真实模型；故意制造 Schema 错误和函数异常的场景仍使用脚本模型。无需额外服务。</p>
 </div>
 </div>
 </div>
@@ -7904,7 +7907,7 @@ langchain-openai==1.6.7
     <span class="n">base_url</span><span class="o">=</span><span class="s2">"https://api.siliconflow.cn/v1"</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
-<p>Notebook 里改用课程辅助函数 <code>create_model(...)</code>：live 模式下它按同样的环境变量创建 <code>ChatOpenAI</code>；默认 offline 模式下，它直接返回我们传入的脚本模型，不读取 Key、不发网络请求。其余代码与正文一致。</p>
+<p>Notebook 里改用课程辅助函数 <code>create_model(...)</code>：live 模式下它要求显式填写 <code>MODEL_NAME</code>，并创建 <code>ChatOpenAI</code> 的兼容子类 <code>StreamingChatOpenAI</code>；默认 offline 模式下，它直接返回我们传入的脚本模型，不读取 Key、不发网络请求。上面的 7B 型号是正文的入门配置示例，不是本 Notebook 的完整 live 验证记录。</p>
 <p>脚本模型 <code>ScriptedChatModel</code> 按顺序回放 <code>responses</code> 列表里的消息。<code>AIMessage</code> 表示“模型发出的消息”：第一条不含普通文字，只在 <code>tool_calls</code> 里请求调用 <code>get_weather</code>；第二条是结束对话的回复。</p>
 <table>
 <thead>

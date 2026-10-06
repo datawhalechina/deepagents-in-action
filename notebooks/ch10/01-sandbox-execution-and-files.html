@@ -7803,123 +7803,76 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>dad84428d5c2</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>fb777c29baf1</code>。</p>
 </blockquote>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=6fe43815">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b73cc5a4">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="%E7%AC%AC-5-%E7%AB%A0-Notebook%EF%BC%9A%E5%AD%90-Agent-%E5%A7%94%E6%B4%BE%E4%B8%8E%E4%B8%8A%E4%B8%8B%E6%96%87%E9%9A%94%E7%A6%BB">第 5 章 Notebook：子 Agent 委派与上下文隔离<a class="anchor-link" href="#%E7%AC%AC-5-%E7%AB%A0-Notebook%EF%BC%9A%E5%AD%90-Agent-%E5%A7%94%E6%B4%BE%E4%B8%8E%E4%B8%8A%E4%B8%8B%E6%96%87%E9%9A%94%E7%A6%BB">¶</a></h1><p>对应课程章节：<a href="../../content/ch05-subagents.md">第 5 章：子 Agent 与上下文隔离</a>。</p>
-<p>把研究任务交给另一个 Agent 后，主 Agent 会看到它的全部工作过程吗？如果子 Agent 写了文件，主 Agent 又怎样拿到文件？本实验分别观察<strong>消息记录</strong>和<strong>文件状态</strong>，回答这两个问题。</p>
-<p>例子使用本地固定的 A/B 方案资料：主 Agent 负责委派，名为 <code>researcher</code> 的子 Agent 查资料、写报告，再返回简短结论。不调用搜索服务。建议先读 <a href="../ch01/01-agent-harness.ipynb">第 1 章的消息与工具循环</a>；运行时无需保留其他 Notebook 的变量。</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d0e9a271">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="%E5%AD%A6%E4%B9%A0%E7%9B%AE%E6%A0%87">学习目标<a class="anchor-link" href="#%E5%AD%A6%E4%B9%A0%E7%9B%AE%E6%A0%87">¶</a></h2><p>运行结束后，你应该能够：</p>
-<ol>
-<li>用字典声明 <code>researcher</code>，并让主 Agent 通过 <code>task</code> 委派；</li>
-<li>从 <code>AIMessage.tool_calls</code> 与 <code>ToolMessage</code> 检查委派和结果回传；</li>
-<li>证明子 Agent 的内部工具记录不自动进入主 Agent 的 <code>messages</code>；</li>
-<li>证明默认 <code>StateBackend</code> 的文件状态会回到主 Agent，且主 Agent 可以主动读取它。</li>
-</ol>
-<p>本章只讨论进程内的同步子 Agent；第 6 章另讲异步子 Agent。</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=junior-ch05-concepts">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%E5%85%88%E6%8A%8A%E2%80%9C%E4%B8%8A%E4%B8%8B%E6%96%87%E2%80%9D%E5%92%8C%E2%80%9C%E7%8A%B6%E6%80%81%E2%80%9D%E5%88%86%E5%BC%80">先把“上下文”和“状态”分开<a class="anchor-link" href="#%E5%85%88%E6%8A%8A%E2%80%9C%E4%B8%8A%E4%B8%8B%E6%96%87%E2%80%9D%E5%92%8C%E2%80%9C%E7%8A%B6%E6%80%81%E2%80%9D%E5%88%86%E5%BC%80">¶</a></h3><table>
+<h1 id="%E7%AC%AC-10-%E7%AB%A0%E5%AE%9E%E9%AA%8C%EF%BC%9AAgent-%E5%9C%A8%E5%93%AA%E9%87%8C%E8%BF%90%E8%A1%8C%E4%BB%A3%E7%A0%81%EF%BC%8C%E6%8A%A5%E5%91%8A%E6%80%8E%E6%A0%B7%E5%B8%A6%E5%9B%9E%E6%9D%A5%EF%BC%9F">第 10 章实验：Agent 在哪里运行代码，报告怎样带回来？<a class="anchor-link" href="#%E7%AC%AC-10-%E7%AB%A0%E5%AE%9E%E9%AA%8C%EF%BC%9AAgent-%E5%9C%A8%E5%93%AA%E9%87%8C%E8%BF%90%E8%A1%8C%E4%BB%A3%E7%A0%81%EF%BC%8C%E6%8A%A5%E5%91%8A%E6%80%8E%E6%A0%B7%E5%B8%A6%E5%9B%9E%E6%9D%A5%EF%BC%9F">¶</a></h1><p>对应<a href="../../content/ch10-sandboxes.md">第 10 章正文</a>。假设要汇总三笔订单：应用提供数据，Agent 在沙箱里运行 Python，应用最后取回报告。运行命令和下载文件分别由谁完成？命令失败时，应该看哪个字段？</p>
+<p>本实验使用<strong>真实的本地 Docker 容器</strong>。Docker 把程序放进独立的运行环境；这里不挂载宿主目录，不把模型密钥传入容器，并关闭容器网络。它不是远程托管沙箱，也不是把宿主临时目录当成沙箱。</p>
+<table>
 <thead>
 <tr>
-<th>名称</th>
-<th>本例中的含义</th>
+<th>要观察什么</th>
+<th>应看到什么</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>主 Agent</td>
-<td>接收用户问题，决定把研究工作交给谁</td>
+<td>宿主传入输入</td>
+<td><code>upload_files()</code> 的两项结果均无错误</td>
 </tr>
 <tr>
-<td>子 Agent</td>
-<td>接收一项具体任务，在自己的消息记录里使用工具，再返回结果</td>
+<td>Agent 执行程序</td>
+<td><code>execute</code> 请求对应实际命令结果，退出码为 0</td>
 </tr>
 <tr>
-<td><code>messages</code> / 消息上下文</td>
-<td>模型在本轮对话中使用的消息记录；包含用户输入、模型消息和工具结果</td>
+<td>Agent 查看报告</td>
+<td><code>read_file</code> 返回生成的文件内容</td>
 </tr>
 <tr>
-<td>state / 状态</td>
-<td>程序传递的数据包；除 <code>messages</code> 外，还可以包含 <code>files</code></td>
+<td>宿主取回产物</td>
+<td>下载的 JSON 中有 3 笔订单、总额 75</td>
 </tr>
 <tr>
-<td><code>StateBackend</code></td>
-<td>本例默认的文件存储方式：把文件内容放在 Agent 状态里，不写电脑磁盘</td>
+<td>失败与清理</td>
+<td>缺失文件有逐项错误；失败命令退出码为 7；退出实验后容器不存在</td>
 </tr>
 </tbody>
 </table>
-<p><strong>同步委派</strong>表示主 Agent 的这次 <code>task</code> 调用要等子 Agent 返回，才能继续处理结果。下面的流程发生在同一 Python 进程内：</p>
-<div class="highlight"><pre><span></span>主 Agent：task(description=任务说明, subagent_type="researcher")
-              ↓
-researcher：lookup_case 查资料 → write_file 写报告 → 返回简短结论
-              ↓
-主 Agent：收到 task 的工具结果；返回状态中还包含文件更新
-              ↓  下一轮明确要求读文件
-主 Agent：read_file → 报告正文进入本轮工具消息
-</pre></div>
-<p>消息隔离不等于文件隔离，也不等于安全沙箱；我们只验证本例这两种数据怎样传递。</p>
+<p>默认脚本模型只安排工具请求，Python 程序、文件传输、框架与容器都实际运行。随附输出不证明真实模型会编写程序或正确选择工具。</p>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c70c22e9">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a760ca22">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">运行环境与模式<a class="anchor-link" href="#%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">¶</a></h2><p>使用 <a href="../README.md">统一安装入口</a> 的 Python 3.12 锁定环境。本章从第一格独立执行，无需先运行第 1 章。</p>
-<div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>course_notebooks.run<span class="w"> </span>ch05-subagents
+<h2 id="1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E8%BF%90%E8%A1%8C%E6%A8%A1%E5%BC%8F">1. 环境与运行模式<a class="anchor-link" href="#1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E8%BF%90%E8%A1%8C%E6%A8%A1%E5%BC%8F">¶</a></h2><p>只需基础 Python。本 Notebook 从第一格建立自己的变量；Jupyter / VS Code 的<strong>内核</strong>是运行这些变量的 Python 进程，不依赖前几章的内核状态。</p>
+<p>按<a href="../README.md">公共 README</a> 安装 Python 3.12 的锁定环境，并安装、启动 <a href="https://docs.docker.com/desktop/">Docker Desktop</a> 或可用的 Docker Engine。Windows 建议使用 Docker Desktop 的 Linux 容器模式。先在仓库根目录的<strong>终端</strong>运行：</p>
+<div class="highlight"><pre><span></span>docker<span class="w"> </span>info
+uv<span class="w"> </span>sync<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked
+uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>course_notebooks.run<span class="w"> </span>ch10-sandboxes
 </pre></div>
-<p>默认 offline 使用公开的脚本规则选择工具，task、lookup_case、write_file、read_file 与 StateBackend 均真实执行。随附输出来自这个模式，验证消息与文件边界，不证明真实模型会遵从委派指令。</p>
-<p>要观察真实模型选择工具，按 README 配置模型并在命令后添加 <code>--mode live</code>；需要网络且可能产生费用。除模型 API 外，本章不需要搜索、数据库或沙箱。</p>
-<h3 id="%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">硅流真实模型（live）<a class="anchor-link" href="#%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">¶</a></h3><p><strong>待验证</strong>（2026-10-06 核对）：当前版本尚无整本 live 通过记录，暂不列出已验证型号。先用 offline 学习；补验后再填写完整型号、日期、验证版本和记录链接。</p>
-<p>配置：在未提交的根目录 <code>.env</code> 中填写 <code>SILICONFLOW_API_KEY</code> 和完整 <code>MODEL_NAME</code>；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 <a href="../README.md#live-records">README 模型记录说明</a>。随附输出仍为 offline。</p>
-<p>范围与服务：主、子 Agent 使用真实模型；研究资料为本地固定样例，不调用搜索服务。</p>
+<p>默认 <strong>offline</strong> 不调用模型 API，但仍需要 Docker；首次运行会下载固定摘要的 Python 镜像，需要访问镜像仓库，后续使用本地缓存。未安装 Docker、Engine 未启动或镜像下载失败都会报错，不改用宿主 Shell。镜像详情与 Backend 适配代码见 <a href="docker_sandbox.py">docker_sandbox.py</a>。</p>
+<p>使用真实模型时，按 README 配置未提交的根目录 <code>.env</code>，在执行命令末尾添加 <code>--mode live</code>。交互式内核先执行 <code>import os</code> 并设置 <code>os.environ["COURSE_MODE"] = "live"</code>，再从导入格顺序运行。模型 API 可能收费；live 失败不会退回 offline。本例在两种模式中都运行预先提供的分析程序，验证的不是模型自行编程能力。</p>
+<h3 id="%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">硅流真实模型（live）<a class="anchor-link" href="#%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">¶</a></h3><p><strong>已验证</strong>：<code>Qwen/Qwen3-Coder-30B-A3B-Instruct</code>，2026-10-06 整本 live 通过。验证版本 <a href="https://github.com/datawhalechina/deepagents-in-action/commit/b46217faf2ae217131e4ccc1c33c4a406c06b659"><code>b46217f</code></a>，记录见 <a href="https://github.com/datawhalechina/deepagents-in-action/pull/136#pullrequestreview-5429857769">#136 评审</a>；本次说明更新沿用这份记录。</p>
+<p>配置：在未提交的根目录 <code>.env</code> 中填写 <code>SILICONFLOW_API_KEY</code>，以及 <code>MODEL_NAME=Qwen/Qwen3-Coder-30B-A3B-Instruct</code>。API 地址、固定参数与报告字段见 <a href="../README.md#live-records">README 模型记录说明</a>。随附输出仍为 offline。</p>
+<p>范围与服务：真实模型选择 <code>execute</code> 和 <code>read_file</code>；分析程序预先提供，仍需真实 Docker，首次下载镜像需网络。这个记录不代表模型独立编写了程序。</p>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e6f3da22">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="0.-%E7%A1%AE%E8%AE%A4%E7%8E%AF%E5%A2%83%E5%B9%B6%E5%AF%BC%E5%85%A5%E8%BE%85%E5%8A%A9%E5%87%BD%E6%95%B0">0. 确认环境并导入辅助函数<a class="anchor-link" href="#0.-%E7%A1%AE%E8%AE%A4%E7%8E%AF%E5%A2%83%E5%B9%B6%E5%AF%BC%E5%85%A5%E8%BE%85%E5%8A%A9%E5%87%BD%E6%95%B0">¶</a></h2><p><code>show_runtime()</code> 打印运行模式与版本，<code>show_text()</code> 让长输出分行。它们来自课程辅助包。<code>HumanMessage</code> 是用户输入，<code>AIMessage</code> 是模型回复或工具请求，<code>ToolMessage</code> 是工具返回。</p>
-<p>先准备本地资料和工具，再准备脚本模型，最后组装 Agent。此时还没有执行研究任务。</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=147b00b0">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch10-imports" id="cell-id=0df933a0">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7927,12 +7880,25 @@ researcher：lookup_case 查资料 → write_file 写报告 → 返回简短结�
 <div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.nbtools</span><span class="w"> </span><span class="kn">import</span> <span class="n">show_runtime</span><span class="p">,</span> <span class="n">show_text</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.model_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_model</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">textwrap</span><span class="w"> </span><span class="kn">import</span> <span class="n">dedent</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">deepagents</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_deep_agent</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIMessage</span><span class="p">,</span> <span class="n">ToolMessage</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.model_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_model</span><span class="p">,</span> <span class="n">repository_root</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.nbtools</span><span class="w"> </span><span class="kn">import</span> <span class="n">show_runtime</span><span class="p">,</span> <span class="n">show_text</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScriptedChatModel</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIMessage</span><span class="p">,</span> <span class="n">HumanMessage</span><span class="p">,</span> <span class="n">ToolMessage</span>
+
+<span class="n">chapter_dir</span> <span class="o">=</span> <span class="n">repository_root</span><span class="p">()</span> <span class="o">/</span> <span class="s2">"notebooks"</span> <span class="o">/</span> <span class="s2">"ch10"</span>
+<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">chapter_dir</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">chapter_dir</span><span class="p">))</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">docker_sandbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">DockerSandbox</span><span class="p">,</span> <span class="n">IMAGE</span><span class="p">,</span> <span class="n">container_exists</span><span class="p">,</span> <span class="n">docker</span>
 
 <span class="n">show_runtime</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Docker Engine："</span><span class="p">,</span> <span class="n">docker</span><span class="p">(</span><span class="s2">"info"</span><span class="p">,</span> <span class="s2">"--format"</span><span class="p">,</span> <span class="s2">"{{.ServerVersion}}"</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+<span class="n">show_text</span><span class="p">(</span><span class="s2">"固定的容器镜像："</span><span class="p">,</span> <span class="n">IMAGE</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">90</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -7952,25 +7918,75 @@ langchain==1.4.3
 langchain-core==1.6.6
 langgraph==1.2.13
 langchain-openai==1.6.7
+Docker Engine： 29.4.0
+
+固定的容器镜像：
+python@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d691142b">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4de0bff9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="1.-%E5%AE%9A%E4%B9%89%E5%8F%AF%E5%A4%8D%E7%8E%B0%E7%9A%84%E6%9C%AC%E5%9C%B0%E8%B5%84%E6%96%99%E5%B7%A5%E5%85%B7">1. 定义可复现的本地资料工具<a class="anchor-link" href="#1.-%E5%AE%9A%E4%B9%89%E5%8F%AF%E5%A4%8D%E7%8E%B0%E7%9A%84%E6%9C%AC%E5%9C%B0%E8%B5%84%E6%96%99%E5%B7%A5%E5%85%B7">¶</a></h2><p>问题是：A、B 两种方案，哪个同时满足响应速度、数据新鲜度和错误率的约束？以下数字是<strong>固定教学案例</strong>，不代表真实产品测量。</p>
-<p><code>p95</code> 是第 95 百分位延迟：可以粗略理解为约 95% 的请求不超过这个耗时，不是平均耗时。A 的 420 ms 超过 150 ms 上限；B 的 95 ms、5 分钟更新间隔和 0.6% 错误率均满足本例约束。因此我们预期报告保留证据并选择 B。</p>
-<p><code>@tool</code> 把 Python 函数及其参数、说明注册为工具。<code>lookup_trace</code> 是我们用来观察实际调用的 Python 列表；向它追加记录，并不会自动给主模型追加消息。<code>REPORT_PATH</code> 是虚拟文件的名称，不能拿这个路径去电脑磁盘上找文件。</p>
+<h3 id="%E5%85%88%E8%AE%A4%E6%B8%85%E5%AE%BF%E4%B8%BB%E3%80%81Backend-%E5%92%8C%E5%AE%B9%E5%99%A8">先认清宿主、Backend 和容器<a class="anchor-link" href="#%E5%85%88%E8%AE%A4%E6%B8%85%E5%AE%BF%E4%B8%BB%E3%80%81Backend-%E5%92%8C%E5%AE%B9%E5%99%A8">¶</a></h3><p>宿主是运行 Notebook 和 Agent 的环境。<strong>Backend</strong> 是框架调用文件或执行接口时使用的后端对象，本例把调用转给 Docker 容器。Agent 自身的模型循环仍在宿主上，只有程序和文件操作在容器里；正文把这种方式叫 <strong>Sandbox as tool</strong>。</p>
+<div class="highlight"><pre><span></span>宿主：准备输入 → upload_files() → 容器中的数据与程序
+宿主：Agent 的模型提出 execute 请求
+                         ↓
+               Backend → 容器运行 Python，生成报告
+                         ↓
+宿主：模型收到 ToolMessage，提出 read_file 请求并读取报告
+宿主：download_files() ← 容器中的报告
+</pre></div>
+<p><code>AIMessage.tool_calls</code> 只表示模型提出了请求；框架真正执行后，用 <code>ToolMessage</code> 记录结果，并通过 <code>tool_call_id</code> 对应原请求的 <code>id</code>。<code>invoke()</code> 启动这段循环，返回的 <code>result["messages"]</code> 保存消息历史，属于 Agent 的 <strong>State（运行数据）</strong>。</p>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>谁调用</th>
+<th>本例的作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>upload_files()</code></td>
+<td>宿主应用代码</td>
+<td>在任务开始前传入数据与程序，内容是 <code>bytes</code></td>
+</tr>
+<tr>
+<td><code>execute</code>、<code>read_file</code></td>
+<td>Agent 通过框架调用</td>
+<td>在容器内执行程序、查看文件</td>
+</tr>
+<tr>
+<td><code>download_files()</code></td>
+<td>宿主应用代码</td>
+<td>任务结束后取回报告，每个文件单独返回结果</td>
+</tr>
+</tbody>
+</table>
+<p>容器网络关闭不会阻止宿主调用模型 API。这里没有挂载宿主目录，容器也没有继承宿主的模型配置；上传哪些数据仍由应用决定。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ad5d40f9">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=dee7b2c7">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="2.-%E5%87%86%E5%A4%87%E6%95%B0%E6%8D%AE%E4%B8%8E%E5%88%86%E6%9E%90%E7%A8%8B%E5%BA%8F">2. 准备数据与分析程序<a class="anchor-link" href="#2.-%E5%87%86%E5%A4%87%E6%95%B0%E6%8D%AE%E4%B8%8E%E5%88%86%E6%9E%90%E7%A8%8B%E5%BA%8F">¶</a></h2><p>先在宿主内存中准备三笔订单与一个短程序。程序在容器里读取 <code>/workspace/orders.json</code>，计算“数量 × 单价”的总和，写入 <code>/workspace/report.json</code>。这些绝对路径属于容器，不是本机路径。</p>
+<p><code>dedent()</code> 去掉多行字符串的公共缩进，使程序能直接作为文件执行。<code>encode("utf-8")</code> 将文本变成上传 API 接收的字节；后面下载时再解码。价格使用整数，避免在这个小实验中讨论小数舍入。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch10-inputs" id="cell-id=e329364a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7978,66 +7994,89 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">tool</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">ORDERS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">"item"</span><span class="p">:</span> <span class="s2">"纸张"</span><span class="p">,</span> <span class="s2">"quantity"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">"price"</span><span class="p">:</span> <span class="mi">10</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">"item"</span><span class="p">:</span> <span class="s2">"笔"</span><span class="p">,</span> <span class="s2">"quantity"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">"price"</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">"item"</span><span class="p">:</span> <span class="s2">"书"</span><span class="p">,</span> <span class="s2">"quantity"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"price"</span><span class="p">:</span> <span class="mi">40</span><span class="p">},</span>
+<span class="p">]</span>
+<span class="n">PROGRAM</span> <span class="o">=</span> <span class="n">dedent</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">    import json</span>
+<span class="s2">    from pathlib import Path</span>
 
-<span class="n">CASE_ID</span> <span class="o">=</span> <span class="s2">"cache-plan"</span>
-<span class="n">REPORT_PATH</span> <span class="o">=</span> <span class="s2">"/research/cache-choice.md"</span>
-<span class="n">CASE_MATERIAL</span> <span class="o">=</span> <span class="s2">"""[A] 实时汇总：同一组 1000 次请求中，p95 延迟 420 ms，错误率 0.4%。</span>
-<span class="s2">[B] 每 5 分钟更新一次缓存：同一组请求中，p95 延迟 95 ms，错误率 0.6%。</span>
-<span class="s2">[约束] p95 必须低于 150 ms；允许结果最多延迟 5 分钟；错误率必须低于 1%。"""</span>
-<span class="n">lookup_trace</span> <span class="o">=</span> <span class="p">[]</span>
-
-<span class="nd">@tool</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">lookup_case</span><span class="p">(</span><span class="n">case_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""读取本地固定的缓存方案研究材料。case_id 应为 cache-plan。"""</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="n">CASE_MATERIAL</span> <span class="k">if</span> <span class="n">case_id</span> <span class="o">==</span> <span class="n">CASE_ID</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"未知案例：</span><span class="si">{</span><span class="n">case_id</span><span class="si">}</span><span class="s2">"</span>
-    <span class="n">lookup_trace</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"case_id"</span><span class="p">:</span> <span class="n">case_id</span><span class="p">,</span> <span class="s2">"result"</span><span class="p">:</span> <span class="n">result</span><span class="p">})</span>
-    <span class="k">return</span> <span class="n">result</span>
+<span class="s2">    rows = json.loads(Path("/workspace/orders.json").read_text(encoding="utf-8"))</span>
+<span class="s2">    report = {</span>
+<span class="s2">        "orders": len(rows),</span>
+<span class="s2">        "total": sum(row["quantity"] * row["price"] for row in rows),</span>
+<span class="s2">    }</span>
+<span class="s2">    text = json.dumps(report, ensure_ascii=False, indent=2)</span>
+<span class="s2">    Path("/workspace/report.json").write_text(text, encoding="utf-8")</span>
+<span class="s2">    print(text)</span>
+<span class="s2">"""</span><span class="p">)</span>
+<span class="n">INPUT_FILES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s2">"/workspace/orders.json"</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">ORDERS</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s2">"/workspace/analyze.py"</span><span class="p">,</span> <span class="n">PROGRAM</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">)),</span>
+<span class="p">]</span>
+<span class="n">CALLS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"execute"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"command"</span><span class="p">:</span> <span class="s2">"python /workspace/analyze.py"</span><span class="p">},</span>
+     <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"ch10-execute"</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"read_file"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="s2">"/workspace/report.json"</span><span class="p">},</span>
+     <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"ch10-read"</span><span class="p">},</span>
+<span class="p">]</span>
+<span class="n">show_text</span><span class="p">(</span><span class="s2">"本次输入："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">ORDERS</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"预期总额：2 × 10 + 3 × 5 + 1 × 40 = 75"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=junior-ch05-script">
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>
+本次输入：
+[
+  {
+    "item": "纸张",
+    "quantity": 2,
+    "price": 10
+  },
+  {
+    "item": "笔",
+    "quantity": 3,
+    "price": 5
+  },
+  {
+    "item": "书",
+    "quantity": 1,
+    "price": 40
+  }
+]
+预期总额：2 × 10 + 3 × 5 + 1 × 40 = 75
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=caaa952c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="1.1-%E5%87%86%E5%A4%87%E6%97%A0%E9%9C%80-Key-%E7%9A%84%E6%A8%A1%E5%9E%8B%E5%93%8D%E5%BA%94">1.1 准备无需 Key 的模型响应<a class="anchor-link" href="#1.1-%E5%87%86%E5%A4%87%E6%97%A0%E9%9C%80-Key-%E7%9A%84%E6%A8%A1%E5%9E%8B%E5%93%8D%E5%BA%94">¶</a></h3><p><code>responder</code> 是一个回调函数：框架每次向脚本模型请求回复时，调用 <code>scripted_reply(messages, tool_names)</code>。<code>messages</code> 是当前 Agent 的消息记录，<code>tool_names</code> 是它当前可用的工具名。</p>
-<p>下面按两个输入选择下一条响应，没有直接伪造 Agent 的最终状态：</p>
-<table>
-<thead>
-<tr>
-<th>当前角色/情况</th>
-<th>脚本提出的请求</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>工具清单含 <code>lookup_case</code>，说明当前是 researcher</td>
-<td>先查资料，再 <code>write_file</code>，最后返回摘要</td>
-</tr>
-<tr>
-<td>主 Agent 收到第一轮研究问题</td>
-<td>调用 <code>task</code> 委派给 researcher</td>
-</tr>
-<tr>
-<td>主 Agent 收到第二轮明确读文件的要求</td>
-<td>调用 <code>read_file</code></td>
-</tr>
-<tr>
-<td>主 Agent 已收到 ToolMessage</td>
-<td>结束本轮</td>
-</tr>
-</tbody>
-</table>
-<p>第一次可以按这张表理解并运行函数，不必逐行背下分支。报告文字也是预设的，所以这个模式不能证明模型具备比较方案的能力；它检验的是实际工具执行、委派和数据传递。修改教学资料时，也要检查脚本报告和后面的断言是否仍匹配。</p>
+<p>数据已经准备好，但还没有创建容器或执行程序。<code>CALLS</code> 列出本次任务需要的两个调用：先运行程序，再读取报告。offline 模型会按这个顺序提出请求；live 模型会收到同样的任务要求。</p>
+<h2 id="3.-%E7%BB%99-Agent-%E6%8E%A5%E5%85%A5%E6%89%A7%E8%A1%8C%E5%90%8E%E7%AB%AF">3. 给 Agent 接入执行后端<a class="anchor-link" href="#3.-%E7%BB%99-Agent-%E6%8E%A5%E5%85%A5%E6%89%A7%E8%A1%8C%E5%90%8E%E7%AB%AF">¶</a></h2><p><code>create_deep_agent()</code> 把模型与工具组装成可执行的图（Graph），也就是前面看到的循环流程。传入 <code>backend=...</code> 指定文件与命令执行的后端。框架识别 <code>SandboxBackendProtocol</code> 后才向模型提供 <code>execute</code>；本例的 <code>DockerSandbox</code> 继承 <code>BaseSandbox</code>，实现执行、上传、下载与 <code>id</code>，其余文件工具复用基类实现。</p>
+<p><code>DockerSandbox</code> 是本章自定义的教学后端，不是 Deep Agents 官方内置类。它通过 Docker CLI 创建、操作和回收真实容器；上传、下载把字节交给容器里的固定 Python 脚本，不调用模型，也不把传输包装成 Agent 的 <code>execute</code> 请求。<a href="docker_sandbox.py">查看适配源码</a>。远程 Provider 的原生传输方式仍应参考对应 SDK。</p>
+<p>容器使用非 root 用户、只读根文件系统，只有 <code>/workspace</code> 和 <code>/tmp</code> 各有 16 MiB 可写空间；上限为 256 MiB 内存、1 个 CPU、64 个进程。单条命令最多 30 秒。底层 <code>execute()</code> 完整返回输出，因为基类的读取、目录列举、搜索等文件操作也用它传输结构化协议；不能把这些 JSON 结果当作日志裁剪。Agent 的普通命令展示通过 <code>execute_with_offload()</code> 单独限制为最多 32 KiB（框架给出更小预算时沿用该预算），超出部分标为 <code>truncated</code>；异步入口沿用同一限制。本适配器不另存完整命令日志。文件读取继续沿用基类的行分页和大内容续读提示，不受命令展示预算影响。命令超时返回退出码 124；若 Docker 通信本身超时，则回收容器并终止实验。这些是本实验的配置，不是所有 Provider 的默认值。</p>
+<p><code>task_input()</code> 把工具名和参数整理成用户消息；<code>make_agent()</code> 为每个实验组装 Agent，并创建新模型。offline 的响应列表按当前实验的 <code>planned_calls</code> 依次提出请求，最后给出结束回复；它不会检查工具结果，列表也会循环。下面仍要验证真实调用、退出码和文件内容。live 使用公共 <code>create_model()</code> 配置真实模型，任务不符合要求时断言报错。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=f678cb1b">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs celltag_ch10-agent" id="cell-id=97e687d3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8045,77 +8084,50 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">scripted_reply</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">tool_names</span><span class="p">):</span>
-    <span class="n">calls</span> <span class="o">=</span> <span class="p">[</span><span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span>
-             <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">]</span>
-    <span class="k">if</span> <span class="s2">"lookup_case"</span> <span class="ow">in</span> <span class="n">tool_names</span><span class="p">:</span>  <span class="c1"># 只有 researcher 注册了资料工具</span>
-        <span class="k">if</span> <span class="s2">"lookup_case"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">:</span>
-            <span class="n">name</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="s2">"lookup_case"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"case_id"</span><span class="p">:</span> <span class="n">CASE_ID</span><span class="p">}</span>
-        <span class="k">elif</span> <span class="s2">"write_file"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">:</span>
-            <span class="c1"># 固定教学报告；下面的 write_file 仍由实际工具执行。</span>
-            <span class="n">name</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="s2">"write_file"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="n">REPORT_PATH</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span>
-                <span class="s2">"[A] p95 420 ms，错误率 0.4%。</span><span class="se">\n</span><span class="s2">[B] p95 95 ms，错误率 0.6%。</span><span class="se">\n</span><span class="s2">"</span>
-                <span class="s2">"[约束] p95 &lt;150 ms；最多延迟5分钟；错误率 &lt;1%。</span><span class="se">\n</span><span class="s2">结论：方案 B 满足约束。"</span><span class="p">}</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="sa">f</span><span class="s2">"方案 B 满足约束，报告位于 </span><span class="si">{</span><span class="n">REPORT_PATH</span><span class="si">}</span><span class="s2">。"</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">ToolMessage</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="sa">f</span><span class="s2">"已收到工具结果：</span><span class="si">{</span><span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">。"</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">request</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">content</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">HumanMessage</span><span class="p">))</span>
-        <span class="k">if</span> <span class="s2">"read_file"</span> <span class="ow">in</span> <span class="n">request</span><span class="p">:</span>
-            <span class="n">name</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="s2">"read_file"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="n">REPORT_PATH</span><span class="p">}</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">name</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="s2">"task"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"subagent_type"</span><span class="p">:</span> <span class="s2">"researcher"</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">:</span>
-                <span class="s2">"研究 cache-plan，读取固定资料，比较约束并将短报告写入 /research/cache-choice.md。"</span><span class="p">}</span>
-    <span class="k">return</span> <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">tool_calls</span><span class="o">=</span><span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span> <span class="s2">"id"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"ch05-</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">}])</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">make_agent</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">planned_calls</span><span class="p">):</span>
+    <span class="n">responses</span> <span class="o">=</span> <span class="p">[</span><span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">tool_calls</span><span class="o">=</span><span class="p">[</span><span class="n">call</span><span class="p">])</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">planned_calls</span><span class="p">]</span>
+    <span class="n">responses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"本轮结束；请核对实际退出码和下载的报告。"</span><span class="p">))</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="n">ScriptedChatModel</span><span class="p">(</span><span class="n">responses</span><span class="o">=</span><span class="n">responses</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">create_deep_agent</span><span class="p">(</span>
+        <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+        <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span>
+        <span class="n">system_prompt</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"仅按用户给出的顺序调用指定工具，参数原样保留。"</span>
+            <span class="s2">"不要委派、规划、安装依赖或调用其他工具。"</span>
+            <span class="s2">"读取报告后结束；若命令失败，说明失败并结束，不要重试。"</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
 
 
-<span class="n">model</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="n">ScriptedChatModel</span><span class="p">(</span><span class="n">responder</span><span class="o">=</span><span class="n">scripted_reply</span><span class="p">))</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">task_input</span><span class="p">(</span><span class="n">calls</span><span class="p">):</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"messages"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"user"</span><span class="p">,</span> <span class="s2">"依次完成以下工具任务：</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span>
+                          <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">tasks</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))]}</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=bc55bf3b">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e3f8a16c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2.-%E5%A3%B0%E6%98%8E-researcher-%E5%B9%B6%E5%88%9B%E5%BB%BA%E4%B8%BB-Agent">2. 声明 researcher 并创建主 Agent<a class="anchor-link" href="#2.-%E5%A3%B0%E6%98%8E-researcher-%E5%B9%B6%E5%88%9B%E5%BB%BA%E4%B8%BB-Agent">¶</a></h2><p>“声明子 Agent”就是用一个字典告诉框架它的名字、用途和可用工具：</p>
-<table>
-<thead>
-<tr>
-<th>字段</th>
-<th>谁使用它</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>name</code></td>
-<td>主 Agent 用 <code>subagent_type</code> 选择这个子 Agent</td>
-</tr>
-<tr>
-<td><code>description</code></td>
-<td>告诉主 Agent 哪类工作适合交给它</td>
-</tr>
-<tr>
-<td><code>system_prompt</code></td>
-<td>指导子 Agent 自己怎样完成工作</td>
-</tr>
-<tr>
-<td><code>tools</code></td>
-<td>给子 Agent 的自定义工具，这里是 <code>lookup_case</code></td>
-</tr>
-</tbody>
-</table>
-<p>主 Agent 的 <code>tools=[]</code> 表示没有额外传入自定义工具，<strong>不表示完全没有工具</strong>：Deep Agents 仍会装配 <code>task</code>、文件操作等内置工具。本实验聚焦委派和文件传递，不使用其他默认能力来推进任务。</p>
-<p>主 Agent 在运行时通过 <code>task(description=..., subagent_type="researcher")</code> 委派；我们不在 Python 中手动调用这个工具。第一轮提示它暂不读文件，是为了先观察“文件已存在，但正文还没通过 read_file 返回”的状态。</p>
+<h2 id="4.-%E4%B8%80%E6%AC%A1%E5%AE%8C%E6%88%90%E4%B8%8A%E4%BC%A0%E3%80%81%E8%BF%90%E8%A1%8C%E3%80%81%E4%B8%8B%E8%BD%BD%E4%B8%8E%E5%9B%9E%E6%94%B6">4. 一次完成上传、运行、下载与回收<a class="anchor-link" href="#4.-%E4%B8%80%E6%AC%A1%E5%AE%8C%E6%88%90%E4%B8%8A%E4%BC%A0%E3%80%81%E8%BF%90%E8%A1%8C%E3%80%81%E4%B8%8B%E8%BD%BD%E4%B8%8E%E5%9B%9E%E6%94%B6">¶</a></h2><p>把需要容器的操作放在同一个 <code>with DockerSandbox()</code> 中。<code>with</code> 进入时创建容器，正常结束或抛出异常时都会调用回收；不依赖读者再执行最后一个清理格。若内核被强行终止、来不及清理，容器的主进程也只存活 5 分钟，退出后由 Docker 的 <code>--rm</code> 删除。</p>
+<p>下一格按顺序做四件事：</p>
+<ol>
+<li>查看容器配置，并用 <code>python --version</code> 检查真实执行环境。</li>
+<li>用 <code>upload_files()</code> 传入两个文件，逐项核对 <code>error</code>。</li>
+<li>用 <code>invoke()</code> 启动 Agent，让它执行程序、读取报告。</li>
+<li>下载报告和一个故意不存在的文件，观察下载可以部分成功。</li>
+</ol>
+<p>结果保留在宿主变量 <code>result</code>、<code>report</code> 中，离开 <code>with</code> 后还可以检查它们；容器里的文件则随回收消失。只展示相关配置，不打印完整容器信息或宿主路径。<code>recursion_limit=24</code> 限制图的执行步数，避免 live 模型反复请求工具；它不是费用上限。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4b8d2af4">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch10-run" id="cell-id=5848736a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8123,48 +8135,95 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">deepagents</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_deep_agent</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">with</span> <span class="n">DockerSandbox</span><span class="p">()</span> <span class="k">as</span> <span class="n">backend</span><span class="p">:</span>
+    <span class="n">container_name</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">id</span>
+    <span class="n">info</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">inspect</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="n">info</span><span class="p">[</span><span class="s2">"HostConfig"</span><span class="p">][</span><span class="s2">"NetworkMode"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"none"</span>
+    <span class="k">assert</span> <span class="n">info</span><span class="p">[</span><span class="s2">"HostConfig"</span><span class="p">][</span><span class="s2">"ReadonlyRootfs"</span><span class="p">]</span> <span class="ow">and</span> <span class="n">info</span><span class="p">[</span><span class="s2">"Mounts"</span><span class="p">]</span> <span class="o">==</span> <span class="p">[]</span>
+    <span class="k">assert</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">"MODEL_"</span><span class="p">,</span> <span class="s2">"SILICONFLOW_"</span><span class="p">))</span>
+                   <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">info</span><span class="p">[</span><span class="s2">"Config"</span><span class="p">][</span><span class="s2">"Env"</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"容器配置：网络关闭；根文件系统只读；无宿主挂载。"</span><span class="p">)</span>
+    <span class="n">runtime</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"python --version"</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">runtime</span><span class="o">.</span><span class="n">exit_code</span> <span class="o">==</span> <span class="mi">0</span>
+    <span class="n">show_text</span><span class="p">(</span><span class="s2">"容器运行时："</span><span class="p">,</span> <span class="n">runtime</span><span class="o">.</span><span class="n">output</span><span class="p">)</span>
 
-<span class="n">researcher</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"researcher"</span><span class="p">,</span>
-    <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"研究本地 cache-plan 案例，比较 A、B 两种方案，并把证据写入文件。"</span><span class="p">,</span>
-    <span class="s2">"system_prompt"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"""你是研究员。处理 cache-plan 时：</span>
-<span class="s2">1. 调用 lookup_case(case_id="</span><span class="si">{</span><span class="n">CASE_ID</span><span class="si">}</span><span class="s2">") 获取资料；</span>
-<span class="s2">2. 根据资料比较 A、B 与约束，使用 write_file 把短报告写入 </span><span class="si">{</span><span class="n">REPORT_PATH</span><span class="si">}</span><span class="s2">；</span>
-<span class="s2">3. 报告中保留 [A]、[B]、[约束] 三个资料标签，并给出结论；</span>
-<span class="s2">4. 最终只返回一两句结论及文件路径，不复制整段原始资料。"""</span><span class="p">,</span>
-    <span class="s2">"tools"</span><span class="p">:</span> <span class="p">[</span><span class="n">lookup_case</span><span class="p">],</span>
-<span class="p">}</span>
+    <span class="n">uploads</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">upload_files</span><span class="p">(</span><span class="n">INPUT_FILES</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">uploads</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">INPUT_FILES</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">upload</span><span class="p">,</span> <span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">uploads</span><span class="p">,</span> <span class="n">INPUT_FILES</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">upload</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="n">path</span> <span class="ow">and</span> <span class="n">upload</span><span class="o">.</span><span class="n">error</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"上传成功："</span><span class="p">,</span> <span class="n">upload</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
 
-<span class="n">agent</span> <span class="o">=</span> <span class="n">create_deep_agent</span><span class="p">(</span>
-    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
-    <span class="n">tools</span><span class="o">=</span><span class="p">[],</span>
-    <span class="n">system_prompt</span><span class="o">=</span><span class="p">(</span>
-        <span class="s2">"你是协调者。遇到 cache-plan 研究任务，必须调用 task，"</span>
-        <span class="s2">"并指定 subagent_type=researcher。研究资料由 researcher 的 lookup_case 工具提供，"</span>
-        <span class="s2">"报告写入虚拟文件；不要要求搜索磁盘。收到结果后简短转述，"</span>
-        <span class="s2">"本轮不要调用 lookup_case 或 read_file。后续用户明确要求读文件时再调用 read_file。"</span>
-    <span class="p">),</span>
-    <span class="n">subagents</span><span class="o">=</span><span class="p">[</span><span class="n">researcher</span><span class="p">],</span>
-<span class="p">)</span>
+    <span class="n">agent</span> <span class="o">=</span> <span class="n">make_agent</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">CALLS</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">task_input</span><span class="p">(</span><span class="n">CALLS</span><span class="p">),</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">"recursion_limit"</span><span class="p">:</span> <span class="mi">24</span><span class="p">})</span>
+    <span class="n">downloads</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">download_files</span><span class="p">([</span>
+        <span class="s2">"/workspace/report.json"</span><span class="p">,</span> <span class="s2">"/workspace/missing.json"</span><span class="p">,</span>
+    <span class="p">])</span>
+    <span class="k">assert</span> <span class="n">downloads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">error</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">downloads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">assert</span> <span class="n">downloads</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">content</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">downloads</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">error</span> <span class="o">==</span> <span class="s2">"file_not_found"</span>
+    <span class="n">report</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">downloads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">))</span>
+    <span class="n">show_text</span><span class="p">(</span><span class="s2">"宿主下载的报告："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"缺失文件的逐项错误："</span><span class="p">,</span> <span class="n">downloads</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">error</span><span class="p">)</span>
+
+<span class="k">assert</span> <span class="ow">not</span> <span class="n">container_exists</span><span class="p">(</span><span class="n">container_name</span><span class="p">),</span> <span class="s2">"容器没有回收"</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"容器已回收；报告副本仍保存在宿主变量 report 中。"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a407a4ae">
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>容器配置：网络关闭；根文件系统只读；无宿主挂载。
+
+容器运行时：
+Python 3.12.14
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>上传成功： /workspace/orders.json
+上传成功： /workspace/analyze.py
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>
+宿主下载的报告：
+{
+  "orders": 3,
+  "total": 75
+}
+缺失文件的逐项错误： file_not_found
+容器已回收；报告副本仍保存在宿主变量 report 中。
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9a1c6c9f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="3.-%E5%A7%94%E6%B4%BE%E4%B8%80%E6%AC%A1%E7%A0%94%E7%A9%B6%E4%BB%BB%E5%8A%A1">3. 委派一次研究任务<a class="anchor-link" href="#3.-%E5%A7%94%E6%B4%BE%E4%B8%80%E6%AC%A1%E7%A0%94%E7%A9%B6%E4%BB%BB%E5%8A%A1">¶</a></h2><p><code>invoke</code> 接收输入状态并运行 Agent；<code>messages</code> 中的 <code>role="user"</code> 和 <code>content</code> 分别表示说话角色和问题文本。返回的 <code>first_result</code> 包含本轮消息以及更新后的文件状态。</p>
-<p>预期主 Agent 调用 <code>task</code>，等待 researcher 查资料、写报告，再收到简短回传。下一格只打印消息数，后面两节会打开消息内容检查。消息数本身不证明委派成功。</p>
+<p>输出中的 <code>orders: 3</code>、<code>total: 75</code> 来自实际下载的文件。第二个文件返回 <code>file_not_found</code>，没有影响第一个文件下载。最后的回收检查确认资源已删除；镜像缓存仍保留，后续运行可以复用。</p>
+<p>这还不能单独证明 Agent 按要求用了工具：应用本身也可以执行 Backend 接口。下一节将下载内容与 Agent 消息链对应起来。</p>
+<h2 id="5.-%E6%A0%B8%E5%AF%B9%E8%AF%B7%E6%B1%82%E3%80%81%E7%BB%93%E6%9E%9C%E5%92%8C%E5%AE%9E%E9%99%85%E4%BA%A7%E7%89%A9">5. 核对请求、结果和实际产物<a class="anchor-link" href="#5.-%E6%A0%B8%E5%AF%B9%E8%AF%B7%E6%B1%82%E3%80%81%E7%BB%93%E6%9E%9C%E5%92%8C%E5%AE%9E%E9%99%85%E4%BA%A7%E7%89%A9">¶</a></h2><p><code>check_loop()</code> 检查工具名与参数符合任务要求，每个返回消息都对应原调用 ID，并打印结果。嵌套推导式先遍历模型消息，再取出各条消息中的调用；<code>zip()</code> 将每个调用和它的返回配对。本例按顺序运行工具，因此也检查返回的顺序。</p>
+<p><code>execute</code> 的 <code>ToolMessage.artifact["exit_code"]</code> 保存命令退出码，<strong>0 才表示程序成功</strong>。<code>read_file</code> 的结果先用 <code>@@ lines ... @@</code> 标明读取范围，下面才是 JSON 内容。检查时用 <code>partition("\n")</code> 去掉第一行范围提示，再解析 JSON，与宿主下载后解析出的 JSON 对象比较。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=e7426529">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch10-check" id="cell-id=f09efcca">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8172,13 +8231,34 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">first_result</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span>
-    <span class="s2">"messages"</span><span class="p">:</span> <span class="p">[{</span>
-        <span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span>
-        <span class="s2">"content"</span><span class="p">:</span> <span class="s2">"请把 cache-plan 案例交给 researcher：比较 A、B 哪个满足约束，保存有证据的短报告，然后告诉我结论。"</span><span class="p">,</span>
-    <span class="p">}]</span>
-<span class="p">})</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"本轮主 Agent 消息数:"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]))</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">check_loop</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">planned_calls</span><span class="p">):</span>
+    <span class="n">messages</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
+    <span class="n">calls</span> <span class="o">=</span> <span class="p">[</span><span class="n">call</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span>
+             <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">]</span>
+    <span class="n">actual</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">]</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">planned_calls</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="n">actual</span> <span class="o">==</span> <span class="n">expected</span><span class="p">,</span> <span class="s2">"工具名称、参数或调用顺序与任务要求不同"</span>
+    <span class="n">replies</span> <span class="o">=</span> <span class="p">[</span><span class="n">message</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">replies</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">calls</span><span class="p">),</span> <span class="s2">"工具结果数量不符"</span>
+    <span class="k">for</span> <span class="n">call</span><span class="p">,</span> <span class="n">reply</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">calls</span><span class="p">,</span> <span class="n">replies</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="o">==</span> <span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="ow">and</span> <span class="n">reply</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">reply</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span><span class="p">,</span> <span class="s2">"工具接口调用出错"</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"请求工具："</span><span class="p">,</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">])</span>
+        <span class="n">show_text</span><span class="p">(</span><span class="s2">"  参数："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">],</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  调用 ID："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  工具消息状态："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">reply</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"execute"</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"  命令退出码："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">artifact</span><span class="p">[</span><span class="s2">"exit_code"</span><span class="p">])</span>
+        <span class="n">show_text</span><span class="p">(</span><span class="s2">"  工具实际返回："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">AIMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tool_calls</span>
+    <span class="k">return</span> <span class="n">replies</span>
+
+<span class="n">replies</span> <span class="o">=</span> <span class="n">check_loop</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">CALLS</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">replies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">artifact</span><span class="p">[</span><span class="s2">"exit_code"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">"分析程序执行失败"</span>
+<span class="n">read_report</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">replies</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)[</span><span class="mi">2</span><span class="p">])</span>
+<span class="k">assert</span> <span class="n">read_report</span> <span class="o">==</span> <span class="n">report</span><span class="p">,</span> <span class="s2">"Agent 读取的内容与宿主下载的报告不一致"</span>
+<span class="k">assert</span> <span class="n">report</span> <span class="o">==</span> <span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">"total"</span><span class="p">:</span> <span class="mi">75</span><span class="p">},</span> <span class="s2">"报告不符合三笔订单、总额 75 的要求"</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"已核对：执行请求、成功退出码、读取请求与下载报告一致。"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8191,25 +8271,58 @@ langchain-openai==1.6.7
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>本轮主 Agent 消息数: 4
+<pre>请求工具： execute
+
+  参数：
+{
+  "command": "python /workspace/analyze.py"
+}
+  调用 ID： ch10-execute
+  工具消息状态： success
+  命令退出码： 0
+
+  工具实际返回：
+{
+  "orders": 3,
+  "total": 75
+}
+
+[Command succeeded with exit code 0]
+请求工具： read_file
+
+  参数：
+{
+  "file_path": "/workspace/report.json"
+}
+  调用 ID： ch10-read
+  工具消息状态： success
+
+  工具实际返回：
+@@ lines 1-4 of 4 @@
+{
+  "orders": 3,
+  "total": 75
+}
+已核对：执行请求、成功退出码、读取请求与下载报告一致。
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b88d2b1c">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2e859649">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="3.1-%E6%A3%80%E6%9F%A5-task-%E7%9A%84%E8%BE%93%E5%85%A5%E4%B8%8E%E8%BF%94%E5%9B%9E">3.1 检查 <code>task</code> 的输入与返回<a class="anchor-link" href="#3.1-%E6%A3%80%E6%9F%A5-task-%E7%9A%84%E8%BE%93%E5%85%A5%E4%B8%8E%E8%BF%94%E5%9B%9E">¶</a></h3><p><code>AIMessage.tool_calls</code> 记录主 Agent 选择了谁、交代了什么任务；名称为 <code>task</code> 的 ToolMessage 保存子 Agent 的回传。代码里的列表推导式负责从全部消息中筛出这两类记录。</p>
-<p>预期输出按顺序给出：委派对象 <code>researcher</code>、任务说明、简短结论及文件路径、<code>lookup_case</code> 实际读到的 A/B 资料。最后一项来自 Python 观察列表 <code>lookup_trace</code>，不是从主 Agent 消息里复制出来的。</p>
+<p>应看到 <code>execute → read_file</code> 两个请求及各自的结果；退出码为 0，文件读取和宿主下载均显示总额 75。上传、下载不是模型提出的工具调用，而是上一格的应用代码。</p>
+<h2 id="6.-%E5%91%BD%E4%BB%A4%E5%A4%B1%E8%B4%A5%EF%BC%9A%E5%B7%A5%E5%85%B7%E6%B6%88%E6%81%AF%E6%88%90%E5%8A%9F%E4%B8%8D%E7%AD%89%E4%BA%8E%E7%A8%8B%E5%BA%8F%E6%88%90%E5%8A%9F">6. 命令失败：工具消息成功不等于程序成功<a class="anchor-link" href="#6.-%E5%91%BD%E4%BB%A4%E5%A4%B1%E8%B4%A5%EF%BC%9A%E5%B7%A5%E5%85%B7%E6%B6%88%E6%81%AF%E6%88%90%E5%8A%9F%E4%B8%8D%E7%AD%89%E4%BA%8E%E7%A8%8B%E5%BA%8F%E6%88%90%E5%8A%9F">¶</a></h2><p>新建一个独立容器，运行会打印说明并以 <strong>7</strong> 退出的 Python 命令。这不是分析任务的一部分，而是有意观察失败返回。脚本模型随后照常给出结束回复，因此尤其需要检查真实退出码。</p>
+<p>锁定版本中，Backend 成功返回执行结果时，框架生成的工具消息仍可能是 <code>status="success"</code>；它表示工具接口返回了结果。程序是否成功还要看 <code>artifact["exit_code"]</code>。不要把这里的语义套到第 9 章的拒绝反馈上。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=56685938">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch10-failure" id="cell-id=b8827bde">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8217,33 +8330,25 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIMessage</span><span class="p">,</span> <span class="n">ToolMessage</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">FAIL_PROGRAM</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">"print('planned failure')</span><span class="se">\n</span><span class="s2">raise SystemExit(7)</span><span class="se">\n</span><span class="s2">"</span>
+<span class="n">FAIL_CALLS</span> <span class="o">=</span> <span class="p">[{</span>
+    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"execute"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"command"</span><span class="p">:</span> <span class="s2">"python /workspace/fail.py"</span><span class="p">},</span>
+    <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"ch10-failure"</span><span class="p">,</span>
+<span class="p">}]</span>
+<span class="k">with</span> <span class="n">DockerSandbox</span><span class="p">()</span> <span class="k">as</span> <span class="n">failed_backend</span><span class="p">:</span>
+    <span class="n">failed_container</span> <span class="o">=</span> <span class="n">failed_backend</span><span class="o">.</span><span class="n">id</span>
+    <span class="n">uploaded</span> <span class="o">=</span> <span class="n">failed_backend</span><span class="o">.</span><span class="n">upload_files</span><span class="p">([(</span><span class="s2">"/workspace/fail.py"</span><span class="p">,</span> <span class="n">FAIL_PROGRAM</span><span class="p">)])</span>
+    <span class="k">assert</span> <span class="n">uploaded</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">error</span> <span class="ow">is</span> <span class="kc">None</span>
+    <span class="n">failed_agent</span> <span class="o">=</span> <span class="n">make_agent</span><span class="p">(</span><span class="n">failed_backend</span><span class="p">,</span> <span class="n">FAIL_CALLS</span><span class="p">)</span>
+    <span class="n">failed_result</span> <span class="o">=</span> <span class="n">failed_agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
+        <span class="n">task_input</span><span class="p">(</span><span class="n">FAIL_CALLS</span><span class="p">),</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">"recursion_limit"</span><span class="p">:</span> <span class="mi">24</span><span class="p">},</span>
+    <span class="p">)</span>
 
-<span class="n">task_calls</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">call</span>
-    <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span>
-    <span class="k">if</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"task"</span>
-<span class="p">]</span>
-<span class="n">task_results</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">message</span>
-    <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="n">message</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"task"</span>
-<span class="p">]</span>
-<span class="k">assert</span> <span class="nb">any</span><span class="p">(</span><span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"subagent_type"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"researcher"</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">task_calls</span><span class="p">),</span> <span class="p">(</span>
-    <span class="s2">"主 Agent 没有委派给 researcher；请检查 MODEL_NAME 是否支持工具调用，以及主 Agent 提示词。"</span>
-<span class="p">)</span>
-<span class="k">assert</span> <span class="n">task_results</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">task_results</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">content</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="s2">"task 没有返回可观察的结果。"</span>
-<span class="k">assert</span> <span class="nb">any</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"case_id"</span><span class="p">]</span> <span class="o">==</span> <span class="n">CASE_ID</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">lookup_trace</span><span class="p">),</span> <span class="p">(</span>
-    <span class="s2">"researcher 没有读取固定资料；请检查它是否调用 lookup_case。"</span>
-<span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">"委派对象:"</span><span class="p">,</span> <span class="n">task_calls</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"subagent_type"</span><span class="p">])</span>
-<span class="n">show_text</span><span class="p">(</span><span class="s2">"task 任务说明"</span><span class="p">,</span> <span class="n">task_calls</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"description"</span><span class="p">])</span>
-<span class="n">show_text</span><span class="p">(</span><span class="s2">"task 返回"</span><span class="p">,</span> <span class="n">task_results</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">lookup_trace</span><span class="p">:</span>
-    <span class="n">show_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">"lookup_case(</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'case_id'</span><span class="p">]</span><span class="si">}</span><span class="s2">) 返回"</span><span class="p">,</span> <span class="n">item</span><span class="p">[</span><span class="s2">"result"</span><span class="p">])</span>
+<span class="n">failed_replies</span> <span class="o">=</span> <span class="n">check_loop</span><span class="p">(</span><span class="n">failed_result</span><span class="p">,</span> <span class="n">FAIL_CALLS</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">failed_replies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">artifact</span><span class="p">[</span><span class="s2">"exit_code"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">7</span>
+<span class="k">assert</span> <span class="s2">"planned failure"</span> <span class="ow">in</span> <span class="n">failed_replies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+<span class="k">assert</span> <span class="ow">not</span> <span class="n">container_exists</span><span class="p">(</span><span class="n">failed_container</span><span class="p">),</span> <span class="s2">"失败实验留下了容器"</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"命令确实失败；执行结果已返回；失败实验的容器也已回收。"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8256,255 +8361,77 @@ langchain-openai==1.6.7
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>委派对象: researcher
+<pre>请求工具： execute
 
-task 任务说明
-研究 cache-plan，读取固定资料，比较约束并将短报告写入 /research/cache-choice.md。
+  参数：
+{
+  "command": "python /workspace/fail.py"
+}
+  调用 ID： ch10-failure
+  工具消息状态： success
+  命令退出码： 7
 
-task 返回
-方案 B 满足约束，报告位于 /research/cache-choice.md。
+  工具实际返回：
+planned failure
 
-lookup_case(cache-plan) 返回
-[A] 实时汇总：同一组 1000 次请求中，p95 延迟 420 ms，错误率 0.4%。
-[B] 每 5 分钟更新一次缓存：同一组请求中，p95 延迟 95 ms，错误率 0.6%。
-[约束] p95 必须低于 150 ms；允许结果最多延迟 5 分钟；错误率必须低于 1%。
+[Command failed with exit code 7]
+命令确实失败；执行结果已返回；失败实验的容器也已回收。
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=17b0e5e9">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=29fbe584">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="3.2-%E6%A3%80%E6%9F%A5%E6%B6%88%E6%81%AF%E4%B8%8A%E4%B8%8B%E6%96%87%E8%BE%B9%E7%95%8C">3.2 检查消息上下文边界<a class="anchor-link" href="#3.2-%E6%A3%80%E6%9F%A5%E6%B6%88%E6%81%AF%E4%B8%8A%E4%B8%8B%E6%96%87%E8%BE%B9%E7%95%8C">¶</a></h3><p>researcher 内部已经调用 <code>lookup_case</code> 和 <code>write_file</code>。主 Agent 的消息里应出现自己的 <code>task</code> 结果，不自动展开子 Agent 的逐步工具记录。</p>
-<p>下一格应打印主 Agent 收到的工具结果名（offline 为 <code>['task']</code>），并确认第一轮没有 <code>read_file</code>。这些 <code>assert</code> 用来固定观察时机：如果主 Agent 提前读了文件，就不能再用这一轮演示“主动读取之前”的边界。</p>
-<p>这里讨论模型消息怎样传递；Python 程序仍可能从返回状态中直接访问文件。下一节观察的正是这个区别。</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_parent-message-boundary" id="cell-id=5ad0998f">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">parent_tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">message</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
-<span class="n">parent_calls</span> <span class="o">=</span> <span class="p">[</span><span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">]</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"主 Agent 收到的工具结果名:"</span><span class="p">,</span> <span class="n">parent_tools</span><span class="p">)</span>
-<span class="k">assert</span> <span class="s2">"task"</span> <span class="ow">in</span> <span class="n">parent_tools</span>
-<span class="k">assert</span> <span class="s2">"lookup_case"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">parent_tools</span>
-<span class="k">assert</span> <span class="s2">"write_file"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">parent_tools</span>
-<span class="k">assert</span> <span class="s2">"read_file"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">parent_calls</span> <span class="ow">and</span> <span class="s2">"read_file"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">parent_tools</span><span class="p">,</span> <span class="p">(</span>
-    <span class="s2">"主 Agent 第一轮提前读了文件，无法观察读取前的消息与文件边界。"</span>
-<span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"已验证：子 Agent 工具记录未并入主消息，主 Agent 第一轮尚未主动读文件。"</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>主 Agent 收到的工具结果名: ['task']
-已验证：子 Agent 工具记录未并入主消息，主 Agent 第一轮尚未主动读文件。
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f9672b6c">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="4.-%E6%A3%80%E6%9F%A5%E5%85%B1%E4%BA%AB%E7%9A%84%E6%96%87%E4%BB%B6%E7%8A%B6%E6%80%81">4. 检查共享的文件状态<a class="anchor-link" href="#4.-%E6%A3%80%E6%9F%A5%E5%85%B1%E4%BA%AB%E7%9A%84%E6%96%87%E4%BB%B6%E7%8A%B6%E6%80%81">¶</a></h2><p>默认 <code>StateBackend</code> 把文件保存在 Agent 状态中。researcher 写完报告后，我们可以用普通 Python 读取 <code>first_result["files"][REPORT_PATH]</code>。</p>
-<table>
-<thead>
-<tr>
-<th>谁在读取</th>
-<th>现在看到了什么</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Notebook 中的 Python 代码</td>
-<td>可以查看整个返回状态，包括报告文件内容</td>
-</tr>
-<tr>
-<td>主 Agent 的模型消息</td>
-<td>已有 task 的简短回传；尚未出现 read_file 返回的报告正文</td>
-</tr>
-</tbody>
-</table>
-<p><strong>在 Notebook 里展示文件，不会自动把正文发送给模型。</strong> 这也解释了为什么“消息上下文隔离”和“文件状态共享”可以同时成立。</p>
-<p>下一格应找到虚拟文件 <code>/research/cache-choice.md</code>，报告包含 <code>[A]</code>、<code>[B]</code>、<code>[约束]</code> 和关键数值。Markdown 原文放在代码块里显示，避免报告自己的标题混入 Notebook 章节。</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=f080ba16">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">report</span> <span class="o">=</span> <span class="n">first_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"files"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">REPORT_PATH</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">report</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"researcher 未在共享状态中写入 </span><span class="si">{</span><span class="n">REPORT_PATH</span><span class="si">}</span><span class="s2">。"</span>
-<span class="n">report_text</span> <span class="o">=</span> <span class="n">report</span><span class="p">[</span><span class="s2">"content"</span><span class="p">]</span>
-<span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">label</span> <span class="ow">in</span> <span class="n">report_text</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"[A]"</span><span class="p">,</span> <span class="s2">"[B]"</span><span class="p">,</span> <span class="s2">"[约束]"</span><span class="p">,</span> <span class="s2">"420"</span><span class="p">,</span> <span class="s2">"95"</span><span class="p">)),</span> <span class="p">(</span>
-    <span class="s2">"报告缺少固定资料标签或关键延迟数据；请检查 researcher 的 write_file 调用。"</span>
-<span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">Markdown</span><span class="p">,</span> <span class="n">display</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">"共享文件:"</span><span class="p">,</span> <span class="n">REPORT_PATH</span><span class="p">)</span>
-<span class="n">display</span><span class="p">(</span><span class="n">Markdown</span><span class="p">(</span><span class="s2">"````markdown</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="n">report_text</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">````"</span><span class="p">))</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>共享文件: /research/cache-choice.md
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-OutputArea-output" data-mime-type="text/markdown" tabindex="0">
-<div class="highlight"><pre><span></span>[A] p95 420 ms，错误率 0.4%。
-[B] p95 95 ms，错误率 0.6%。
-[约束] p95 &lt;150 ms；最多延迟5分钟；错误率 &lt;1%。
-结论：方案 B 满足约束。
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d4cd6260">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="4.1-%E8%AE%A9%E4%B8%BB-Agent-%E4%B8%BB%E5%8A%A8%E8%AF%BB%E5%8F%96%E6%96%87%E4%BB%B6">4.1 让主 Agent 主动读取文件<a class="anchor-link" href="#4.1-%E8%AE%A9%E4%B8%BB-Agent-%E4%B8%BB%E5%8A%A8%E8%AF%BB%E5%8F%96%E6%96%87%E4%BB%B6">¶</a></h3><p>本例没有配置跨调用的持久化保存。第二次 <code>invoke</code> 显式传回 <code>messages</code> 和 <code>files</code>，不能假设同一个 Agent 对象会自动记住上一轮数据。</p>
-<p><code>*first_result["messages"]</code> 是 Python 列表展开：把旧消息逐条放进新列表，再追加用户的读文件要求。传入 <code>files</code> 则把同一份虚拟文件交给新一轮。<code>new_messages</code> 通过切片只取新产生的消息。</p>
-<p>这次 <code>read_file</code> 返回后，报告正文才作为工具消息进入主 Agent 的上下文。预期输出包括文件返回头、报告行数和“已读回共享状态中的完整报告”；代码会确认读回文本包含上一格的完整报告，避免重复打印整篇正文。</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=86f3dfbe">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">second_result</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span>
-    <span class="s2">"messages"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="o">*</span><span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">],</span>
-        <span class="p">{</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"请使用 read_file 读取 </span><span class="si">{</span><span class="n">REPORT_PATH</span><span class="si">}</span><span class="s2">，再简短告诉我报告的结论。"</span><span class="p">},</span>
-    <span class="p">],</span>
-    <span class="s2">"files"</span><span class="p">:</span> <span class="n">first_result</span><span class="p">[</span><span class="s2">"files"</span><span class="p">],</span>
-<span class="p">})</span>
-<span class="n">new_messages</span> <span class="o">=</span> <span class="n">second_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">][</span><span class="nb">len</span><span class="p">(</span><span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]):]</span>
-<span class="n">read_results</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">message</span>
-    <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">new_messages</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="n">message</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"read_file"</span>
-<span class="p">]</span>
-<span class="k">assert</span> <span class="n">read_results</span><span class="p">,</span> <span class="s2">"主 Agent 未调用 read_file；请换用能可靠调用工具的 MODEL_NAME 后重跑。"</span>
-<span class="n">read_text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">read_results</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">report_text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">in</span> <span class="n">read_text</span><span class="p">,</span> <span class="s2">"read_file 读回的内容与共享状态中的报告不一致。"</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"read_file 返回头:"</span><span class="p">,</span> <span class="n">read_text</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"已读回共享状态中的完整报告："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">report_text</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()),</span> <span class="s2">"行"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"已验证：消息上下文隔离，文件状态共享；主 Agent 主动读取后才看到文件内容。"</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>read_file 返回头: @@ lines 1-4 of 4 @@
-已读回共享状态中的完整报告： 4 行
-已验证：消息上下文隔离，文件状态共享；主 Agent 主动读取后才看到文件内容。
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=15e350c3">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="%E5%9B%9E%E9%A1%BE%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">回顾、练习与清理<a class="anchor-link" href="#%E5%9B%9E%E9%A1%BE%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">¶</a></h2><p>本次证据有三部分：主 Agent 通过 task 得到简短回传；子 Agent 内部工具记录没有自动进入主消息；文件更新回到主状态，第二轮主动 read_file 才把正文带入主消息。</p>
-<h3 id="%E7%BB%83%E4%B9%A0%EF%BC%9A%E8%81%8A%E5%A4%A9%E9%87%8C%E7%9A%84%E6%96%87%E4%BB%B6%E8%B7%AF%E5%BE%84%E8%83%BD%E4%BB%A3%E6%9B%BF%E6%96%87%E4%BB%B6%E5%86%85%E5%AE%B9%E5%90%97%EF%BC%9F">练习：聊天里的文件路径能代替文件内容吗？<a class="anchor-link" href="#%E7%BB%83%E4%B9%A0%EF%BC%9A%E8%81%8A%E5%A4%A9%E9%87%8C%E7%9A%84%E6%96%87%E4%BB%B6%E8%B7%AF%E5%BE%84%E8%83%BD%E4%BB%A3%E6%9B%BF%E6%96%87%E4%BB%B6%E5%86%85%E5%AE%B9%E5%90%97%EF%BC%9F">¶</a></h3><ol>
-<li>保持 offline，在第二次 <code>agent.invoke</code> 中暂时去掉 <code>"files": first_result["files"]</code>，其余输入不变。先预测：已有的 task 摘要还在，但新一轮是否还能读到报告？</li>
-<li>只重跑第二次调用那一格。它应在完整内容断言处停止；另开一格运行 <code>print(read_text)</code>，查看实际的文件读取错误。<code>read_text</code> 在断言之前已经赋值，所以失败后仍可查看。核对思路：聊天记录包含文件路径，不等于这次状态里有该文件。</li>
-<li>恢复 <code>files</code>，重启内核并全部运行，确认内容检查重新通过。</li>
+<p>输出中工具消息状态是 <code>success</code>，命令退出码却是 7，并带有实际程序打印的 <code>planned failure</code>。这说明工具调用成功返回了一个失败的命令结果；最终模型回复不能把它变成成功。</p>
+<h2 id="7.-%E7%BB%83%E4%B9%A0%E3%80%81%E8%BE%B9%E7%95%8C%E4%B8%8E%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98">7. 练习、边界与常见问题<a class="anchor-link" href="#7.-%E7%BB%83%E4%B9%A0%E3%80%81%E8%BE%B9%E7%95%8C%E4%B8%8E%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98">¶</a></h2><h3 id="%E6%94%B9%E4%B8%80%E4%B8%AA%E5%8F%98%E9%87%8F%E5%86%8D%E8%A7%82%E5%AF%9F">改一个变量再观察<a class="anchor-link" href="#%E6%94%B9%E4%B8%80%E4%B8%AA%E5%8F%98%E9%87%8F%E5%86%8D%E8%A7%82%E5%AF%9F">¶</a></h3><ol>
+<li>只把第 2 节第一笔订单的 <code>price</code> 从 10 改成 12，先预测总额：应该从 75 变成多少？</li>
+<li>重启内核并全部运行。第 4 节下载的报告应显示 <strong>79</strong>，第 5 节仍要求 75 的业务断言会失败；这不是执行失败，而是输入已改变，原验收要求不再匹配。</li>
+<li>此时第 4 节的容器已经回收，报错不会留下任务环境。恢复价格 10，重启内核并全部运行，两个实验都应通过。</li>
 </ol>
-<p>另一个小练习：在脚本报告中移除 <code>95</code>，从头运行，观察“报告缺少关键延迟数据”的断言。它检查证据完整性，不是在评价文笔。</p>
+<h3 id="%E6%9C%AC%E5%AE%9E%E9%AA%8C%E9%AA%8C%E8%AF%81%E5%88%B0%E5%93%AA%E9%87%8C%EF%BC%9F">本实验验证到哪里？<a class="anchor-link" href="#%E6%9C%AC%E5%AE%9E%E9%AA%8C%E9%AA%8C%E8%AF%81%E5%88%B0%E5%93%AA%E9%87%8C%EF%BC%9F">¶</a></h3><ul>
+<li>验证真实本地容器、Backend 接口、Agent 工具循环、文件传输与正常/异常退出清理；offline 不验证模型推理或自动编程质量。</li>
+<li>不验证 LangSmith、Daytona 等远程 Provider 的账号、网络、费用、TTL 或复用行为。换成远程 Backend 时仍要沿用对应 Provider 的创建与销毁接口。</li>
+<li>容器的网络、挂载与资源限制是实验配置，不是对恶意代码的完整安全保证；容器仍依赖 Docker Engine 的隔离机制。下载产物也应由应用检查后使用，本例只解析 JSON，不执行下载的代码。</li>
+<li>Agent 的命令展示入口将超过预算的输出标为 <code>truncated=True</code>；部分输出不能当作完整日志。底层文件操作协议不截断；本章真实容器回归核对 41,000 字节文本的完整/分页读取和 400 项目录集合，以及同步/异步通路。本例输出很短，不演示正文的长日志保存流程。</li>
+<li><code>with</code> 会处理正常返回和 Python 异常；若 Docker Engine 不可达，回收会明确报错，不能把连接失败当作“容器已经不存在”。镜像缓存与 Docker Engine 本身不由本实验删除或关闭。</li>
+</ul>
 <table>
 <thead>
 <tr>
-<th>失败位置</th>
-<th>先检查什么</th>
+<th>现象</th>
+<th>检查什么</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>没有 task / 没有 lookup_trace</td>
-<td>是否按顺序创建模型、工具和 Agent；live 时模型是否遵从委派要求</td>
+<td>Docker 命令不存在或连接失败</td>
+<td>安装 Docker，启动 Engine，先在终端确认 <code>docker info</code> 成功</td>
 </tr>
 <tr>
-<td><code>report is None</code></td>
-<td>子 Agent 是否执行 write_file，写入路径是否正确</td>
+<td>首次镜像下载失败</td>
+<td>检查 Docker 到镜像仓库的网络；镜像摘要在适配文件中，不随意换成其他镜像</td>
 </tr>
 <tr>
-<td>第一轮出现 read_file</td>
-<td>提前读文件破坏了本次观察时机，应排查调用记录</td>
+<td>报告下载结果的 <code>content</code> 为 <code>None</code></td>
+<td>逐项检查 <code>error</code>，确认程序成功并写入目标路径</td>
 </tr>
 <tr>
-<td>第二轮读回内容不一致</td>
-<td>是否传回 files，是否读了同一路径</td>
+<td><code>execute</code> 结果是非零退出码</td>
+<td>查看实际命令输出；消息状态或模型说完成都不能替代退出码</td>
+</tr>
+<tr>
+<td>live 调用顺序断言失败</td>
+<td>核对模型提出的工具与参数；不以 offline 结果代替这次真实模型结果</td>
 </tr>
 </tbody>
 </table>
-<p>文件和观察列表都在本例内存状态中，重启内核即可清理，不会在电脑磁盘留下这份虚拟报告。可用下面的终端命令重新独立执行；完成后继续 <a href="../ch06/01-async-subagent-lifecycle.ipynb">第 6 章 Notebook</a>。</p>
-<div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>course_notebooks.run<span class="w"> </span>ch05-subagents
-</pre></div>
+<p>实验中的容器已回收，剩余报告只是宿主内存中的副本；重启内核即可清空变量。回到<a href="../../content/ch10-sandboxes.md">第 10 章正文</a>了解远程集成、文件平面与生命周期；制作章节时参考<a href="../CONTRIBUTING.md">贡献指南</a>。</p>
 </div>
 </div>
 </div>

@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`7247413fd58f`。
+> 本次执行模式：**offline**。源码指纹：`22c5256933d6`。
 
 # 第 2 章 Notebook（一）：快速上手与自定义工具
 
@@ -32,6 +32,14 @@ uv run --project notebooks --locked python -m course_notebooks.run ch02-quicksta
 
 默认 **offline** 模式使用脚本模型：模型消息是预先写好的，工具函数和 Agent 框架仍真实执行。随附输出来自这个模式；它验证框架机制，不证明真实模型会正确选择工具。需要真实模型时，按 [统一配置说明](../README.md) 准备 Key，再在上面的命令末尾加 `--mode live`。live 需要网络，可能产生调用费用；缺配置或调用失败会直接报错，不会退回脚本模型。
 
+### 硅流真实模型（live）
+
+**待验证**（2026-10-06 核对）：当前版本尚无整本 live 通过记录，暂不列出已验证型号。先用 offline 学习；补验后再填写完整型号、日期、验证版本和记录链接。
+
+配置：在未提交的根目录 `.env` 中填写 `SILICONFLOW_API_KEY` 和完整 `MODEL_NAME`；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 [README 模型记录说明](../README.md#live-records)。随附输出仍为 offline。
+
+范围与服务：正常的天气、换算和计算场景使用真实模型；故意制造 Schema 错误和函数异常的场景仍使用脚本模型。无需额外服务。
+
 
 ```python
 from course_notebooks.nbtools import show_runtime
@@ -60,7 +68,7 @@ model = ChatOpenAI(
 )
 ```
 
-Notebook 里改用课程辅助函数 `create_model(...)`：live 模式下它按同样的环境变量创建 `ChatOpenAI`；默认 offline 模式下，它直接返回我们传入的脚本模型，不读取 Key、不发网络请求。其余代码与正文一致。
+Notebook 里改用课程辅助函数 `create_model(...)`：live 模式下它要求显式填写 `MODEL_NAME`，并创建 `ChatOpenAI` 的兼容子类 `StreamingChatOpenAI`；默认 offline 模式下，它直接返回我们传入的脚本模型，不读取 Key、不发网络请求。上面的 7B 型号是正文的入门配置示例，不是本 Notebook 的完整 live 验证记录。
 
 脚本模型 `ScriptedChatModel` 按顺序回放 `responses` 列表里的消息。`AIMessage` 表示“模型发出的消息”：第一条不含普通文字，只在 `tool_calls` 里请求调用 `get_weather`；第二条是结束对话的回复。
 

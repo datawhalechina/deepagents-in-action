@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`edec4739e74e`。
+> 本次执行模式：**offline**。源码指纹：`2e3d9c28f8fe`。
 
 # 最小工具实验：谁执行了 echo？
 
@@ -13,6 +13,16 @@
 按 [统一安装说明](../README.md) 准备 Python 3.12 环境，在项目内核中从第一格依次运行。代码格左侧出现执行编号，表示该格运行过；没有打印内容的定义格也可能正常完成。
 
 下一格的 `show_runtime()` 打印环境，`TEXT` 是我们准备交给工具的文本。`course_notebooks` 是随课程安装的辅助包：`create_model()` 选择 offline 或 live，`ScriptedChatModel` 提供离线响应。先保持默认 offline，学会观察结果后再切换真实模型。
+
+### 硅流真实模型（live）
+
+**待验证**（2026-10-06 核对）：当前版本尚无整本 live 通过记录，暂不列出已验证型号。先用 offline 学习；补验后再填写完整型号、日期、验证版本和记录链接。
+
+配置：在未提交的根目录 `.env` 中填写 `SILICONFLOW_API_KEY` 和完整 `MODEL_NAME`；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 [README 模型记录说明](../README.md#live-records)。随附输出仍为 offline。
+
+范围与服务：模型选择 `echo` 工具；Python 工具在本地执行，无额外服务。
+
+作者复制后，请按 [制作指南](../CONTRIBUTING.md) 替换本段状态和范围；未经实测保留“待验证”。
 
 
 ```python
