@@ -6,6 +6,8 @@
 
 示例以 Deep Agents v0.6 引入的 Typed Projection API 为主线。新应用优先使用 `agent.stream_events(..., version="v3")`；`agent.stream(..., version="v2")` 放在后半章，专门解释 LangGraph 的协议格式、namespace 和 custom updates。两者解决的问题不同，代码也不要混在同一个循环里。
 
+> 配套实验：[Notebook](../notebooks/ch14/01-streaming-projections.ipynb) · [Markdown](../notebooks/ch14/01-streaming-projections.md) · [HTML](../notebooks/ch14/01-streaming-projections.html)。默认无需模型 Key，通过本地教学工具观察主、子 Agent、custom 进度和订阅时机；运行方式见 [Notebook README](../notebooks/README.md)。
+
 ## 1. 一次“看起来卡住”的研究请求
 
 先看这个应用的原始调用。它没有错，甚至很适合脚本：
@@ -164,9 +166,9 @@ def belongs_to_subagent(namespace: list[str] | tuple[str, ...], path: tuple[str,
 
 ### 3.4 Projection 是按需打开的
 
-刚才我们只关心“启动、结束、失败”，所以没有订阅子 Agent 的全部消息。v3 的 projection 是惰性的：访问 `subagent.messages` 或 `subagent.tool_calls` 时，才打开对应的细流。
+刚才我们只关心“启动、结束、失败”，所以没有订阅子 Agent 的全部消息。在本章配套实验锁定的版本（deepagents 0.7.15 / langgraph 1.2.11）中，`messages`、`tool_calls`、`subagents` 等图级通道按订阅消费：只有订阅后的事件才会进入该消费者的缓冲。仅访问 `subagent.messages` 或 `subagent.tool_calls` 属性，不等于已经订阅；同步代码通过 `iter(...)`、`for` 或 `interleave(...)` 订阅。
 
-这对生产页面很实用。只展示状态和耗时时，不需要消费每一条消息和工具增量；需要详细过程的界面，再打开相应 projection。没有必要为每个内部事件都建立一份 UI 状态。
+这对生产页面很实用。只展示状态和耗时时，不需要消费每一条消息和工具增量；需要详细过程的界面，再打开相应 projection。没有必要为每个内部事件都建立一份 UI 状态。要观察的 projection 应在事件到达前订阅；先读取 `stream.output` 推动图到结束，再订阅 `stream.subagents`，可能已经收不到委派 handle。配套实验给出了这个反例。
 
 父级 `stream` 也提供相同方向的 projection：
 
@@ -200,14 +202,13 @@ for value in stream.values:
 状态卡片解决了“是不是卡住”的问题，但用户很快会追问：“它到底在做什么？”现在把 coordinator 和 researcher 的消息都接出来。
 
 ```python
-stream = agent.stream_events(request, version="v3")
-
-for message in stream.messages:
-    print("[coordinator]", message.text)
-
-for subagent in stream.subagents:
-    for message in subagent.messages:
-        print(f"[{subagent.name}]", message.text)
+with agent.stream_events(request, version="v3") as stream:
+    for kind, item in stream.interleave("messages", "subagents"):
+        if kind == "messages":
+            print("[coordinator]", str(item.text))
+        else:
+            for message in item.messages:
+                print(f"[{item.name}]", str(message.text))
 ```
 
 ### 4.1 `message` 应该读什么
@@ -218,7 +219,7 @@ Typed Projection 已经把底层 content-block 事件整理成 message handle。
 | --- | --- | --- | --- |
 | `text` | `message.text` | `await message.text` | 当前消息可显示的文本内容 |
 
-同步和异步写法的差别不是语法装饰。异步 handle 的文本可能仍在到达，读取时需要 `await`。如果要保留逐个 `text-delta` 的精确顺序，不应从 `message.text` 反推，而要使用第 7 节的 raw events。
+同步和异步写法的差别不是语法装饰。同步 `message.text` 也是文本 projection：`str(message.text)` 会等待当前消息结束并取得完整文本；异步读取完整文本使用 `await message.text`。若要逐段显示，可以迭代文本 projection 的增量；如果要保留所有层级的精确协议顺序，应使用第 7 节的 raw events。
 
 消息对象解决的是“显示什么”；消息属于谁由你消费的 projection 决定。这里要区分框架对象与应用对象：官方 message handle 没有 `source` 或 `kind` 字段，[`deepagents/streaming` 模板的 `event_adapter.py`](https://github.com/agentseek-ai/agentseek-templates/blob/main/templates/deepagents/streaming/%7B%7Bcookiecutter.project_slug%7D%7D/src/%7B%7Bcookiecutter.project_slug%7D%7D/event_adapter.py) 才把它转换成下面的 SSE 事件：
 
@@ -236,46 +237,46 @@ Typed Projection 已经把底层 content-block 事件整理成 message handle。
 
 这段代码能帮助我们确认上下文隔离是否真的发生：coordinator 负责下达任务和汇总，researcher 在自己的上下文中完成研究。主 Agent 不需要接收每一次搜索结果，只需要接收子 Agent 最后的摘要。
 
-但这段代码还不能直接放进实时页面。它先把 coordinator 的 iterator 消费完，再去消费 `subagents`。如果 researcher 在后台已经输出了很多内容，页面看到的顺序就会被重新排列：主 Agent 的话全部出现在前面，子 Agent 的话全部出现在后面。
+这个同步示例在发现子 Agent 时立即消费其消息，避免先耗尽主消息流、再晚订阅子 Agent。若采用后者，在当前锁定版本中可能直接漏掉子 Agent handle，而不只是把消息重新排序：
 
-第一次接入后，页面可能会变成这样：
-
-```text title="能够看到内容，但顺序失真"
+```text title="晚订阅导致过程缺失"
 [coordinator] 正在委派研究任务
 [coordinator] 这是最终总结……
-[researcher] 正在比较不同的 Streaming 接口
-[researcher] 已找到相关资料……
+# 子 Agent 确实执行了，但消费者没有及时订阅到它。
 ```
 
-researcher 明明先完成研究，却被排在最终总结之后。第 6 节会修复这个顺序问题；在那之前，还要把卡片里缺失的工具活动补上。
+不过，`str(item.text)` 会等待当前消息完整到达，内层 `for` 也会暂停外层消费。因此这个例子不能保证实时页面及时展示所有交错增量。第 6 节继续说明并发消费与顺序边界；在那之前，先补上工具活动。
 
 ## 5. 第三个修复：工具调用也要能被看见
 
 研究卡片里只有文字仍然不够。用户看到“正在研究”，却不知道它是在等网络、调用搜索，还是工具已经报错。工具调用也按 Agent 层级提供 projection：
 
 ```python
-stream = agent.stream_events(request, version="v3")
+with agent.stream_events(request, version="v3") as stream:
+    calls = []
+    for kind, item in stream.interleave("tool_calls", "subagents"):
+        if kind == "tool_calls":
+            calls.append(("coordinator", item))
+        else:
+            for call in item.tool_calls:
+                calls.append((item.name, call))
+                print(f"[{item.name} tool]", call.tool_name, call.input)
+                for delta in call.output_deltas:
+                    print(delta, end="", flush=True)
 
-for call in stream.tool_calls:
-    print("[coordinator tool]", call.tool_name, call.input)
-    print("completed:", call.completed, "error:", call.error)
-
-for subagent in stream.subagents:
-    for call in subagent.tool_calls:
-        print(f"[{subagent.name} tool]", call.tool_name, call.input)
-
-        for delta in call.output_deltas:
-            print(delta, end="", flush=True)
-
+    # output 推动整个运行到终态，随后再检查保存的调用 handle。
+    final_state = stream.output
+    for source, call in calls:
+        print(f"[{source} tool]", call.tool_name, call.input)
         if call.completed and call.error is None:
-            print("\nresult:", call.output)
+            print("result:", call.output)
         elif call.error is not None:
-            print("\nerror:", call.error)
+            print("error:", call.error)
 ```
 
 ### 5.1 拆解 `tool_call`
 
-一个 tool-call handle 同时承载调用身份、进行中的增量和终态：
+一个 tool-call handle 同时承载调用身份、进行中的增量和终态。它刚出现时调用通常还没结束；不要读取一次 `completed` 就当作最终结果，应消费运行到终态后再核对：
 
 | 字段或 projection | 含义 | 使用规则 |
 | --- | --- | --- |
@@ -383,9 +384,9 @@ for name, item in stream.interleave("messages", "subagents"):
 
 它只合并你显式传入的 projection。上例没有传 `tool_calls`，所以 coordinator 的工具调用不会凭空出现在循环中；子 Agent 工具也仍需从 `item.tool_calls` 读取。
 
-它适合快速做一个同步展示。如果要递归合并工具调用和嵌套子 Agent，仍然建议在应用层写一个事件 adapter，而不是让每个组件都理解 iterator 的细节。
+它适合快速做一个同步展示，但合并的是选中投影的 handle 到达顺序。读取 `item.text` 的完整值，或进入子 Agent 的内层循环，仍可能阻塞外层展示；不能据此保证整棵 Agent 树的 token 或嵌套事件顺序。实时异步应用应并发消费，精确协议排序使用 raw `seq`。如果要递归合并工具调用和嵌套子 Agent，仍然建议在应用层写一个事件 adapter，而不是让每个组件都理解 iterator 的细节。
 
-![coordinator 与 researcher 的事件会交错到达：串行消费把两个来源分组后造成顺序失真，并发消费使用 asyncio.gather 或 interleave 将事件按到达过程送入页面事件流](../public/imgs/46-sequence-concurrent-streaming.png)
+![coordinator 与 researcher 的事件会交错到达：串行展示可能延迟其他来源；异步并发消费减少等待，interleave 合并选定投影的 handle，完整协议顺序仍由 raw seq 核对](../public/imgs/46-sequence-concurrent-streaming.png)
 
 ## 7. 页面开始工作后，才需要精确顺序
 
@@ -423,6 +424,8 @@ for event in stream:
 ```
 
 raw event 的字段属于协议层。上例中的 `source` 只是根据 `namespace` 计算出的本地显示标签，并不是 raw event 自带字段。建议集中写一个 adapter，负责校验版本、读取 `seq` 与 `namespace`，再转换成应用自己的事件格式；页面只消费转换后的对象。这样协议升级时只改 adapter 和测试，不必逐个修改组件。
+
+> 上面的过滤器只读取 content-block 文本增量。没有原生分块输出的模型（例如配套 Notebook 的脚本模型）可能发出 `(AIMessage, metadata)` 形式的完整消息；过滤结果为空不等于图没有模型输出。解析 `params.data` 时应结合实际模型与锁定版本核对。
 
 ### 7.1 raw event 的字段
 

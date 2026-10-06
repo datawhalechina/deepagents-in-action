@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1080" viewBox="0 0 1200 1080" role="img" aria-labelledby="title desc">
+<title id="title">Deep Agent 核心执行循环</title>
+<desc id="desc">用户消息进入当前状态。模型中间件在调用时处理上下文，模型决定是否调用工具。没有工具调用时正常输出最终回答；有工具调用时工具中间件按配置检查权限或中断等待审批，执行工具后把结果写回状态，再次调用模型。各项能力按条件生效，异常和运行限制可能提前结束。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#53616e"/></marker></defs>
+<rect width="100%" height="100%" fill="#f7f9fb"/>
+<g font-family="&quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, &quot;Noto Sans CJK SC&quot;, Arial, sans-serif" fill="#24313c">
+<text x="600" y="56" text-anchor="middle" font-size="37" font-weight="700" fill="#24313c">Deep Agent 核心执行循环</text>
+<text x="600" y="92" text-anchor="middle" font-size="23" font-weight="400" fill="#586674">运行时：模型决定下一步，工具结果返回上下文</text>
+<rect x="50" y="126" width="550" height="88" rx="20" fill="#ffffff" stroke="#8795a1" stroke-width="2"/>
+<text x="325" y="164" text-anchor="middle" font-size="27" font-weight="700" fill="#24313c">用户消息 / 当前状态</text>
+<text x="325" y="193" text-anchor="middle" font-size="22" font-weight="400" fill="#24313c">agent.invoke({messages: …})</text>
+<path d="M 325 215 V 251" fill="none" stroke="#53616e" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="50" y="254" width="550" height="111" rx="20" fill="#ede5f7" stroke="#ac94c0" stroke-width="2"/>
+<text x="325" y="294" text-anchor="middle" font-size="25" font-weight="700" fill="#24313c">模型调用侧的 Middleware hooks</text>
+<text x="325" y="333" text-anchor="middle" font-size="22" font-weight="400" fill="#24313c">整理上下文 · 注入技能索引 / 记忆</text>
+<path d="M 325 366 V 402" fill="none" stroke="#53616e" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="50" y="405" width="550" height="94" rx="20" fill="#dff0e5" stroke="#7da98d" stroke-width="2"/>
+<text x="325" y="443" text-anchor="middle" font-size="28" font-weight="700" fill="#24313c">调用模型</text>
+<text x="325" y="476" text-anchor="middle" font-size="22" font-weight="400" fill="#24313c">模型生成回复或工具调用请求</text>
+<path d="M 325 500 V 539" fill="none" stroke="#53616e" stroke-width="3" marker-end="url(#arrow)"/>
+<path d="M 325 542 L 500 608 L 325 674 L 150 608 Z" fill="#fbe7d8" stroke="#bb9276" stroke-width="2"/>
+<text x="325" y="617" text-anchor="middle" font-size="27" font-weight="700" fill="#24313c">有工具调用？</text>
+<path d="M 503 608 H 719" fill="none" stroke="#53616e" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="610" y="591" text-anchor="middle" font-size="23" font-weight="400" fill="#24313c">无</text>
+<rect x="723" y="563" width="427" height="91" rx="20" fill="#dcebf7" stroke="#7d9db8" stroke-width="2"/>
+<text x="936" y="602" text-anchor="middle" font-size="28" font-weight="700" fill="#24313c">最终回复</text>
+<text x="936" y="634" text-anchor="middle" font-size="22" font-weight="400" fill="#24313c">正常完成</text>
+<path d="M 325 675 V 714" fill="none" stroke="#53616e" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="350" y="701" text-anchor="start" font-size="23" font-weight="400" fill="#24313c">有</text>
+<rect x="50" y="717" width="550" height="112" rx="20" fill="#ede5f7" stroke="#ac94c0" stroke-width="2"/>
+<text x="325" y="756" text-anchor="middle" font-size="25" font-weight="700" fill="#24313c">工具执行侧的 Middleware hooks</text>
+<text x="325" y="795" text-anchor="middle" font-size="22" font-weight="400" fill="#24313c">按配置检查权限 · 暂停审批 · 处理结果等</text>
+<rect x="723" y="726" width="427" height="107" rx="20" fill="#fff8f2" stroke="#c7a995" stroke-width="2"/>
+<text x="936" y="766" text-anchor="middle" font-size="25" font-weight="700" fill="#24313c">需要人工审批时</text>
+<text x="936" y="805" text-anchor="middle" font-size="21" font-weight="400" fill="#24313c">中断 → 提交决定 → 恢复执行</text>
+<path d="M 604 771 H 719" fill="none" stroke="#53616e" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow)"/>
+<path d="M 325 830 V 870" fill="none" stroke="#53616e" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="50" y="873" width="550" height="99" rx="20" fill="#dff0e5" stroke="#7da98d" stroke-width="2"/>
+<text x="325" y="912" text-anchor="middle" font-size="27" font-weight="700" fill="#24313c">执行工具，结果写回状态</text>
+<text x="325" y="944" text-anchor="middle" font-size="22" font-weight="400" fill="#24313c">业务工具 / 文件工具 / task / …</text>
+<path d="M 325 973 V 1007 H 15 V 309 H 46" fill="none" stroke="#53616e" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="723" y="910" width="427" height="85" rx="20" fill="#ffffff" stroke="#8795a1" stroke-width="2"/>
+<text x="936" y="944" text-anchor="middle" font-size="24" font-weight="700" fill="#24313c">LangGraph 承载整个循环</text>
+<text x="936" y="976" text-anchor="middle" font-size="21" font-weight="400" fill="#24313c">状态更新 · Streaming · 中断恢复</text>
+<text x="600" y="1049" text-anchor="middle" font-size="21" font-weight="400" fill="#586674">各项能力按条件生效；异常或运行限制可能提前结束，中断时等待恢复。</text>
+</g></svg>

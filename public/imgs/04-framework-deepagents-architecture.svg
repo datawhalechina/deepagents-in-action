@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1120" viewBox="0 0 1400 1120" role="img" aria-labelledby="title desc">
+<title id="title">Deep Agents 整体架构：创建时的能力装配</title>
+<desc id="desc">应用向 create_deep_agent 提供模型、工具和提示词。Deep Agents 装配文件系统、子 Agent、摘要及按需配置的中间件，调用 LangChain create_agent 构建带 hooks 的 Agent 循环，返回由 LangGraph 执行的编译图。文件工具连接可插拔 Backend，子 Agent 使用独立上下文。LangSmith 在侧边提供观测。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#53616e"/></marker></defs>
+<rect width="100%" height="100%" fill="#f7f9fb"/>
+<g font-family="&quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, &quot;Noto Sans CJK SC&quot;, Arial, sans-serif" fill="#24313c">
+<text x="700" y="57" text-anchor="middle" font-size="38" font-weight="700" fill="#24313c">Deep Agents 整体架构</text>
+<text x="700" y="91" text-anchor="middle" font-size="23" font-weight="400" fill="#586674">创建时：从业务配置到可运行的 Agent</text>
+<rect x="40" y="122" width="1120" height="85" rx="20" fill="#ffffff" stroke="#8795a1" stroke-width="2"/>
+<text x="600" y="156" text-anchor="middle" font-size="25" font-weight="700" fill="#24313c">应用配置</text>
+<text x="600" y="187" text-anchor="middle" font-size="23" font-weight="400" fill="#24313c">模型 · 业务工具 / MCP · 系统提示词 · Backend · 按需能力</text>
+<path d="M 600 208 V 247" fill="none" stroke="#53616e" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="40" y="250" width="1120" height="405" rx="20" fill="#fbe7d8" stroke="#bb9276" stroke-width="2"/>
+<text x="600" y="291" text-anchor="middle" font-size="32" font-weight="700" fill="#24313c">Deep Agents · Harness</text>
+<text x="600" y="325" text-anchor="middle" font-size="24" font-weight="400" fill="#24313c">create_deep_agent()  按参数与 Harness profile 装配</text>
+<rect x="70" y="349" width="330" height="161" rx="20" fill="#ffffff" stroke="#8795a1" stroke-width="2"/>
+<text x="235" y="386" text-anchor="middle" font-size="22" font-weight="700" fill="#24313c">FilesystemMiddleware</text>
+<text x="235" y="423" text-anchor="middle" font-size="21" font-weight="400" fill="#24313c">提供文件工具与结果卸载</text>
+<text x="235" y="454" text-anchor="middle" font-size="21" font-weight="400" fill="#24313c">read_file / write_file / …</text>
+<text x="235" y="485" text-anchor="middle" font-size="21" font-weight="400" fill="#24313c">通过可插拔 Backend 读写文件</text>
+<rect x="435" y="349" width="330" height="161" rx="20" fill="#ffffff" stroke="#8795a1" stroke-width="2"/>
+<text x="600" y="386" text-anchor="middle" font-size="22" font-weight="700" fill="#24313c">SubAgentMiddleware</text>
+<text x="600" y="423" text-anchor="middle" font-size="21" font-weight="400" fill="#24313c">提供 task 委派工具</text>
+<text x="600" y="454" text-anchor="middle" font-size="21" font-weight="400" fill="#24313c">子 Agent 使用独立上下文</text>
+<text x="600" y="485" text-anchor="middle" font-size="21" font-weight="400" fill="#24313c">完成后向主 Agent 返回结果</text>
+<rect x="800" y="349" width="330" height="161" rx="20" fill="#ffffff" stroke="#8795a1" stroke-width="2"/>
+<text x="965" y="386" text-anchor="middle" font-size="22" font-weight="700" fill="#24313c">SummarizationMiddleware</text>
+<text x="965" y="423" text-anchor="middle" font-size="21" font-weight="400" fill="#24313c">缩短本轮模型输入</text>
+<text x="965" y="454" text-anchor="middle" font-size="21" font-weight="400" fill="#24313c">保留摘要与近期上下文</text>
+<text x="965" y="485" text-anchor="middle" font-size="21" font-weight="400" fill="#24313c">通过 Backend 保存完整历史</text>
+<rect x="70" y="534" width="1060" height="93" rx="20" fill="#fff8f2" stroke="#c7a995" stroke-width="2"/>
+<text x="600" y="569" text-anchor="middle" font-size="24" font-weight="700" fill="#24313c">按需配置的能力</text>
+<text x="600" y="602" text-anchor="middle" font-size="23" font-weight="400" fill="#24313c">Todo 规划 · Skills · 记忆文件加载 · 人工审批 · Interpreter 等</text>
+<path d="M 600 656 V 714" fill="none" stroke="#53616e" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="622" y="696" text-anchor="start" font-size="21" font-weight="400" fill="#586674">调用 create_agent()</text>
+<rect x="40" y="717" width="1120" height="134" rx="20" fill="#dff0e5" stroke="#7da98d" stroke-width="2"/>
+<text x="600" y="755" text-anchor="middle" font-size="30" font-weight="700" fill="#24313c">LangChain · Framework</text>
+<text x="600" y="790" text-anchor="middle" font-size="24" font-weight="400" fill="#24313c">create_agent(model, tools, middleware, …)</text>
+<text x="600" y="823" text-anchor="middle" font-size="23" font-weight="400" fill="#24313c">构建模型—工具循环，Middleware hooks 扩展执行行为</text>
+<path d="M 600 852 V 911" fill="none" stroke="#53616e" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="622" y="893" text-anchor="start" font-size="21" font-weight="400" fill="#586674">返回编译后的执行图</text>
+<rect x="40" y="914" width="1120" height="135" rx="20" fill="#dcebf7" stroke="#7d9db8" stroke-width="2"/>
+<text x="600" y="951" text-anchor="middle" font-size="30" font-weight="700" fill="#24313c">LangGraph · Runtime</text>
+<text x="600" y="986" text-anchor="middle" font-size="23" font-weight="400" fill="#24313c">invoke() / stream() · 图执行 · 状态管理 · 中断与恢复</text>
+<text x="600" y="1020" text-anchor="middle" font-size="22" font-weight="400" fill="#24313c">配置 Checkpointer 保存线程状态，配置 Store 保存跨线程数据</text>
+<rect x="1205" y="250" width="155" height="799" rx="20" fill="#ede5f7" stroke="#ac94c0" stroke-width="2"/>
+<text x="1282" y="592" text-anchor="middle" font-size="24" font-weight="700" fill="#24313c">LangSmith</text>
+<text x="1282" y="636" text-anchor="middle" font-size="25" font-weight="400" fill="#24313c">追踪</text>
+<text x="1282" y="680" text-anchor="middle" font-size="25" font-weight="400" fill="#24313c">调试</text>
+<text x="1282" y="724" text-anchor="middle" font-size="25" font-weight="400" fill="#24313c">评测</text>
+<path d="M 1162 453 H 1201" fill="none" stroke="#53616e" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow)"/>
+<path d="M 1162 784 H 1201" fill="none" stroke="#53616e" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow)"/>
+<path d="M 1162 982 H 1201" fill="none" stroke="#53616e" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrow)"/>
+<text x="700" y="1090" text-anchor="middle" font-size="21" font-weight="400" fill="#586674">能力装配示意；实际工具与行为受配置、Backend 能力和 Harness profile 影响。</text>
+</g></svg>
