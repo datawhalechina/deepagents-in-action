@@ -7803,120 +7803,64 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>a14c406605a2</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>073615e22e15</code>。</p>
 </blockquote>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=6fe43815">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c975b5b7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="%E7%AC%AC-5-%E7%AB%A0-Notebook%EF%BC%9A%E5%AD%90-Agent-%E5%A7%94%E6%B4%BE%E4%B8%8E%E4%B8%8A%E4%B8%8B%E6%96%87%E9%9A%94%E7%A6%BB">第 5 章 Notebook：子 Agent 委派与上下文隔离<a class="anchor-link" href="#%E7%AC%AC-5-%E7%AB%A0-Notebook%EF%BC%9A%E5%AD%90-Agent-%E5%A7%94%E6%B4%BE%E4%B8%8E%E4%B8%8A%E4%B8%8B%E6%96%87%E9%9A%94%E7%A6%BB">¶</a></h1><p>对应课程章节：<a href="../../content/ch05-subagents.md">第 5 章：子 Agent 与上下文隔离</a>。</p>
-<p>把研究任务交给另一个 Agent 后，主 Agent 会看到它的全部工作过程吗？如果子 Agent 写了文件，主 Agent 又怎样拿到文件？本实验分别观察<strong>消息记录</strong>和<strong>文件状态</strong>，回答这两个问题。</p>
-<p>例子使用本地固定的 A/B 方案资料：主 Agent 负责委派，名为 <code>researcher</code> 的子 Agent 查资料、写报告，再返回简短结论。不调用搜索服务。建议先读 <a href="../ch01/01-agent-harness.ipynb">第 1 章的消息与工具循环</a>；运行时无需保留其他 Notebook 的变量。</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d0e9a271">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="%E5%AD%A6%E4%B9%A0%E7%9B%AE%E6%A0%87">学习目标<a class="anchor-link" href="#%E5%AD%A6%E4%B9%A0%E7%9B%AE%E6%A0%87">¶</a></h2><p>运行结束后，你应该能够：</p>
-<ol>
-<li>用字典声明 <code>researcher</code>，并让主 Agent 通过 <code>task</code> 委派；</li>
-<li>从 <code>AIMessage.tool_calls</code> 与 <code>ToolMessage</code> 检查委派和结果回传；</li>
-<li>证明子 Agent 的内部工具记录不自动进入主 Agent 的 <code>messages</code>；</li>
-<li>证明默认 <code>StateBackend</code> 的文件状态会回到主 Agent，且主 Agent 可以主动读取它。</li>
-</ol>
-<p>本章只讨论进程内的同步子 Agent；第 6 章另讲异步子 Agent。</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=junior-ch05-concepts">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%E5%85%88%E6%8A%8A%E2%80%9C%E4%B8%8A%E4%B8%8B%E6%96%87%E2%80%9D%E5%92%8C%E2%80%9C%E7%8A%B6%E6%80%81%E2%80%9D%E5%88%86%E5%BC%80">先把“上下文”和“状态”分开<a class="anchor-link" href="#%E5%85%88%E6%8A%8A%E2%80%9C%E4%B8%8A%E4%B8%8B%E6%96%87%E2%80%9D%E5%92%8C%E2%80%9C%E7%8A%B6%E6%80%81%E2%80%9D%E5%88%86%E5%BC%80">¶</a></h3><table>
-<thead>
-<tr>
-<th>名称</th>
-<th>本例中的含义</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>主 Agent</td>
-<td>接收用户问题，决定把研究工作交给谁</td>
-</tr>
-<tr>
-<td>子 Agent</td>
-<td>接收一项具体任务，在自己的消息记录里使用工具，再返回结果</td>
-</tr>
-<tr>
-<td><code>messages</code> / 消息上下文</td>
-<td>模型在本轮对话中使用的消息记录；包含用户输入、模型消息和工具结果</td>
-</tr>
-<tr>
-<td>state / 状态</td>
-<td>程序传递的数据包；除 <code>messages</code> 外，还可以包含 <code>files</code></td>
-</tr>
-<tr>
-<td><code>StateBackend</code></td>
-<td>本例默认的文件存储方式：把文件内容放在 Agent 状态里，不写电脑磁盘</td>
-</tr>
-</tbody>
-</table>
-<p><strong>同步委派</strong>表示主 Agent 的这次 <code>task</code> 调用要等子 Agent 返回，才能继续处理结果。下面的流程发生在同一 Python 进程内：</p>
-<div class="highlight"><pre><span></span>主 Agent：task(description=任务说明, subagent_type="researcher")
-              ↓
-researcher：lookup_case 查资料 → write_file 写报告 → 返回简短结论
-              ↓
-主 Agent：收到 task 的工具结果；返回状态中还包含文件更新
-              ↓  下一轮明确要求读文件
-主 Agent：read_file → 报告正文进入本轮工具消息
+<h1 id="%E7%AC%AC-14-%E7%AB%A0%E5%AE%9E%E9%AA%8C%EF%BC%9A%E4%B8%BB-Agent-%E5%A7%94%E6%B4%BE%E4%BB%A5%E5%90%8E%EF%BC%8C%E6%80%8E%E6%A0%B7%E7%9C%8B%E8%A7%81%E8%B0%81%E5%9C%A8%E5%81%9A%E4%BB%80%E4%B9%88%EF%BC%9F">第 14 章实验：主 Agent 委派以后，怎样看见谁在做什么？<a class="anchor-link" href="#%E7%AC%AC-14-%E7%AB%A0%E5%AE%9E%E9%AA%8C%EF%BC%9A%E4%B8%BB-Agent-%E5%A7%94%E6%B4%BE%E4%BB%A5%E5%90%8E%EF%BC%8C%E6%80%8E%E6%A0%B7%E7%9C%8B%E8%A7%81%E8%B0%81%E5%9C%A8%E5%81%9A%E4%BB%80%E4%B9%88%EF%BC%9F">¶</a></h1><p>对应正文：<a href="../../content/ch14-streaming.md">Streaming</a>第 3～7、9 节。</p>
+<p>一个助手要整理 <code>streaming</code> 主题的本地教学笔记。主 Agent 把任务交给 <code>researcher</code>；子 Agent 调用 <code>inspect_notes</code> 查阅笔记，再返回摘要；主 Agent 最后汇总。如果只用 <code>invoke()</code>，中间过程不会逐项返回给调用方。</p>
+<p>这里使用 <code>stream_events(version="v3")</code> 观察同一个流程。它返回可逐步消费的运行对象，不是直接返回最终状态。</p>
+<div class="highlight"><pre><span></span>主 Agent 请求 task
+    ↓
+researcher 启动 → 请求 inspect_notes
+    ↓
+工具发出 starting/complete 进度，返回笔记内容
+    ↓
+researcher 摘要 → 主 Agent 汇总
 </pre></div>
-<p>消息隔离不等于文件隔离，也不等于安全沙箱；我们只验证本例这两种数据怎样传递。</p>
+<p><strong>学习目标</strong>：</p>
+<ul>
+<li>用 typed projections（按消息、工具、子 Agent 分开的观察入口）分清事件归属。</li>
+<li>检查工具请求、实际执行、返回值和子 Agent 终态，理解“结束”不等于“内容正确”。</li>
+<li>观察自定义进度、raw 事件的 <code>seq</code> / <code>namespace</code>，验证晚订阅会漏掉过程。</li>
+</ul>
+<p>默认预期：主 Agent 有一条 <code>task</code> 调用，子 Agent 有一条 <code>inspect_notes</code> 调用；工具读到 3 条笔记，进度由 <code>starting</code> 到 <code>complete</code>，子 Agent 最终为 <code>completed</code>。断言失败说明某项实验承诺未满足，不能只凭最终回复“完成”判断。</p>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c70c22e9">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d0b802f2">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">运行环境与模式<a class="anchor-link" href="#%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83%E4%B8%8E%E6%A8%A1%E5%BC%8F">¶</a></h2><p>使用 <a href="../README.md">统一安装入口</a> 的 Python 3.12 锁定环境。本章从第一格独立执行，无需先运行第 1 章。</p>
-<div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>course_notebooks.run<span class="w"> </span>ch05-subagents
+<h2 id="1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E8%BF%90%E8%A1%8C%E6%A8%A1%E5%BC%8F">1. 环境与运行模式<a class="anchor-link" href="#1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E8%BF%90%E8%A1%8C%E6%A8%A1%E5%BC%8F">¶</a></h2><p>需要基础 Python。每份 Notebook 都建立自己的变量；<strong>内核</strong>是执行代码、保存变量的 Python 进程。请从第一格顺序运行，安装与内核选择见 <a href="../README.md">README</a>。</p>
+<ul>
+<li>Python 3.12；锁定 deepagents 0.7.22、langchain 1.4.3、langchain-core 1.6.6、langgraph 1.2.13、langchain-openai 1.6.7，以 <a href="../uv.lock">uv.lock</a>为准。下一格打印实际环境。</li>
+<li>默认 <code>offline</code> 使用公共 <code>ScriptedChatModel</code> 安排模型响应，不需要 Key，也不请求模型 API；图、同步委派、工具和流式观察真实执行。它不证明真实模型会正确委派或总结。</li>
+<li>这个脚本模型不实现 token 分块生成，输出是完整 <code>AIMessage</code>。因此可以验证中间步骤与消息流，不能据此验证逐 token 展示或网络首字延迟。</li>
+<li>显式 <code>live</code> 通过公共 <code>create_model</code> 使用 README 的模型配置，主、子 Agent 分别创建模型实例。模型需支持工具调用，可能产生费用；配置错误会报错，不回退。真实模型的文本、事件数与增量形式可以变化。</li>
+<li>公共模型入口会将后续工具分块中的空工具名转换为 <code>None</code>，避免当前 langchain-core v3 兼容层覆盖首块的工具名。说明与移除条件见 <a href="../README.md">README</a>；此处理不改变工具参数或实验断言。</li>
+<li>v3 仍是实验性接口，升级依赖后应重跑。下一格只隐藏已在此说明的重复实验性提示，其他错误正常报告。</li>
+<li>不需要搜索 Key、Agent Server、数据库或 Docker。实验的笔记是内存里的固定教学数据，不代表实时搜索结果，也不读取用户文件。</li>
+</ul>
+<p>从仓库根目录的终端执行：</p>
+<div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>course_notebooks.run<span class="w"> </span>ch14-streaming
 </pre></div>
-<p>默认 offline 使用公开的脚本规则选择工具，task、lookup_case、write_file、read_file 与 StateBackend 均真实执行。随附输出来自这个模式，验证消息与文件边界，不证明真实模型会遵从委派指令。</p>
-<p>要观察真实模型选择工具，按 README 配置模型并在命令后添加 <code>--mode live</code>；需要网络且可能产生费用。除模型 API 外，本章不需要搜索、数据库或沙箱。</p>
+<p>显式接入真实模型时加 <code>--mode live</code>；交互式内核则在创建模型前设置 <code>os.environ["COURSE_MODE"] = "live"</code>。不要把密钥写入代码格。</p>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e6f3da22">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="0.-%E7%A1%AE%E8%AE%A4%E7%8E%AF%E5%A2%83%E5%B9%B6%E5%AF%BC%E5%85%A5%E8%BE%85%E5%8A%A9%E5%87%BD%E6%95%B0">0. 确认环境并导入辅助函数<a class="anchor-link" href="#0.-%E7%A1%AE%E8%AE%A4%E7%8E%AF%E5%A2%83%E5%B9%B6%E5%AF%BC%E5%85%A5%E8%BE%85%E5%8A%A9%E5%87%BD%E6%95%B0">¶</a></h2><p><code>show_runtime()</code> 打印运行模式与版本，<code>show_text()</code> 让长输出分行。它们来自课程辅助包。<code>HumanMessage</code> 是用户输入，<code>AIMessage</code> 是模型回复或工具请求，<code>ToolMessage</code> 是工具返回。</p>
-<p>先准备本地资料和工具，再准备脚本模型，最后组装 Agent。此时还没有执行研究任务。</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=147b00b0">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch14-imports" id="cell-id=ch14-imports">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7924,12 +7868,25 @@ researcher：lookup_case 查资料 → write_file 写报告 → 返回简短结�
 <div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.nbtools</span><span class="w"> </span><span class="kn">import</span> <span class="n">show_runtime</span><span class="p">,</span> <span class="n">show_text</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.model_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_model</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">deepagents</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_deep_agent</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIMessage</span><span class="p">,</span> <span class="n">HumanMessage</span><span class="p">,</span> <span class="n">ToolMessage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">tool</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langgraph.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_stream_writer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langgraph.stream</span><span class="w"> </span><span class="kn">import</span> <span class="n">CustomTransformer</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.model_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_model</span><span class="p">,</span> <span class="n">selected_mode</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.nbtools</span><span class="w"> </span><span class="kn">import</span> <span class="n">show_runtime</span><span class="p">,</span> <span class="n">show_text</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScriptedChatModel</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIMessage</span><span class="p">,</span> <span class="n">HumanMessage</span><span class="p">,</span> <span class="n">ToolMessage</span>
 
 <span class="n">show_runtime</span><span class="p">()</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span>
+    <span class="s2">"ignore"</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">"The v3 streaming protocol on Pregel is experimental.*"</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -7955,19 +7912,19 @@ langchain-openai==1.6.7
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d691142b">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cc1260af">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="1.-%E5%AE%9A%E4%B9%89%E5%8F%AF%E5%A4%8D%E7%8E%B0%E7%9A%84%E6%9C%AC%E5%9C%B0%E8%B5%84%E6%96%99%E5%B7%A5%E5%85%B7">1. 定义可复现的本地资料工具<a class="anchor-link" href="#1.-%E5%AE%9A%E4%B9%89%E5%8F%AF%E5%A4%8D%E7%8E%B0%E7%9A%84%E6%9C%AC%E5%9C%B0%E8%B5%84%E6%96%99%E5%B7%A5%E5%85%B7">¶</a></h2><p>问题是：A、B 两种方案，哪个同时满足响应速度、数据新鲜度和错误率的约束？以下数字是<strong>固定教学案例</strong>，不代表真实产品测量。</p>
-<p><code>p95</code> 是第 95 百分位延迟：可以粗略理解为约 95% 的请求不超过这个耗时，不是平均耗时。A 的 420 ms 超过 150 ms 上限；B 的 95 ms、5 分钟更新间隔和 0.6% 错误率均满足本例约束。因此我们预期报告保留证据并选择 B。</p>
-<p><code>@tool</code> 把 Python 函数及其参数、说明注册为工具。<code>lookup_trace</code> 是我们用来观察实际调用的 Python 列表；向它追加记录，并不会自动给主模型追加消息。<code>REPORT_PATH</code> 是虚拟文件的名称，不能拿这个路径去电脑磁盘上找文件。</p>
+<h2 id="2.-%E5%87%86%E5%A4%87%E7%AC%94%E8%AE%B0%E4%B8%8E%E4%B8%80%E9%A1%B9%E7%9C%9F%E5%AE%9E%E5%B7%A5%E5%85%B7">2. 准备笔记与一项真实工具<a class="anchor-link" href="#2.-%E5%87%86%E5%A4%87%E7%AC%94%E8%AE%B0%E4%B8%8E%E4%B8%80%E9%A1%B9%E7%9C%9F%E5%AE%9E%E5%B7%A5%E5%85%B7">¶</a></h2><p><code>NOTES</code> 是本实验的教学输入。<code>@tool</code> 把 Python 函数包装成模型可请求的工具，名称、参数类型和文档字符串告诉模型怎样调用。</p>
+<p><code>get_stream_writer()</code> 获取当前图运行的写入入口。工具用它发出两个应用自定义对象，表示开始查阅和查阅完成。这里的 <code>phase</code>、<code>topic</code>、<code>count</code> 都是本例约定，不是框架固定字段，也不是 <code>subagent.status</code>。</p>
+<p><code>executions</code> 记录实际函数执行的输入和结果。它只服务于这次顺序实验，用来核对流里看到的调用有没有真的运行。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ad5d40f9">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch14-tool" id="cell-id=ch14-tool">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7975,66 +7932,84 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">tool</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">TOPIC</span> <span class="o">=</span> <span class="s2">"streaming"</span>
+<span class="n">NOTES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"typed projections 分开观察主 Agent 和子 Agent。"</span><span class="p">,</span>
+    <span class="s2">"raw seq 用于同次运行的事件顺序，namespace 表示事件路径。"</span><span class="p">,</span>
+    <span class="s2">"custom 进度由工具显式发送，不是模型生成的文字。"</span><span class="p">,</span>
+<span class="p">]</span>
 
-<span class="n">CASE_ID</span> <span class="o">=</span> <span class="s2">"cache-plan"</span>
-<span class="n">REPORT_PATH</span> <span class="o">=</span> <span class="s2">"/research/cache-choice.md"</span>
-<span class="n">CASE_MATERIAL</span> <span class="o">=</span> <span class="s2">"""[A] 实时汇总：同一组 1000 次请求中，p95 延迟 420 ms，错误率 0.4%。</span>
-<span class="s2">[B] 每 5 分钟更新一次缓存：同一组请求中，p95 延迟 95 ms，错误率 0.6%。</span>
-<span class="s2">[约束] p95 必须低于 150 ms；允许结果最多延迟 5 分钟；错误率必须低于 1%。"""</span>
-<span class="n">lookup_trace</span> <span class="o">=</span> <span class="p">[]</span>
 
-<span class="nd">@tool</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">lookup_case</span><span class="p">(</span><span class="n">case_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""读取本地固定的缓存方案研究材料。case_id 应为 cache-plan。"""</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="n">CASE_MATERIAL</span> <span class="k">if</span> <span class="n">case_id</span> <span class="o">==</span> <span class="n">CASE_ID</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"未知案例：</span><span class="si">{</span><span class="n">case_id</span><span class="si">}</span><span class="s2">"</span>
-    <span class="n">lookup_trace</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"case_id"</span><span class="p">:</span> <span class="n">case_id</span><span class="p">,</span> <span class="s2">"result"</span><span class="p">:</span> <span class="n">result</span><span class="p">})</span>
-    <span class="k">return</span> <span class="n">result</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_notes_tool</span><span class="p">(</span><span class="n">executions</span><span class="p">):</span>
+    <span class="nd">@tool</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">inspect_notes</span><span class="p">(</span><span class="n">topic</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""读取 streaming 主题的固定教学笔记，返回 topic、count 和 notes。"""</span>
+        <span class="n">writer</span> <span class="o">=</span> <span class="n">get_stream_writer</span><span class="p">()</span>
+        <span class="n">writer</span><span class="p">({</span><span class="s2">"phase"</span><span class="p">:</span> <span class="s2">"starting"</span><span class="p">,</span> <span class="s2">"topic"</span><span class="p">:</span> <span class="n">topic</span><span class="p">,</span> <span class="s2">"count"</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span>
+        <span class="k">if</span> <span class="n">topic</span> <span class="o">!=</span> <span class="n">TOPIC</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"本工具只提供 streaming 主题的教学笔记。"</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"topic"</span><span class="p">:</span> <span class="n">topic</span><span class="p">,</span> <span class="s2">"count"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">NOTES</span><span class="p">),</span> <span class="s2">"notes"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">NOTES</span><span class="p">)}</span>
+        <span class="n">executions</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">"topic"</span><span class="p">:</span> <span class="n">topic</span><span class="p">,</span> <span class="s2">"result"</span><span class="p">:</span> <span class="n">result</span><span class="p">})</span>
+        <span class="n">writer</span><span class="p">({</span><span class="s2">"phase"</span><span class="p">:</span> <span class="s2">"complete"</span><span class="p">,</span> <span class="s2">"topic"</span><span class="p">:</span> <span class="n">topic</span><span class="p">,</span> <span class="s2">"count"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">NOTES</span><span class="p">)})</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">inspect_notes</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"教学输入："</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">note</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">NOTES</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">show_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">"笔记 </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">："</span><span class="p">,</span> <span class="n">note</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=junior-ch05-script">
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>教学输入：
+
+笔记 1：
+typed projections 分开观察主 Agent 和子 Agent。
+
+笔记 2：
+raw seq 用于同次运行的事件顺序，namespace 表示事件路径。
+
+笔记 3：
+custom 进度由工具显式发送，不是模型生成的文字。
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1ef6ec5f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="1.1-%E5%87%86%E5%A4%87%E6%97%A0%E9%9C%80-Key-%E7%9A%84%E6%A8%A1%E5%9E%8B%E5%93%8D%E5%BA%94">1.1 准备无需 Key 的模型响应<a class="anchor-link" href="#1.1-%E5%87%86%E5%A4%87%E6%97%A0%E9%9C%80-Key-%E7%9A%84%E6%A8%A1%E5%9E%8B%E5%93%8D%E5%BA%94">¶</a></h3><p><code>responder</code> 是一个回调函数：框架每次向脚本模型请求回复时，调用 <code>scripted_reply(messages, tool_names)</code>。<code>messages</code> 是当前 Agent 的消息记录，<code>tool_names</code> 是它当前可用的工具名。</p>
-<p>下面按两个输入选择下一条响应，没有直接伪造 Agent 的最终状态：</p>
-<table>
-<thead>
-<tr>
-<th>当前角色/情况</th>
-<th>脚本提出的请求</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>工具清单含 <code>lookup_case</code>，说明当前是 researcher</td>
-<td>先查资料，再 <code>write_file</code>，最后返回摘要</td>
-</tr>
-<tr>
-<td>主 Agent 收到第一轮研究问题</td>
-<td>调用 <code>task</code> 委派给 researcher</td>
-</tr>
-<tr>
-<td>主 Agent 收到第二轮明确读文件的要求</td>
-<td>调用 <code>read_file</code></td>
-</tr>
-<tr>
-<td>主 Agent 已收到 ToolMessage</td>
-<td>结束本轮</td>
-</tr>
-</tbody>
-</table>
-<p>第一次可以按这张表理解并运行函数，不必逐行背下分支。报告文字也是预设的，所以这个模式不能证明模型具备比较方案的能力；它检验的是实际工具执行、委派和数据传递。修改教学资料时，也要检查脚本报告和后面的断言是否仍匹配。</p>
+<p>工具需要在图运行中取得 writer，不能像普通函数那样在这里直接调用来读取笔记。下一节把工具交给子 Agent，再由框架调用。</p>
+<p>进度为 <code>complete</code> 只说明工具走到了该业务步骤；最终仍要核对工具结果和调用状态，不能用一条进度通知替代验收。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=f678cb1b">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=00e9326f">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="3.-%E5%88%9B%E5%BB%BA%E4%B8%BB-Agent-%E4%B8%8E-researcher">3. 创建主 Agent 与 researcher<a class="anchor-link" href="#3.-%E5%88%9B%E5%BB%BA%E4%B8%BB-Agent-%E4%B8%8E-researcher">¶</a></h2><p><code>AIMessage</code> 表示模型回复，其中的 <code>tool_calls</code> 是工具请求，不是工具执行结果。<code>ToolMessage</code> 才是工具执行后返回的消息，<code>tool_call_id</code> 将结果与请求关联。</p>
+<p>offline 的主模型响应列表是“请求 task → 汇总”；子模型列表是“请求 inspect_notes → 摘要”。列表不会理解任务，只安排默认流程。每个独立实验都创建新模型，避免循环响应游标混用。</p>
+<p><code>create_deep_agent()</code> 返回可执行的图（Graph），图中的节点负责调用模型、执行工具等步骤，可以循环。<code>researcher</code> 是同步子 Agent：主 Agent 的 <code>task</code> 要等它返回，但调用方能在等待期间消费流事件。它不是第 6 章的后台异步子任务，不需要 Agent Server。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs celltag_ch14-agent" id="cell-id=ch14-agent">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8042,77 +8017,100 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">scripted_reply</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">tool_names</span><span class="p">):</span>
-    <span class="n">calls</span> <span class="o">=</span> <span class="p">[</span><span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span>
-             <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">]</span>
-    <span class="k">if</span> <span class="s2">"lookup_case"</span> <span class="ow">in</span> <span class="n">tool_names</span><span class="p">:</span>  <span class="c1"># 只有 researcher 注册了资料工具</span>
-        <span class="k">if</span> <span class="s2">"lookup_case"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">:</span>
-            <span class="n">name</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="s2">"lookup_case"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"case_id"</span><span class="p">:</span> <span class="n">CASE_ID</span><span class="p">}</span>
-        <span class="k">elif</span> <span class="s2">"write_file"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">:</span>
-            <span class="c1"># 固定教学报告；下面的 write_file 仍由实际工具执行。</span>
-            <span class="n">name</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="s2">"write_file"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="n">REPORT_PATH</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span>
-                <span class="s2">"[A] p95 420 ms，错误率 0.4%。</span><span class="se">\n</span><span class="s2">[B] p95 95 ms，错误率 0.6%。</span><span class="se">\n</span><span class="s2">"</span>
-                <span class="s2">"[约束] p95 &lt;150 ms；最多延迟5分钟；错误率 &lt;1%。</span><span class="se">\n</span><span class="s2">结论：方案 B 满足约束。"</span><span class="p">}</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="sa">f</span><span class="s2">"方案 B 满足约束，报告位于 </span><span class="si">{</span><span class="n">REPORT_PATH</span><span class="si">}</span><span class="s2">。"</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">ToolMessage</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="sa">f</span><span class="s2">"已收到工具结果：</span><span class="si">{</span><span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">。"</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">request</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">content</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">HumanMessage</span><span class="p">))</span>
-        <span class="k">if</span> <span class="s2">"read_file"</span> <span class="ow">in</span> <span class="n">request</span><span class="p">:</span>
-            <span class="n">name</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="s2">"read_file"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="n">REPORT_PATH</span><span class="p">}</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">name</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="s2">"task"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"subagent_type"</span><span class="p">:</span> <span class="s2">"researcher"</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">:</span>
-                <span class="s2">"研究 cache-plan，读取固定资料，比较约束并将短报告写入 /research/cache-choice.md。"</span><span class="p">}</span>
-    <span class="k">return</span> <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">tool_calls</span><span class="o">=</span><span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span> <span class="s2">"id"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"ch05-</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">}])</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">DELEGATION</span> <span class="o">=</span> <span class="s2">"调用 inspect_notes(topic='streaming')，然后根据返回的笔记写简短摘要。"</span>
+<span class="n">REQUEST</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"messages"</span><span class="p">:</span> <span class="p">[</span><span class="n">HumanMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"请委派 researcher 整理 streaming 教学笔记。"</span><span class="p">)]}</span>
 
 
-<span class="n">model</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="n">ScriptedChatModel</span><span class="p">(</span><span class="n">responder</span><span class="o">=</span><span class="n">scripted_reply</span><span class="p">))</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_agent</span><span class="p">():</span>
+    <span class="n">executions</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">parent_model</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="n">ScriptedChatModel</span><span class="p">(</span><span class="n">responses</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"正在委派研究。"</span><span class="p">,</span> <span class="n">tool_calls</span><span class="o">=</span><span class="p">[{</span>
+            <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"delegate-1"</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"task"</span><span class="p">,</span>
+            <span class="s2">"args"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"subagent_type"</span><span class="p">:</span> <span class="s2">"researcher"</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">:</span> <span class="n">DELEGATION</span><span class="p">},</span>
+        <span class="p">}]),</span>
+        <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"已汇总 3 条教学笔记。"</span><span class="p">),</span>
+    <span class="p">]))</span>
+    <span class="n">child_model</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="n">ScriptedChatModel</span><span class="p">(</span><span class="n">responses</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"正在读取笔记。"</span><span class="p">,</span> <span class="n">tool_calls</span><span class="o">=</span><span class="p">[{</span>
+            <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"inspect-1"</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"inspect_notes"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"topic"</span><span class="p">:</span> <span class="n">TOPIC</span><span class="p">},</span>
+        <span class="p">}]),</span>
+        <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"本地共有 3 条笔记，分别说明投影、raw 顺序与自定义进度。"</span><span class="p">),</span>
+    <span class="p">]))</span>
+    <span class="n">agent</span> <span class="o">=</span> <span class="n">create_deep_agent</span><span class="p">(</span>
+        <span class="n">model</span><span class="o">=</span><span class="n">parent_model</span><span class="p">,</span>
+        <span class="n">system_prompt</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"每次都用 task 委派 researcher，要求它调用 inspect_notes(topic='streaming')。"</span>
+            <span class="s2">"等待子 Agent 返回后简短汇总，不调用其他工具。"</span>
+        <span class="p">),</span>
+        <span class="n">subagents</span><span class="o">=</span><span class="p">[{</span>
+            <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"researcher"</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"查阅固定教学笔记并返回摘要。"</span><span class="p">,</span>
+            <span class="s2">"system_prompt"</span><span class="p">:</span> <span class="s2">"只调用一次 inspect_notes(topic='streaming')，再总结结果。"</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="n">child_model</span><span class="p">,</span> <span class="s2">"tools"</span><span class="p">:</span> <span class="p">[</span><span class="n">make_notes_tool</span><span class="p">(</span><span class="n">executions</span><span class="p">)],</span>
+        <span class="p">}],</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">agent</span><span class="p">,</span> <span class="n">executions</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=bc55bf3b">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=08ab4294">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2.-%E5%A3%B0%E6%98%8E-researcher-%E5%B9%B6%E5%88%9B%E5%BB%BA%E4%B8%BB-Agent">2. 声明 researcher 并创建主 Agent<a class="anchor-link" href="#2.-%E5%A3%B0%E6%98%8E-researcher-%E5%B9%B6%E5%88%9B%E5%BB%BA%E4%B8%BB-Agent">¶</a></h2><p>“声明子 Agent”就是用一个字典告诉框架它的名字、用途和可用工具：</p>
+<h2 id="4.-%E7%94%A8-v3-%E7%9A%84%E6%8A%95%E5%BD%B1%E8%A7%82%E5%AF%9F%E4%B8%80%E6%AC%A1%E8%BF%90%E8%A1%8C">4. 用 v3 的投影观察一次运行<a class="anchor-link" href="#4.-%E7%94%A8-v3-%E7%9A%84%E6%8A%95%E5%BD%B1%E8%A7%82%E5%AF%9F%E4%B8%80%E6%AC%A1%E8%BF%90%E8%A1%8C">¶</a></h2><p><code>handle</code> 是观察某条消息、调用或委派的对象：先发现它，再读取它的文本或终态。主要入口如下：</p>
 <table>
 <thead>
 <tr>
-<th>字段</th>
-<th>谁使用它</th>
+<th>入口</th>
+<th>本例作用域</th>
+<th>要看什么</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>name</code></td>
-<td>主 Agent 用 <code>subagent_type</code> 选择这个子 Agent</td>
+<td><code>run.messages</code></td>
+<td>主 Agent</td>
+<td>委派说明与最后汇总</td>
 </tr>
 <tr>
-<td><code>description</code></td>
-<td>告诉主 Agent 哪类工作适合交给它</td>
+<td><code>run.tool_calls</code></td>
+<td>主 Agent</td>
+<td><code>task</code> 的参数和终态</td>
 </tr>
 <tr>
-<td><code>system_prompt</code></td>
-<td>指导子 Agent 自己怎样完成工作</td>
+<td><code>run.subagents</code></td>
+<td>主 Agent 发起的委派</td>
+<td><code>researcher</code> 的名字、path、状态</td>
 </tr>
 <tr>
-<td><code>tools</code></td>
-<td>给子 Agent 的自定义工具，这里是 <code>lookup_case</code></td>
+<td><code>child.messages</code> / <code>child.tool_calls</code></td>
+<td>该子 Agent</td>
+<td>查阅说明、<code>inspect_notes</code> 与摘要</td>
+</tr>
+<tr>
+<td><code>child.custom</code></td>
+<td>该子 Agent</td>
+<td>工具写出的 starting/complete 进度</td>
+</tr>
+<tr>
+<td><code>run.output</code> / <code>child.output</code></td>
+<td>相应的图</td>
+<td>等待执行结束并读取最终状态</td>
 </tr>
 </tbody>
 </table>
-<p>主 Agent 的 <code>tools=[]</code> 表示没有额外传入自定义工具，<strong>不表示完全没有工具</strong>：Deep Agents 仍会装配 <code>task</code>、文件操作等内置工具。本实验聚焦委派和文件传递，不使用其他默认能力来推进任务。</p>
-<p>主 Agent 在运行时通过 <code>task(description=..., subagent_type="researcher")</code> 委派；我们不在 Python 中手动调用这个工具。第一轮提示它暂不读文件，是为了先观察“文件已存在，但正文还没通过 read_file 返回”的状态。</p>
+<p><code>interleave("messages", "tool_calls", "subagents")</code> 将这些入口的 <strong>handle 到达</strong> 合并。每次返回 <code>(kind, item)</code>：<code>kind</code> 是传入的投影名，决定 <code>item</code> 怎样读取。子 Agent 出现时，立即订阅它自己的投影。</p>
+<p><code>str(message.text)</code> 会等待当前消息结束，得到完整文本；它不是逐 token 回调。<code>call.completed</code> 在刚收到 handle 时可能为假，不能这时就把它算成工具完成。因此先保存调用 handle，等 <code>run.output</code> 返回后再检查终态。</p>
+<p><strong>顺序边界</strong>：此同步例子会消费子循环，也会等待消息文本，期间外层循环不能立即展示其他来源。<code>interleave</code> 合并 handle，不自动把所有嵌套文本增量变成一条全局时间线。异步页面应并发消费各入口；需要精确协议顺序时看下一节 raw 的 <code>seq</code>。</p>
+<p><code>with</code> 管理这次流的生命周期：正常结束或代码抛错退出都会调用流的 <code>abort()</code> 释放迭代器，不依赖最后一格清理。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4b8d2af4">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch14-typed-run" id="cell-id=ch14-typed-run">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8120,48 +8118,118 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">deepagents</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_deep_agent</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">agent</span><span class="p">,</span> <span class="n">executions</span> <span class="o">=</span> <span class="n">make_agent</span><span class="p">()</span>
+<span class="n">children</span><span class="p">,</span> <span class="n">parent_calls</span><span class="p">,</span> <span class="n">child_calls</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+<span class="n">parent_texts</span><span class="p">,</span> <span class="n">child_texts</span><span class="p">,</span> <span class="n">progress</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
 
-<span class="n">researcher</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"researcher"</span><span class="p">,</span>
-    <span class="s2">"description"</span><span class="p">:</span> <span class="s2">"研究本地 cache-plan 案例，比较 A、B 两种方案，并把证据写入文件。"</span><span class="p">,</span>
-    <span class="s2">"system_prompt"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"""你是研究员。处理 cache-plan 时：</span>
-<span class="s2">1. 调用 lookup_case(case_id="</span><span class="si">{</span><span class="n">CASE_ID</span><span class="si">}</span><span class="s2">") 获取资料；</span>
-<span class="s2">2. 根据资料比较 A、B 与约束，使用 write_file 把短报告写入 </span><span class="si">{</span><span class="n">REPORT_PATH</span><span class="si">}</span><span class="s2">；</span>
-<span class="s2">3. 报告中保留 [A]、[B]、[约束] 三个资料标签，并给出结论；</span>
-<span class="s2">4. 最终只返回一两句结论及文件路径，不复制整段原始资料。"""</span><span class="p">,</span>
-    <span class="s2">"tools"</span><span class="p">:</span> <span class="p">[</span><span class="n">lookup_case</span><span class="p">],</span>
-<span class="p">}</span>
-
-<span class="n">agent</span> <span class="o">=</span> <span class="n">create_deep_agent</span><span class="p">(</span>
-    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
-    <span class="n">tools</span><span class="o">=</span><span class="p">[],</span>
-    <span class="n">system_prompt</span><span class="o">=</span><span class="p">(</span>
-        <span class="s2">"你是协调者。遇到 cache-plan 研究任务，必须调用 task，"</span>
-        <span class="s2">"并指定 subagent_type=researcher。研究资料由 researcher 的 lookup_case 工具提供，"</span>
-        <span class="s2">"报告写入虚拟文件；不要要求搜索磁盘。收到结果后简短转述，"</span>
-        <span class="s2">"本轮不要调用 lookup_case 或 read_file。后续用户明确要求读文件时再调用 read_file。"</span>
-    <span class="p">),</span>
-    <span class="n">subagents</span><span class="o">=</span><span class="p">[</span><span class="n">researcher</span><span class="p">],</span>
-<span class="p">)</span>
+<span class="k">with</span> <span class="n">agent</span><span class="o">.</span><span class="n">stream_events</span><span class="p">(</span>
+    <span class="n">REQUEST</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">"recursion_limit"</span><span class="p">:</span> <span class="mi">16</span><span class="p">},</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v3"</span><span class="p">,</span>
+    <span class="n">transformers</span><span class="o">=</span><span class="p">[</span><span class="n">CustomTransformer</span><span class="p">],</span>
+<span class="p">)</span> <span class="k">as</span> <span class="n">run</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">kind</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">run</span><span class="o">.</span><span class="n">interleave</span><span class="p">(</span><span class="s2">"messages"</span><span class="p">,</span> <span class="s2">"tool_calls"</span><span class="p">,</span> <span class="s2">"subagents"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">"messages"</span><span class="p">:</span>
+            <span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="n">parent_texts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+            <span class="n">show_text</span><span class="p">(</span><span class="s2">"主 Agent 消息："</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="s2">"tool_calls"</span><span class="p">:</span>
+            <span class="n">parent_calls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">主 Agent 工具请求："</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">tool_name</span><span class="p">)</span>
+            <span class="n">show_text</span><span class="p">(</span><span class="s2">"参数："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">children</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">子 Agent："</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s2">"状态："</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
+            <span class="n">show_text</span><span class="p">(</span><span class="s2">"本次委派 path："</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">child_kind</span><span class="p">,</span> <span class="n">detail</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">interleave</span><span class="p">(</span><span class="s2">"messages"</span><span class="p">,</span> <span class="s2">"tool_calls"</span><span class="p">,</span> <span class="s2">"custom"</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">child_kind</span> <span class="o">==</span> <span class="s2">"messages"</span><span class="p">:</span>
+                    <span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">detail</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+                    <span class="n">child_texts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+                    <span class="n">show_text</span><span class="p">(</span><span class="s2">"researcher 消息："</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">child_kind</span> <span class="o">==</span> <span class="s2">"tool_calls"</span><span class="p">:</span>
+                    <span class="n">child_calls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">detail</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">researcher 工具请求："</span><span class="p">,</span> <span class="n">detail</span><span class="o">.</span><span class="n">tool_name</span><span class="p">)</span>
+                    <span class="n">show_text</span><span class="p">(</span><span class="s2">"参数："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">detail</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">progress</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">detail</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">"进度："</span><span class="p">,</span> <span class="n">detail</span><span class="p">)</span>
+    <span class="n">final_state</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">output</span>
+    <span class="n">child_states</span> <span class="o">=</span> <span class="p">[</span><span class="n">child</span><span class="o">.</span><span class="n">output</span> <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">children</span><span class="p">]</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a407a4ae">
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>
+主 Agent 消息：
+正在委派研究。
+
+主 Agent 工具请求： task
+
+参数：
+{
+  "subagent_type": "researcher",
+  "description": "调用 inspect_notes(topic='streaming')，然后根据返回的笔记写简短摘要。"
+}
+
+子 Agent： researcher 状态： started
+
+本次委派 path：
+('tools:5c58fb76-b4bc-f452-ea4e-4305842f4c5e',)
+
+researcher 消息：
+正在读取笔记。
+
+researcher 工具请求： inspect_notes
+
+参数：
+{
+  "topic": "streaming"
+}
+进度： {'phase': 'starting', 'topic': 'streaming', 'count': 0}
+进度： {'phase': 'complete', 'topic': 'streaming', 'count': 3}
+
+researcher 消息：
+本地共有 3 条笔记，分别说明投影、raw 顺序与自定义进度。
+
+主 Agent 消息：
+已汇总 3 条教学笔记。
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=42d981ea">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="3.-%E5%A7%94%E6%B4%BE%E4%B8%80%E6%AC%A1%E7%A0%94%E7%A9%B6%E4%BB%BB%E5%8A%A1">3. 委派一次研究任务<a class="anchor-link" href="#3.-%E5%A7%94%E6%B4%BE%E4%B8%80%E6%AC%A1%E7%A0%94%E7%A9%B6%E4%BB%BB%E5%8A%A1">¶</a></h2><p><code>invoke</code> 接收输入状态并运行 Agent；<code>messages</code> 中的 <code>role="user"</code> 和 <code>content</code> 分别表示说话角色和问题文本。返回的 <code>first_result</code> 包含本轮消息以及更新后的文件状态。</p>
-<p>预期主 Agent 调用 <code>task</code>，等待 researcher 查资料、写报告，再收到简短回传。下一格只打印消息数，后面两节会打开消息内容检查。消息数本身不证明委派成功。</p>
+<p>看默认输出时，区分“工具请求”“进度通知”和“模型消息”。主 Agent 选择 <code>researcher</code>，而子 Agent 选择 <code>inspect_notes</code>。进度由 Python 工具发送，不是模型口头说“正在做”。</p>
+<p><code>path</code> 是 tuple，标识当前运行内这次委派的执行路径，通常形如 <code>("tools:&lt;动态 ID&gt;",)</code>；它不是显示名。重跑时 ID 会变，不能与另一次运行的路径逐字比较，也不能把 <code>researcher</code> 当作多次委派的唯一键。</p>
+<p>自定义进度需要注册 <code>CustomTransformer</code>，且工具在子图中执行，所以从 <code>child.custom</code> 读取。根 <code>run.custom</code> 的作用域是根图，不会自动汇集子图进度。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=e7426529">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=18d2d1f3">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="4.1-%E7%BB%93%E6%9D%9F%E5%90%8E%E6%A3%80%E6%9F%A5%E5%AE%9E%E9%99%85%E6%89%A7%E8%A1%8C%E4%B8%8E%E7%BB%93%E6%9E%9C">4.1 结束后检查实际执行与结果<a class="anchor-link" href="#4.1-%E7%BB%93%E6%9D%9F%E5%90%8E%E6%A3%80%E6%9F%A5%E5%AE%9E%E9%99%85%E6%89%A7%E8%A1%8C%E4%B8%8E%E7%BB%93%E6%9E%9C">¶</a></h3><p><code>completed</code> 是生命周期信号。成功工具还应没有 <code>error</code>，并且结果与实际执行记录一致。<code>inspect_notes</code> 的终态输出是 <code>ToolMessage</code>，需要检查 <code>status</code>、工具名、请求 ID 和业务内容。</p>
+<p>同步 <code>task</code> 的终态输出可能是更新状态的 <code>Command</code>，不要假定所有工具输出都是字符串；本例从主 Agent 最终消息中核对 task 的返回关联。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch14-typed-check" id="cell-id=ch14-typed-check">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8169,13 +8237,46 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">first_result</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span>
-    <span class="s2">"messages"</span><span class="p">:</span> <span class="p">[{</span>
-        <span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span>
-        <span class="s2">"content"</span><span class="p">:</span> <span class="s2">"请把 cache-plan 案例交给 researcher：比较 A、B 哪个满足约束，保存有证据的短报告，然后告诉我结论。"</span><span class="p">,</span>
-    <span class="p">}]</span>
-<span class="p">})</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"本轮主 Agent 消息数:"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]))</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">children</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"researcher"</span>
+<span class="k">assert</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"completed"</span> <span class="ow">and</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">path</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">parent_calls</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">parent_calls</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tool_name</span> <span class="o">==</span> <span class="s2">"task"</span>
+<span class="k">assert</span> <span class="n">parent_calls</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">input</span><span class="p">[</span><span class="s2">"subagent_type"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"researcher"</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">child_calls</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">child_calls</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tool_name</span> <span class="o">==</span> <span class="s2">"inspect_notes"</span>
+<span class="n">call</span> <span class="o">=</span> <span class="n">child_calls</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="k">assert</span> <span class="n">call</span><span class="o">.</span><span class="n">input</span> <span class="o">==</span> <span class="p">{</span><span class="s2">"topic"</span><span class="p">:</span> <span class="n">TOPIC</span><span class="p">}</span>
+<span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">completed</span> <span class="ow">and</span> <span class="n">c</span><span class="o">.</span><span class="n">error</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">parent_calls</span> <span class="o">+</span> <span class="n">child_calls</span><span class="p">)</span>
+<span class="n">reply</span> <span class="o">=</span> <span class="n">call</span><span class="o">.</span><span class="n">output</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reply</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">reply</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"inspect_notes"</span> <span class="ow">and</span> <span class="n">reply</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span>
+<span class="k">assert</span> <span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="o">==</span> <span class="n">call</span><span class="o">.</span><span class="n">tool_call_id</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">executions</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">executions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"topic"</span><span class="p">]</span> <span class="o">==</span> <span class="n">TOPIC</span>
+<span class="n">expected</span> <span class="o">=</span> <span class="n">executions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"result"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="n">expected</span> <span class="o">==</span> <span class="p">{</span><span class="s2">"topic"</span><span class="p">:</span> <span class="n">TOPIC</span><span class="p">,</span> <span class="s2">"count"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">NOTES</span><span class="p">),</span> <span class="s2">"notes"</span><span class="p">:</span> <span class="n">NOTES</span><span class="p">}</span>
+<span class="k">assert</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">)</span> <span class="o">==</span> <span class="n">expected</span>
+<span class="k">assert</span> <span class="n">progress</span> <span class="o">==</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">"phase"</span><span class="p">:</span> <span class="s2">"starting"</span><span class="p">,</span> <span class="s2">"topic"</span><span class="p">:</span> <span class="n">TOPIC</span><span class="p">,</span> <span class="s2">"count"</span><span class="p">:</span> <span class="mi">0</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">"phase"</span><span class="p">:</span> <span class="s2">"complete"</span><span class="p">,</span> <span class="s2">"topic"</span><span class="p">:</span> <span class="n">TOPIC</span><span class="p">,</span> <span class="s2">"count"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">NOTES</span><span class="p">)},</span>
+<span class="p">]</span>
+<span class="c1"># 从最终消息列表筛出 task 结果，核对它属于本次请求。</span>
+<span class="n">parent_replies</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">final_state</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">parent_replies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+<span class="k">assert</span> <span class="n">parent_replies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="o">==</span> <span class="n">parent_calls</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tool_call_id</span>
+<span class="k">assert</span> <span class="n">parent_replies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span>
+<span class="n">child_replies</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">child_states</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"messages"</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">child_replies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">child_replies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="o">==</span> <span class="n">call</span><span class="o">.</span><span class="n">tool_call_id</span>
+<span class="k">assert</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">child_replies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">)</span> <span class="o">==</span> <span class="n">expected</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">final_state</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">AIMessage</span><span class="p">)</span>
+<span class="k">assert</span> <span class="ow">not</span> <span class="n">final_state</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tool_calls</span>
+<span class="k">assert</span> <span class="n">final_state</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">selected_mode</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"offline"</span><span class="p">:</span>
+    <span class="k">assert</span> <span class="n">parent_texts</span> <span class="o">==</span> <span class="p">[</span><span class="s2">"正在委派研究。"</span><span class="p">,</span> <span class="s2">"已汇总 3 条教学笔记。"</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">child_texts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+    <span class="k">assert</span> <span class="s2">"本地共有 3 条笔记"</span> <span class="ow">in</span> <span class="n">child_texts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"实际工具结果："</span><span class="p">)</span>
+<span class="n">show_text</span><span class="p">(</span><span class="s2">"inspect_notes："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"子 Agent 终态："</span><span class="p">,</span> <span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
+<span class="n">show_text</span><span class="p">(</span><span class="s2">"主 Agent 最终汇总："</span><span class="p">,</span> <span class="n">final_state</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8188,25 +8289,53 @@ langchain-openai==1.6.7
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>本轮主 Agent 消息数: 4
+<pre>实际工具结果：
+
+inspect_notes：
+{
+  "topic": "streaming",
+  "count": 3,
+  "notes": [
+    "typed projections 分开观察主 Agent 和子 Agent。",
+    "raw seq 用于同次运行的事件顺序，namespace 表示事件路径。",
+    "custom 进度由工具显式发送，不是模型生成的文字。"
+  ]
+}
+子 Agent 终态： completed
+
+主 Agent 最终汇总：
+已汇总 3 条教学笔记。
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b88d2b1c">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=18485813">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="3.1-%E6%A3%80%E6%9F%A5-task-%E7%9A%84%E8%BE%93%E5%85%A5%E4%B8%8E%E8%BF%94%E5%9B%9E">3.1 检查 <code>task</code> 的输入与返回<a class="anchor-link" href="#3.1-%E6%A3%80%E6%9F%A5-task-%E7%9A%84%E8%BE%93%E5%85%A5%E4%B8%8E%E8%BF%94%E5%9B%9E">¶</a></h3><p><code>AIMessage.tool_calls</code> 记录主 Agent 选择了谁、交代了什么任务；名称为 <code>task</code> 的 ToolMessage 保存子 Agent 的回传。代码里的列表推导式负责从全部消息中筛出这两类记录。</p>
-<p>预期输出按顺序给出：委派对象 <code>researcher</code>、任务说明、简短结论及文件路径、<code>lookup_case</code> 实际读到的 A/B 资料。最后一项来自 Python 观察列表 <code>lookup_trace</code>，不是从主 Agent 消息里复制出来的。</p>
+<p>这些检查证明本次委派和工具确实执行、消息与结果关联正确。固定的结束文案不作为成功证据；<code>completed</code> 也不证明模型摘要没有遗漏，摘要质量不在这个 offline 验证范围中。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=56685938">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=382f4bde">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="5.-%E6%8D%A2%E4%B8%80%E6%AC%A1%E6%96%B0%E8%BF%90%E8%A1%8C%EF%BC%8C%E8%A7%82%E5%AF%9F-raw-%E7%9A%84%E9%A1%BA%E5%BA%8F%E4%B8%8E%E8%B7%AF%E5%BE%84">5. 换一次新运行，观察 raw 的顺序与路径<a class="anchor-link" href="#5.-%E6%8D%A2%E4%B8%80%E6%AC%A1%E6%96%B0%E8%BF%90%E8%A1%8C%EF%BC%8C%E8%A7%82%E5%AF%9F-raw-%E7%9A%84%E9%A1%BA%E5%BA%8F%E4%B8%8E%E8%B7%AF%E5%BE%84">¶</a></h2><p>raw 事件是底层协议对象，主要字段是 <code>seq</code>、<code>method</code> 和 <code>params</code>。<code>params.namespace</code> 标识事件来源的执行路径，根级通常为 <code>[]</code>，子图或更深层事件有路径段。判断某事件是否属于已知子 Agent，应做 <strong>路径前缀匹配</strong>，不能把任何非空路径都当成某个子 Agent 的显示名。</p>
+<p>这里重新创建 Agent 和模型，再跑一次相同任务，不是在重放上一节。我们比较本次 raw 事件与本次子 Agent 的路径，不比较两次运行的动态 ID。</p>
+<p><strong>先订阅，再推进</strong>：<code>iter(run.subagents)</code> 先取得订阅游标，之后 <code>list(run)</code> 消费 raw 事件并推动图执行，最后读取已经缓冲的子 Agent handle。只访问属性还不等于订阅；投影也不是可随时读取的持久化日志。</p>
+<p>本例只保存一次小实验的 raw 事件，不提供生产事件缓存。外层图仍设置执行步数上限 16；它不是费用或所有嵌套调用的全局资源上限。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch14-raw-run" id="cell-id=ch14-raw-run">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8214,33 +8343,26 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIMessage</span><span class="p">,</span> <span class="n">ToolMessage</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">SUBSCRIBE_EARLY</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">raw_agent</span><span class="p">,</span> <span class="n">raw_executions</span> <span class="o">=</span> <span class="n">make_agent</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">raw_agent</span><span class="o">.</span><span class="n">stream_events</span><span class="p">(</span>
+    <span class="n">REQUEST</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">"recursion_limit"</span><span class="p">:</span> <span class="mi">16</span><span class="p">},</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v3"</span><span class="p">,</span>
+    <span class="n">transformers</span><span class="o">=</span><span class="p">[</span><span class="n">CustomTransformer</span><span class="p">],</span>
+<span class="p">)</span> <span class="k">as</span> <span class="n">raw_run</span><span class="p">:</span>
+    <span class="n">child_cursor</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">raw_run</span><span class="o">.</span><span class="n">subagents</span><span class="p">)</span> <span class="k">if</span> <span class="n">SUBSCRIBE_EARLY</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">raw_events</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">raw_run</span><span class="p">)</span>
+    <span class="n">raw_children</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">child_cursor</span><span class="p">)</span> <span class="k">if</span> <span class="n">child_cursor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">list</span><span class="p">(</span><span class="n">raw_run</span><span class="o">.</span><span class="n">subagents</span><span class="p">)</span>
+    <span class="n">raw_final_state</span> <span class="o">=</span> <span class="n">raw_run</span><span class="o">.</span><span class="n">output</span>
 
-<span class="n">task_calls</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">call</span>
-    <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span>
-    <span class="k">if</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"task"</span>
-<span class="p">]</span>
-<span class="n">task_results</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">message</span>
-    <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="n">message</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"task"</span>
-<span class="p">]</span>
-<span class="k">assert</span> <span class="nb">any</span><span class="p">(</span><span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"subagent_type"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"researcher"</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">task_calls</span><span class="p">),</span> <span class="p">(</span>
-    <span class="s2">"主 Agent 没有委派给 researcher；请检查 MODEL_NAME 是否支持工具调用，以及主 Agent 提示词。"</span>
-<span class="p">)</span>
-<span class="k">assert</span> <span class="n">task_results</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">task_results</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">content</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="s2">"task 没有返回可观察的结果。"</span>
-<span class="k">assert</span> <span class="nb">any</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"case_id"</span><span class="p">]</span> <span class="o">==</span> <span class="n">CASE_ID</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">lookup_trace</span><span class="p">),</span> <span class="p">(</span>
-    <span class="s2">"researcher 没有读取固定资料；请检查它是否调用 lookup_case。"</span>
-<span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">"委派对象:"</span><span class="p">,</span> <span class="n">task_calls</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"subagent_type"</span><span class="p">])</span>
-<span class="n">show_text</span><span class="p">(</span><span class="s2">"task 任务说明"</span><span class="p">,</span> <span class="n">task_calls</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"description"</span><span class="p">])</span>
-<span class="n">show_text</span><span class="p">(</span><span class="s2">"task 返回"</span><span class="p">,</span> <span class="n">task_results</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">lookup_trace</span><span class="p">:</span>
-    <span class="n">show_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">"lookup_case(</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">'case_id'</span><span class="p">]</span><span class="si">}</span><span class="s2">) 返回"</span><span class="p">,</span> <span class="n">item</span><span class="p">[</span><span class="s2">"result"</span><span class="p">])</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_children</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"晚订阅可能漏掉委派；必须先订阅再推进运行。"</span>
+<span class="n">raw_path</span> <span class="o">=</span> <span class="n">raw_children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">path</span>
+<span class="k">assert</span> <span class="n">raw_children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"completed"</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_executions</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"raw 事件数："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_events</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"各 method 数量："</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">method</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">Counter</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="s2">"method"</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">raw_events</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="n">show_text</span><span class="p">(</span><span class="s2">"本次 raw 子 Agent path："</span><span class="p">,</span> <span class="n">raw_path</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8253,37 +8375,35 @@ langchain-openai==1.6.7
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>委派对象: researcher
+<pre>raw 事件数： 20
+各 method 数量：
+  values: 8
+  messages: 4
+  tools: 4
+  lifecycle: 2
+  custom: 2
 
-task 任务说明
-研究 cache-plan，读取固定资料，比较约束并将短报告写入 /research/cache-choice.md。
-
-task 返回
-方案 B 满足约束，报告位于 /research/cache-choice.md。
-
-lookup_case(cache-plan) 返回
-[A] 实时汇总：同一组 1000 次请求中，p95 延迟 420 ms，错误率 0.4%。
-[B] 每 5 分钟更新一次缓存：同一组请求中，p95 延迟 95 ms，错误率 0.6%。
-[约束] p95 必须低于 150 ms；允许结果最多延迟 5 分钟；错误率必须低于 1%。
+本次 raw 子 Agent path：
+('tools:37254e35-0e31-0c30-1888-f2d94454c8f8',)
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=17b0e5e9">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=049106e2">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="3.2-%E6%A3%80%E6%9F%A5%E6%B6%88%E6%81%AF%E4%B8%8A%E4%B8%8B%E6%96%87%E8%BE%B9%E7%95%8C">3.2 检查消息上下文边界<a class="anchor-link" href="#3.2-%E6%A3%80%E6%9F%A5%E6%B6%88%E6%81%AF%E4%B8%8A%E4%B8%8B%E6%96%87%E8%BE%B9%E7%95%8C">¶</a></h3><p>researcher 内部已经调用 <code>lookup_case</code> 和 <code>write_file</code>。主 Agent 的消息里应出现自己的 <code>task</code> 结果，不自动展开子 Agent 的逐步工具记录。</p>
-<p>下一格应打印主 Agent 收到的工具结果名（offline 为 <code>['task']</code>），并确认第一轮没有 <code>read_file</code>。这些 <code>assert</code> 用来固定观察时机：如果主 Agent 提前读了文件，就不能再用这一轮演示“主动读取之前”的边界。</p>
-<p>这里讨论模型消息怎样传递；Python 程序仍可能从返回状态中直接访问文件。下一节观察的正是这个区别。</p>
+<h3 id="5.1-%E6%A0%A1%E9%AA%8C-seq%E3%80%81%E5%8F%96%E8%AF%81%E8%B7%AF%E5%BE%84%E4%B8%8E%E5%AE%8C%E6%95%B4%E6%B6%88%E6%81%AF">5.1 校验 seq、取证路径与完整消息<a class="anchor-link" href="#5.1-%E6%A0%A1%E9%AA%8C-seq%E3%80%81%E5%8F%96%E8%AF%81%E8%B7%AF%E5%BE%84%E4%B8%8E%E5%AE%8C%E6%95%B4%E6%B6%88%E6%81%AF">¶</a></h3><p><code>seq</code> 在同次 raw 运行内递增；即使只展示部分事件也应保留原序号，不能要求过滤后的序号连续。<code>timestamp</code> 可展示时间，但不代替序号排序。代码中的 <code>zip(sequences, sequences[1:])</code> 把相邻序号配成一对，逐对检查后一个是否更大。</p>
+<p>下一格只打印工具与进度事件摘要，避免把整份状态、元数据和动态 ID 铺满输出。<code>belongs_to()</code> 用前缀匹配判断归属，根路径不会匹配到非空子 Agent 路径。</p>
+<p>脚本模型的 raw <code>messages</code> 事件是 <code>(AIMessage, metadata)</code>，而非逐 token 的 <code>content-block-delta</code>。因此不写一个只接受文本增量的过滤器，再把“过滤结果为空”当成没有模型输出。live 的 raw 结构可能不同，本实验不解析供应商 token 协议。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_parent-message-boundary" id="cell-id=5ad0998f">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch14-raw-check" id="cell-id=ch14-raw-check">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8291,18 +8411,50 @@ lookup_case(cache-plan) 返回
 <div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">parent_tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">message</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
-<span class="n">parent_calls</span> <span class="o">=</span> <span class="p">[</span><span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">]</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"主 Agent 收到的工具结果名:"</span><span class="p">,</span> <span class="n">parent_tools</span><span class="p">)</span>
-<span class="k">assert</span> <span class="s2">"task"</span> <span class="ow">in</span> <span class="n">parent_tools</span>
-<span class="k">assert</span> <span class="s2">"lookup_case"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">parent_tools</span>
-<span class="k">assert</span> <span class="s2">"write_file"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">parent_tools</span>
-<span class="k">assert</span> <span class="s2">"read_file"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">parent_calls</span> <span class="ow">and</span> <span class="s2">"read_file"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">parent_tools</span><span class="p">,</span> <span class="p">(</span>
-    <span class="s2">"主 Agent 第一轮提前读了文件，无法观察读取前的消息与文件边界。"</span>
-<span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"已验证：子 Agent 工具记录未并入主消息，主 Agent 第一轮尚未主动读文件。"</span><span class="p">)</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">belongs_to</span><span class="p">(</span><span class="n">namespace</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">namespace</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)])</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+
+<span class="n">sequences</span> <span class="o">=</span> <span class="p">[</span><span class="n">event</span><span class="p">[</span><span class="s2">"seq"</span><span class="p">]</span> <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">raw_events</span><span class="p">]</span>
+<span class="k">assert</span> <span class="n">sequences</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">int</span> <span class="k">for</span> <span class="n">seq</span> <span class="ow">in</span> <span class="n">sequences</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">left</span> <span class="o">&lt;</span> <span class="n">right</span> <span class="k">for</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">sequences</span><span class="p">,</span> <span class="n">sequences</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
+<span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"namespace"</span><span class="p">],</span> <span class="nb">list</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">raw_events</span><span class="p">)</span>
+<span class="n">raw_progress</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">raw_events</span> <span class="k">if</span> <span class="n">e</span><span class="p">[</span><span class="s2">"method"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"custom"</span>
+    <span class="ow">and</span> <span class="n">belongs_to</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"namespace"</span><span class="p">],</span> <span class="n">raw_path</span><span class="p">)</span>
+<span class="p">]</span>
+<span class="k">assert</span> <span class="p">[</span><span class="n">e</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"data"</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">raw_progress</span><span class="p">]</span> <span class="o">==</span> <span class="n">progress</span>
+<span class="k">assert</span> <span class="ow">not</span> <span class="n">belongs_to</span><span class="p">([],</span> <span class="n">raw_path</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">belongs_to</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">raw_path</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="s2">"model_request:example"</span><span class="p">],</span> <span class="n">raw_path</span><span class="p">)</span>
+<span class="n">child_tool_events</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">raw_events</span> <span class="k">if</span> <span class="n">e</span><span class="p">[</span><span class="s2">"method"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"tools"</span>
+    <span class="ow">and</span> <span class="n">belongs_to</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"namespace"</span><span class="p">],</span> <span class="n">raw_path</span><span class="p">)</span>
+<span class="p">]</span>
+<span class="n">started</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">child_tool_events</span> <span class="k">if</span> <span class="n">e</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"data"</span><span class="p">][</span><span class="s2">"event"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"tool-started"</span><span class="p">]</span>
+<span class="n">finished</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">child_tool_events</span> <span class="k">if</span> <span class="n">e</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"data"</span><span class="p">][</span><span class="s2">"event"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"tool-finished"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">started</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">finished</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+<span class="n">start_data</span><span class="p">,</span> <span class="n">finish_data</span> <span class="o">=</span> <span class="n">started</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"data"</span><span class="p">],</span> <span class="n">finished</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"data"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="n">start_data</span><span class="p">[</span><span class="s2">"tool_name"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"inspect_notes"</span> <span class="ow">and</span> <span class="n">start_data</span><span class="p">[</span><span class="s2">"input"</span><span class="p">]</span> <span class="o">==</span> <span class="p">{</span><span class="s2">"topic"</span><span class="p">:</span> <span class="n">TOPIC</span><span class="p">}</span>
+<span class="k">assert</span> <span class="n">finish_data</span><span class="p">[</span><span class="s2">"tool_call_id"</span><span class="p">]</span> <span class="o">==</span> <span class="n">start_data</span><span class="p">[</span><span class="s2">"tool_call_id"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">finish_data</span><span class="p">[</span><span class="s2">"output"</span><span class="p">],</span> <span class="n">ToolMessage</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">finish_data</span><span class="p">[</span><span class="s2">"output"</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span>
+<span class="k">assert</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">finish_data</span><span class="p">[</span><span class="s2">"output"</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">)</span> <span class="o">==</span> <span class="n">raw_executions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"result"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="n">started</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"seq"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">raw_progress</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"seq"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">raw_progress</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">"seq"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">finished</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"seq"</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">raw_events</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">event</span><span class="p">[</span><span class="s2">"method"</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"tools"</span><span class="p">,</span> <span class="s2">"custom"</span><span class="p">}:</span>
+        <span class="k">continue</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">event</span><span class="p">[</span><span class="s2">"params"</span><span class="p">]</span>
+    <span class="n">owner</span> <span class="o">=</span> <span class="s2">"researcher"</span> <span class="k">if</span> <span class="n">belongs_to</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">"namespace"</span><span class="p">],</span> <span class="n">raw_path</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"主 Agent"</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">"data"</span><span class="p">]</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"event"</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"phase"</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"#</span><span class="si">{</span><span class="n">event</span><span class="p">[</span><span class="s1">'seq'</span><span class="p">]</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2"> [</span><span class="si">{</span><span class="n">owner</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">event</span><span class="p">[</span><span class="s1">'method'</span><span class="p">]</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">selected_mode</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"offline"</span><span class="p">:</span>
+    <span class="n">message_events</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">raw_events</span> <span class="k">if</span> <span class="n">e</span><span class="p">[</span><span class="s2">"method"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"messages"</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">message_events</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span>
+    <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"data"</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">AIMessage</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">message_events</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"完整 AIMessage 事件数："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">message_events</span><span class="p">),</span> <span class="s2">"（不是 token 数）"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8315,45 +8467,43 @@ lookup_case(cache-plan) 返回
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>主 Agent 收到的工具结果名: ['task']
-已验证：子 Agent 工具记录未并入主消息，主 Agent 第一轮尚未主动读文件。
+<pre>#04 [主 Agent] tools / tool-started
+#09 [researcher] tools / tool-started
+#10 [researcher] custom / starting
+#11 [researcher] custom / complete
+#12 [researcher] tools / tool-finished
+#16 [主 Agent] tools / tool-finished
+完整 AIMessage 事件数： 4 （不是 token 数）
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f9672b6c">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=88c294ff">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="4.-%E6%A3%80%E6%9F%A5%E5%85%B1%E4%BA%AB%E7%9A%84%E6%96%87%E4%BB%B6%E7%8A%B6%E6%80%81">4. 检查共享的文件状态<a class="anchor-link" href="#4.-%E6%A3%80%E6%9F%A5%E5%85%B1%E4%BA%AB%E7%9A%84%E6%96%87%E4%BB%B6%E7%8A%B6%E6%80%81">¶</a></h2><p>默认 <code>StateBackend</code> 把文件保存在 Agent 状态中。researcher 写完报告后，我们可以用普通 Python 读取 <code>first_result["files"][REPORT_PATH]</code>。</p>
-<table>
-<thead>
-<tr>
-<th>谁在读取</th>
-<th>现在看到了什么</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Notebook 中的 Python 代码</td>
-<td>可以查看整个返回状态，包括报告文件内容</td>
-</tr>
-<tr>
-<td>主 Agent 的模型消息</td>
-<td>已有 task 的简短回传；尚未出现 read_file 返回的报告正文</td>
-</tr>
-</tbody>
-</table>
-<p><strong>在 Notebook 里展示文件，不会自动把正文发送给模型。</strong> 这也解释了为什么“消息上下文隔离”和“文件状态共享”可以同时成立。</p>
-<p>下一格应找到虚拟文件 <code>/research/cache-choice.md</code>，报告包含 <code>[A]</code>、<code>[B]</code>、<code>[约束]</code> 和关键数值。Markdown 原文放在代码块里显示，避免报告自己的标题混入 Notebook 章节。</p>
+<p>默认输出应保留这样的顺序：子 Agent 工具 <code>tool-started</code> → 两条 custom 进度 → <code>tool-finished</code>。打印中的“主 Agent / researcher”是本例根据已知路径计算的标签，不是 raw 协议自带的 <code>source</code> 字段。</p>
+<p>两次实验的 <code>progress</code> 都来自相同工具和固定数据，故内容一致；它们不是同一批事件。本次路径只用于本次 raw 事件路由。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=f080ba16">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c2c96dd5">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="6.-%E4%B8%80%E4%B8%AA%E5%8F%8D%E4%BE%8B%EF%BC%9A%E5%85%88%E8%AF%BB-output%EF%BC%8C%E5%86%8D%E8%AE%A2%E9%98%85%E4%BC%9A%E6%80%8E%E6%A0%B7%EF%BC%9F">6. 一个反例：先读 output，再订阅会怎样？<a class="anchor-link" href="#6.-%E4%B8%80%E4%B8%AA%E5%8F%8D%E4%BE%8B%EF%BC%9A%E5%85%88%E8%AF%BB-output%EF%BC%8C%E5%86%8D%E8%AE%A2%E9%98%85%E4%BC%9A%E6%80%8E%E6%A0%B7%EF%BC%9F">¶</a></h2><p>再创建独立实验，直接读 <code>late_run.output</code>。这个属性会推动图到结束，不只是读一个当前值。随后才订阅 <code>late_run.subagents</code>，将看不到已经过去的委派 handle。</p>
+<p>这不是没有委派：实际工具执行记录和最终主 Agent 的 task 返回仍然存在。它说明“事情发生过”与“这个消费者及时订阅到了”是两件事。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch14-late-subscription" id="cell-id=ch14-late-subscription">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8361,16 +8511,16 @@ lookup_case(cache-plan) 返回
 <div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">report</span> <span class="o">=</span> <span class="n">first_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"files"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">REPORT_PATH</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">report</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"researcher 未在共享状态中写入 </span><span class="si">{</span><span class="n">REPORT_PATH</span><span class="si">}</span><span class="s2">。"</span>
-<span class="n">report_text</span> <span class="o">=</span> <span class="n">report</span><span class="p">[</span><span class="s2">"content"</span><span class="p">]</span>
-<span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">label</span> <span class="ow">in</span> <span class="n">report_text</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"[A]"</span><span class="p">,</span> <span class="s2">"[B]"</span><span class="p">,</span> <span class="s2">"[约束]"</span><span class="p">,</span> <span class="s2">"420"</span><span class="p">,</span> <span class="s2">"95"</span><span class="p">)),</span> <span class="p">(</span>
-    <span class="s2">"报告缺少固定资料标签或关键延迟数据；请检查 researcher 的 write_file 调用。"</span>
-<span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">Markdown</span><span class="p">,</span> <span class="n">display</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">"共享文件:"</span><span class="p">,</span> <span class="n">REPORT_PATH</span><span class="p">)</span>
-<span class="n">display</span><span class="p">(</span><span class="n">Markdown</span><span class="p">(</span><span class="s2">"````markdown</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="n">report_text</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">````"</span><span class="p">))</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">late_agent</span><span class="p">,</span> <span class="n">late_executions</span> <span class="o">=</span> <span class="n">make_agent</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">late_agent</span><span class="o">.</span><span class="n">stream_events</span><span class="p">(</span><span class="n">REQUEST</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">"recursion_limit"</span><span class="p">:</span> <span class="mi">16</span><span class="p">},</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v3"</span><span class="p">)</span> <span class="k">as</span> <span class="n">late_run</span><span class="p">:</span>
+    <span class="n">late_output</span> <span class="o">=</span> <span class="n">late_run</span><span class="o">.</span><span class="n">output</span>
+    <span class="n">late_children</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">late_run</span><span class="o">.</span><span class="n">subagents</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">late_executions</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+<span class="n">late_tool_results</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">late_output</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">late_tool_results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">late_tool_results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span>
+<span class="k">assert</span> <span class="n">late_children</span> <span class="o">==</span> <span class="p">[]</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"实际子 Agent 工具执行次数："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">late_executions</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"晚订阅收到的子 Agent handle 数："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">late_children</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -8383,125 +8533,75 @@ lookup_case(cache-plan) 返回
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>共享文件: /research/cache-choice.md
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-OutputArea-output" data-mime-type="text/markdown" tabindex="0">
-<div class="highlight"><pre><span></span>[A] p95 420 ms，错误率 0.4%。
-[B] p95 95 ms，错误率 0.6%。
-[约束] p95 &lt;150 ms；最多延迟5分钟；错误率 &lt;1%。
-结论：方案 B 满足约束。
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d4cd6260">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="4.1-%E8%AE%A9%E4%B8%BB-Agent-%E4%B8%BB%E5%8A%A8%E8%AF%BB%E5%8F%96%E6%96%87%E4%BB%B6">4.1 让主 Agent 主动读取文件<a class="anchor-link" href="#4.1-%E8%AE%A9%E4%B8%BB-Agent-%E4%B8%BB%E5%8A%A8%E8%AF%BB%E5%8F%96%E6%96%87%E4%BB%B6">¶</a></h3><p>本例没有配置跨调用的持久化保存。第二次 <code>invoke</code> 显式传回 <code>messages</code> 和 <code>files</code>，不能假设同一个 Agent 对象会自动记住上一轮数据。</p>
-<p><code>*first_result["messages"]</code> 是 Python 列表展开：把旧消息逐条放进新列表，再追加用户的读文件要求。传入 <code>files</code> 则把同一份虚拟文件交给新一轮。<code>new_messages</code> 通过切片只取新产生的消息。</p>
-<p>这次 <code>read_file</code> 返回后，报告正文才作为工具消息进入主 Agent 的上下文。预期输出包括文件返回头、报告行数和“已读回共享状态中的完整报告”；代码会确认读回文本包含上一格的完整报告，避免重复打印整篇正文。</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=86f3dfbe">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">second_result</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span>
-    <span class="s2">"messages"</span><span class="p">:</span> <span class="p">[</span>
-        <span class="o">*</span><span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">],</span>
-        <span class="p">{</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"请使用 read_file 读取 </span><span class="si">{</span><span class="n">REPORT_PATH</span><span class="si">}</span><span class="s2">，再简短告诉我报告的结论。"</span><span class="p">},</span>
-    <span class="p">],</span>
-    <span class="s2">"files"</span><span class="p">:</span> <span class="n">first_result</span><span class="p">[</span><span class="s2">"files"</span><span class="p">],</span>
-<span class="p">})</span>
-<span class="n">new_messages</span> <span class="o">=</span> <span class="n">second_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">][</span><span class="nb">len</span><span class="p">(</span><span class="n">first_result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]):]</span>
-<span class="n">read_results</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">message</span>
-    <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">new_messages</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="n">message</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"read_file"</span>
-<span class="p">]</span>
-<span class="k">assert</span> <span class="n">read_results</span><span class="p">,</span> <span class="s2">"主 Agent 未调用 read_file；请换用能可靠调用工具的 MODEL_NAME 后重跑。"</span>
-<span class="n">read_text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">read_results</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">report_text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">in</span> <span class="n">read_text</span><span class="p">,</span> <span class="s2">"read_file 读回的内容与共享状态中的报告不一致。"</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"read_file 返回头:"</span><span class="p">,</span> <span class="n">read_text</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"已读回共享状态中的完整报告："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">report_text</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()),</span> <span class="s2">"行"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"已验证：消息上下文隔离，文件状态共享；主 Agent 主动读取后才看到文件内容。"</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>read_file 返回头: @@ lines 1-4 of 4 @@
-已读回共享状态中的完整报告： 4 行
-已验证：消息上下文隔离，文件状态共享；主 Agent 主动读取后才看到文件内容。
+<pre>实际子 Agent 工具执行次数： 1
+晚订阅收到的子 Agent handle 数： 0
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=15e350c3">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=556bcbff">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="%E5%9B%9E%E9%A1%BE%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">回顾、练习与清理<a class="anchor-link" href="#%E5%9B%9E%E9%A1%BE%E3%80%81%E7%BB%83%E4%B9%A0%E4%B8%8E%E6%B8%85%E7%90%86">¶</a></h2><p>本次证据有三部分：主 Agent 通过 task 得到简短回传；子 Agent 内部工具记录没有自动进入主消息；文件更新回到主状态，第二轮主动 read_file 才把正文带入主消息。</p>
-<h3 id="%E7%BB%83%E4%B9%A0%EF%BC%9A%E8%81%8A%E5%A4%A9%E9%87%8C%E7%9A%84%E6%96%87%E4%BB%B6%E8%B7%AF%E5%BE%84%E8%83%BD%E4%BB%A3%E6%9B%BF%E6%96%87%E4%BB%B6%E5%86%85%E5%AE%B9%E5%90%97%EF%BC%9F">练习：聊天里的文件路径能代替文件内容吗？<a class="anchor-link" href="#%E7%BB%83%E4%B9%A0%EF%BC%9A%E8%81%8A%E5%A4%A9%E9%87%8C%E7%9A%84%E6%96%87%E4%BB%B6%E8%B7%AF%E5%BE%84%E8%83%BD%E4%BB%A3%E6%9B%BF%E6%96%87%E4%BB%B6%E5%86%85%E5%AE%B9%E5%90%97%EF%BC%9F">¶</a></h3><ol>
-<li>保持 offline，在第二次 <code>agent.invoke</code> 中暂时去掉 <code>"files": first_result["files"]</code>，其余输入不变。先预测：已有的 task 摘要还在，但新一轮是否还能读到报告？</li>
-<li>只重跑第二次调用那一格。它应在完整内容断言处停止；另开一格运行 <code>print(read_text)</code>，查看实际的文件读取错误。<code>read_text</code> 在断言之前已经赋值，所以失败后仍可查看。核对思路：聊天记录包含文件路径，不等于这次状态里有该文件。</li>
-<li>恢复 <code>files</code>，重启内核并全部运行，确认内容检查重新通过。</li>
+<h2 id="7.-%E7%BB%83%E4%B9%A0%EF%BC%9A%E5%8F%AA%E6%94%B9%E8%AE%A2%E9%98%85%E6%97%B6%E6%9C%BA">7. 练习：只改订阅时机<a class="anchor-link" href="#7.-%E7%BB%83%E4%B9%A0%EF%BC%9A%E5%8F%AA%E6%94%B9%E8%AE%A2%E9%98%85%E6%97%B6%E6%9C%BA">¶</a></h2><ol>
+<li>保持 offline，在第 <strong>5</strong> 节把 <code>SUBSCRIBE_EARLY = True</code> 改成 <code>False</code>。</li>
+<li>先预测：raw 事件和工具还会发生吗？晚订阅能得到 researcher handle 吗？</li>
+<li>重启内核并运行全部，第 5 节应在“晚订阅可能漏掉委派”的断言失败。</li>
+<li>失败时 raw 运行已经完整消费，工具已执行；不是任务还在后台等待。改变的是消费者的订阅时机。</li>
+<li>恢复 <code>True</code>，重启并运行全部，核对一条委派、raw 路径匹配和进度顺序重新通过。</li>
 </ol>
-<p>另一个小练习：在脚本报告中移除 <code>95</code>，从头运行，观察“报告缺少关键延迟数据”的断言。它检查证据完整性，不是在评价文笔。</p>
-<table>
+<p>不要同时修改模型、工具或事件过滤条件。若需要多个消费者读取同一投影，应在消费前使用框架的 <code>tee</code> 等分流机制；重复订阅不是日志重放，本实验不展开多消费者处理。</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=80d7de74">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="8.-%E8%BE%B9%E7%95%8C%E3%80%81%E6%8E%92%E9%94%99%E4%B8%8E%E6%B8%85%E7%90%86">8. 边界、排错与清理<a class="anchor-link" href="#8.-%E8%BE%B9%E7%95%8C%E3%80%81%E6%8E%92%E9%94%99%E4%B8%8E%E6%B8%85%E7%90%86">¶</a></h2><table>
 <thead>
 <tr>
-<th>失败位置</th>
-<th>先检查什么</th>
+<th>现象</th>
+<th>检查位置</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>没有 task / 没有 lookup_trace</td>
-<td>是否按顺序创建模型、工具和 Agent；live 时模型是否遵从委派要求</td>
+<td>只有最终回复，没有 researcher</td>
+<td>模型是否实际请求 task；是否在执行前订阅 subagents</td>
 </tr>
 <tr>
-<td><code>report is None</code></td>
-<td>子 Agent 是否执行 write_file，写入路径是否正确</td>
+<td>child.custom 不存在</td>
+<td>是否注册 CustomTransformer；工具是否在当前子图发出事件</td>
 </tr>
 <tr>
-<td>第一轮出现 read_file</td>
-<td>提前读文件破坏了本次观察时机，应排查调用记录</td>
+<td>工具请求出现，但结果不合格</td>
+<td>等运行结束后检查 completed、error、ToolMessage.status 和内容</td>
 </tr>
 <tr>
-<td>第二轮读回内容不一致</td>
-<td>是否传回 files，是否读了同一路径</td>
+<td>raw 文本过滤器没有输出</td>
+<td>当前是完整消息还是 content-block 增量；不能只接受一种形式</td>
+</tr>
+<tr>
+<td>live 没按指定工具流程执行</td>
+<td>查看实际模型请求与返回；断言会失败，不自动改成 offline</td>
+</tr>
+<tr>
+<td>流代码与旧例子的 type/ns/data 不同</td>
+<td>本例使用 v3；v2 StreamPart 是另一层接口，不要混用循环</td>
 </tr>
 </tbody>
 </table>
-<p>文件和观察列表都在本例内存状态中，重启内核即可清理，不会在电脑磁盘留下这份虚拟报告。可用下面的终端命令重新独立执行；完成后继续 <a href="../ch06/01-async-subagent-lifecycle.ipynb">第 6 章 Notebook</a>。</p>
-<div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>course_notebooks.run<span class="w"> </span>ch05-subagents
-</pre></div>
+<p><strong>验证范围</strong>：同步 v3 投影、一次子 Agent 委派、工具与结果关联、custom 进度、raw 顺序和路径、晚订阅反例。没有验证逐 token 传输、异步并发消费、工具异常/子 Agent 失败的独立触发、v2 迁移、SSE 页面、网络断开、生产背压或持久化重放。Streaming 本身不等于并行，也不承担业务质量验收。</p>
+<p><strong>清理</strong>：每次流都在 <code>with</code> 中创建和消费，作用域退出会结束迭代器；不创建文件、服务器或持久后台任务。列表仅保存在当前内核，重启后清空。本例不使用 Checkpointer，三场实验之间也不共享会话状态。</p>
+<p>下一步：回到<a href="../../content/ch14-streaming.md">正文的 Streaming 应用模板</a>，为真实界面并发消费各投影；需要业务验收时另接入 <a href="../../content/ch13-grading-rubrics.md">Rubric</a>。</p>
 </div>
 </div>
 </div>

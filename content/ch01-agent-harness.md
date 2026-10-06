@@ -69,14 +69,16 @@ agent = create_agent(
 - **Framework** 给你提供了锤子、锯子、钉子（标准化开发工具）
 - **Harness** 直接给你一个装好了的工具间，常用工具挂在墙上，工作流程贴在白板上（开箱即用）
 
-Deep Agents 就是这样一个 Harness。它利用 LangChain 的核心构建块（模型、工具接口），运行在 LangGraph 的运行时之上，并预置了：
+Deep Agents 就是这样一个 Harness。它利用 LangChain 的核心构建块（模型、工具接口），运行在 LangGraph 的运行时之上，提供以下能力；其中一部分默认装配，一部分需要应用按需配置：
 
 | 能力 | 说明 |
 |---|---|
 | 虚拟文件系统 | `read_file`、`write_file`、`edit_file`、`delete`、`ls`、`glob`、`grep` 七个文件操作工具 |
 | 任务规划 | 按需启用 `TodoListMiddleware` 后获得 `write_todos`，把复杂任务拆解为可追踪的步骤 |
 | 子 Agent 委派 | `task` 工具，让 Agent 能将子任务派发给专门的 Agent |
-| 长期记忆 | 基于 LangGraph Memory Store，支持跨对话的持久化记忆 |
+| Skills | 配置技能目录后，按需加载领域知识、操作流程和脚本说明 |
+| 上下文管理 | 通过摘要缩短模型输入，将大结果卸载到文件，控制长任务中的上下文体积 |
+| 记忆 | 加载指定的记忆文件；结合持久化 Backend 保存跨对话的信息 |
 
 同一层的其他选手包括：Anthropic 的 Claude Agent SDK、Manus 等。
 
@@ -93,6 +95,22 @@ Deep Agents 就是这样一个 Harness。它利用 LangChain 的核心构建块�
 三者不是互相替代的关系，而是自底向上层层构建。LangGraph 是底层运行时，LangChain 构建在 LangGraph 之上提供更高层抽象，Deep Agents 则在两者之上提供开箱即用的 Agent 能力。你可以根据需求选择在不同层次上工作——需要最大灵活性就直接用 LangGraph，需要快速开发就用 LangChain，需要解决复杂任务就用 Deep Agents。
 
 ![Agent 开发三层架构：底层 LangGraph (Runtime)、中间层 LangChain (Framework)、上层 Deep Agents (Harness)，侧边 LangSmith 贯穿提供可观测性](../public/imgs/01-framework-three-layer-architecture.png)
+
+### 三层如何选择与组合
+
+三层的差别还体现在：**哪些工作由框架预先做好，哪些决策需要你自己编码**。
+
+| 你的需求 | 合适的起点 | 你主要负责什么 |
+|---|---|---|
+| 需要文件操作、上下文管理和子任务委派，让 Agent 自主完成多步骤任务 | Deep Agents 的 `create_deep_agent()` | 配置业务工具、提示词、后端和需要启用的能力 |
+| 需要标准的模型—工具循环，希望自行决定上下文策略与中间件组合 | LangChain 的 `create_agent()` | 组合工具与 Middleware，定制每轮模型和工具调用的行为 |
+| 流程包含固定步骤、条件分支，或需要精确控制整体执行路径 | LangGraph 的 `StateGraph` | 定义节点、边与路由，把确定性步骤和 Agent 调用编排在一起 |
+
+如果还没有必须自定义的流程，可以先从 Deep Agents 开始；当需求超出当前抽象提供的控制范围时，再深入 LangChain 或 LangGraph。直接使用 LangGraph 也可以构建高度自主的 Agent，区别在于你需要自己定义更多执行结构。
+
+**三者可以组合使用。** 例如，在 LangGraph 中先用固定代码校验输入，再把研究任务交给一个 Deep Agent，最后进入人工审核节点；也可以把已经写好的 LangGraph 工作流包装成 `CompiledSubAgent`，交给主 Agent 委派。后者的具体实现见[第 5 章](../ch05-subagents/#compiledsubagent集成-langgraph-工作流)。
+
+这一选择与组合方式参考官方博客 [Deep Agents vs LangChain vs LangGraph](https://www.langchain.com/blog/deep-agents-vs-langchain-vs-langgraph)。
 
 ## 为什么需要 Agent Harness？
 
@@ -202,19 +220,49 @@ Deep Agents 的解决方案是引入一个**虚拟文件系统**，让 Agent 像
 
 ## Deep Agents 的技术全景
 
-最后，我们用一张图来总结 Deep Agents 在整个 LangChain 生态中的位置：
+学习到这里，你可能还想知道：**Deep Agents 的整体架构是什么样的？文件系统、子 Agent、记忆等能力，究竟怎样连接起来？**
 
-![Deep Agents 技术全景图：顶层 Deep Agents (Harness) 包含文件系统工具、任务规划、子 Agent、可插拔存储后端、长期记忆五大模块；中间层 LangChain (Framework) 和 LangGraph (Runtime)；底层 LangSmith 提供可观测性](../public/imgs/04-framework-tech-panorama.png)
+### 创建时：能力如何装配
+
+核心关系是：**Deep Agents 在 LangChain 的 Agent 循环周围装配 Middleware，最终由 LangGraph 执行。** Middleware 可以提供工具、扩展状态，也可以在模型调用和工具执行等环节介入处理。它们的 hooks 运行在编译后的执行图中。
+
+![Deep Agents 整体架构图：应用配置进入 create_deep_agent，装配文件系统、子 Agent、摘要和按需中间件，再通过 LangChain create_agent 构建 Agent 循环，最终在 LangGraph 上运行；LangSmith 从侧边提供观测](../public/imgs/04-framework-deepagents-architecture.svg)
+
+[打开原尺寸 SVG 架构图](https://datawhalechina.github.io/deepagents-in-action/imgs/04-framework-deepagents-architecture.svg)，可放大查看组件细节。
+
+从上到下读这张图，可以分成四步：
+
+1. **应用提供业务配置**：选择模型，注册自定义工具，定义系统提示词，并配置 Backend、Skills、记忆文件等。
+2. **`create_deep_agent()` 装配 Harness**：根据参数和当前 Harness profile，组装内置与自定义 Middleware，并准备工具和状态定义。
+3. **LangChain 构建 Agent 循环**：`create_deep_agent()` 内部调用 `create_agent()`，把模型、工具、中间件和运行配置交给框架。
+4. **LangGraph 执行编译后的图**：返回的 Agent 支持 `invoke()` / `stream()`；配置 Checkpointer 和 Store 后，可以分别保存线程状态和跨线程数据。LangSmith 用于观察、调试和评测运行过程。
+
+这里的调用关系可以在 [Deep Agents v0.7.1 的 `graph.py`](https://github.com/langchain-ai/deepagents/blob/deepagents%3D%3D0.7.1/libs/deepagents/deepagents/graph.py) 中核对。理解 Middleware 如何介入循环，可继续阅读 [LangChain Middleware Overview](https://docs.langchain.com/oss/python/langchain/middleware/overview)。
+
+### 各项能力分别由谁负责？
+
+官方把 Harness 能力归为执行环境、上下文管理、任务委派和人机控制四组。下表把这些能力与课程章节对应起来，方便你从整体架构进入具体实现：
+
+| 能力分组 | 关键组件与职责 | 后续章节 |
+|---|---|---|
+| 执行环境 | `FilesystemMiddleware` 提供文件工具，Backend 决定文件存到哪里；沙箱后端支持 Shell 执行，Interpreter 提供代码编排；自定义工具和 MCP 接入业务系统 | [文件系统](../ch03-virtual-filesystem/) · [沙箱](../ch10-sandboxes/) · [MCP](../ch12-mcp/) · [Interpreter](../ch15-interpreters/) |
+| 上下文管理 | 摘要中间件缩短模型输入并保存可回查的历史；大结果卸载到文件；`SkillsMiddleware` 提供技能元数据与读取指引，正文由模型按需调用 `read_file` 获取；`MemoryMiddleware` 加载指定的记忆文件；持久化 Backend 保存可跨对话使用的信息 | [上下文与 Backend](../ch03-virtual-filesystem/) · [Skills](../ch07-skills/) · [记忆](../ch08-long-term-memory/) |
+| 任务委派 | `SubAgentMiddleware` 提供 `task`，让子 Agent 用独立上下文处理任务并返回结果；`TodoListMiddleware` 提供显式计划与进度状态 | [任务规划](../ch04-task-planning/) · [子 Agent](../ch05-subagents/) · [异步子 Agent](../ch06-async-subagents/) · [动态子 Agent](../ch16-dynamic-subagents/) |
+| 人机控制 | `HumanInTheLoopMiddleware` 在指定工具调用前暂停；文件权限规则限制具体路径的操作，也可以触发人工审批 | [人机协作](../ch09-human-in-the-loop/) · [文件权限](../ch11-filesystem-permissions/) |
+
+**Tool、Middleware 和 Backend 各司其职。** Tool 是模型可以请求的动作；Middleware 提供能力并控制执行环节；Backend 实现文件操作和存储。例如，模型请求 `read_file`，文件系统中间件提供这个工具，工具再通过配置的 Backend 读取内容。Backend 本身也不是 Agent 循环，它负责存储与环境操作。
+
+记忆也需要分清两件事：`memory=` 指定启动时加载哪些记忆文件，文件能否跨线程保存则取决于存储后端；Checkpointer 保存的是线程执行状态。完整配置见[第 8 章](../ch08-long-term-memory/)。
 
 > [!NOTE]
-> **v0.7 提醒**：这张图记录了课程早期的能力全景，能力本身仍然存在，但默认装配方式已经变化。当前文件工具包含新增的 `delete`；任务规划需要显式传入 `TodoListMiddleware`；默认基础提示词为空，业务提示词由应用自己定义。
+> **v0.7 能力与默认值**：图中展示的是整体能力及装配关系。标准配置会装配文件系统、子 Agent 和摘要等核心能力；任务规划需要显式传入 `TodoListMiddleware`，Skills、记忆加载与人工审批需要相应配置，`execute` 需要支持执行的沙箱后端，Interpreter 也需要单独启用。实际可执行的操作还会受 Backend 能力、权限与 Harness profile 影响；支持某项能力不代表每个任务都会调用它。默认基础提示词为空，业务提示词由应用定义。版本变化见 [v0.7 更新章](../release-v0-7/)，能力分类参考 [官方 Overview](https://docs.langchain.com/oss/python/deepagents/overview#core-capabilities)。
 
 ## 小结
 
 本章我们理解了 Deep Agents 的设计定位：
 
 1. **Agent 开发分为三个层次**：Runtime（LangGraph）→ Framework（LangChain）→ Harness（Deep Agents），自底向上层层构建
-2. **Agent Harness 的价值**在于将成功 Agent 产品的共性能力（文件系统、任务规划、子 Agent、长期记忆）固化为开箱即用的组件
+2. **Agent Harness 的价值**在于把文件系统、子 Agent 和上下文管理等能力装配到 Agent 循环中，并允许应用按需启用规划、Skills、记忆等策略
 3. **Context Engineering** 是 Deep Agents 的核心理念——用虚拟文件系统按需管理上下文，而不是把所有信息塞进 prompt
 4. **与竞品相比**，Deep Agents 的最大优势是模型无关性、虚拟文件系统的可插拔后端、长期记忆、以及完整的生产部署方案
 

@@ -1,0 +1,456 @@
+> 本次执行模式：**offline**。源码指纹：`03d11acd550f`。
+
+# 第 2 章 Notebook（二）：研究助手
+
+对应课程章节：[第 2 章：快速上手](../../content/ch02-quickstart.md) 的「实战：构建一个研究助手」与「Agent 在背后做了什么？」两节。
+
+正文说，一次 `invoke()` 背后 Agent 可能规划任务、多次搜索、把资料写进文件，最后再写报告。这些步骤不会出现在最终答案里。这份 Notebook 搭出正文的研究助手，然后从运行结果中把这些步骤找出来：哪些工具被调用了，Todo 列表和虚拟文件里留下了什么。
+
+你只需基础 Python。建议先完成 [第 2 章 Notebook（一）](01-quickstart.ipynb)，理解 `tool_calls` 和 `ToolMessage`；本 Notebook 仍然从第一格建立所有变量，可以单独运行。
+
+## 学习目标
+
+跑完本 Notebook 后，你应该能够：
+
+1. 按正文组装研究助手：`internet_search` 工具、系统提示词、`create_deep_agent()`，并显式启用 `TodoListMiddleware()`；
+2. 确认搜索工具真的被调用并返回了结果，而不是只看最终报告；
+3. 从运行后的状态中读取 `todos`（任务列表）和 `files`（虚拟文件系统），说明它们由哪次工具调用产生；
+4. 说明 Tavily 额度、网络失败和模型调用各自可能带来的成本与报错。
+
+**预期现象**（offline）：Agent 先用 `write_todos` 列出三步计划，再调用 `internet_search` 拿到 3 条结果，把要点写入 `/research/langgraph.md`，更新计划为全部完成，最后给出报告。检查格会打印“已验证”。
+
+规划和写文件是模型**可以选择**做的事，不是固定流程。live 模式下，真实模型没有调用 `write_todos` 或 `write_file` 时，本 Notebook 会如实说明“本次没有发生”，不算执行失败；深入的规划机制见 [第 4 章](../../content/ch04-task-planning.md)。
+
+## 运行环境与运行模式
+
+使用课程锁定的 Python 3.12 环境，安装与内核选择见 [Notebook 索引](../README.md)。默认 offline 模式在仓库根目录执行：
+
+```bash
+uv sync --project notebooks --locked
+uv run --project notebooks --locked python -m course_notebooks.run ch02-research-assistant
+```
+
+| 模式 | 模型 | 搜索 | 需要的 Key 与依赖 |
+|---|---|---|---|
+| offline（默认，随附输出） | 脚本模型按预设顺序请求工具 | 本地样例结果，不联网 | 无 |
+| live | 真实模型，自主决定调用哪些工具 | 真实 Tavily 搜索 | 模型 Key（见 [统一配置说明](../README.md)）、`TAVILY_API_KEY`，并安装 `search` 依赖组 |
+
+live 模式的命令：
+
+```bash
+uv sync --project notebooks --locked --extra search
+uv run --project notebooks --locked --extra search python -m course_notebooks.run ch02-research-assistant --mode live
+```
+
+offline 模式下，框架、`write_todos`、`write_file` 以及 `internet_search` 这个 Python 函数都会真实运行，只是函数返回本地样例而不请求 Tavily。它验证的是 Agent 的运行机制，不证明真实模型会这样规划，也不代表搜索结果的质量。
+
+
+```python
+from course_notebooks.model_config import selected_mode
+from course_notebooks.nbtools import show_runtime
+
+show_runtime()
+MODE = selected_mode()
+```
+
+    运行模式： offline （脚本模型）
+    Python： 3.12.11 平台： Darwin arm64
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
+
+
+## 1. 定义搜索工具
+
+正文的 `internet_search` 把参数原样转给 Tavily 客户端。下一格保留正文的函数名、参数、默认值和 docstring，只多了一个分支：
+
+- **offline**：返回 `OFFLINE_RESULTS` 中的样例。它的结构与 Tavily 返回的字典一致（`query` 加上 `results` 列表，每条结果有 `title`、`url`、`content`），内容是依据官方文档写的简短说明，只用于观察流程；
+- **live**：从环境变量或仓库根目录未提交的 `.env` 读取 `TAVILY_API_KEY`，创建 `TavilyClient` 并真实搜索。缺少 Key 时直接报错，不会悄悄改用样例。
+
+模式由 `COURSE_MODE` 决定，而不是看 Key 是否存在：offline 模式下，即使 `.env` 里有 Tavily Key 也不会联网。`from tavily import TavilyClient` 放在 live 分支里，所以 offline 不需要安装 `tavily-python`。
+
+
+```python
+import os
+from typing import Literal
+
+OFFLINE_RESULTS = [
+    {"title": "LangGraph overview", "url": "https://docs.langchain.com/oss/python/langgraph/overview",
+     "content": "LangGraph 是用于构建、管理和部署长时间运行、有状态 Agent 的底层编排框架与运行时。", "score": 0.92},
+    {"title": "langchain-ai/langgraph", "url": "https://github.com/langchain-ai/langgraph",
+     "content": "LangGraph 用图描述工作流：节点执行步骤，边决定下一步，状态在步骤之间传递；支持持久化执行和人工介入。", "score": 0.87},
+    {"title": "Deep Agents overview", "url": "https://docs.langchain.com/oss/python/deepagents/overview",
+     "content": "Deep Agents 构建在 LangGraph 之上，预置了文件系统、子 Agent 等适合多步骤任务的能力。", "score": 0.74},
+]
+
+if MODE == "live":
+    from dotenv import load_dotenv
+    from tavily import TavilyClient
+    from course_notebooks.model_config import repository_root
+
+    load_dotenv(repository_root() / ".env", override=False)
+    if not os.getenv("TAVILY_API_KEY"):
+        raise ValueError("live 模式需要 TAVILY_API_KEY；offline 模式不需要。")
+    tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+
+
+def internet_search(
+    query: str,
+    max_results: int = 5,
+    topic: Literal["general", "news", "finance"] = "general",
+    include_raw_content: bool = False,
+):
+    """Run a web search for the given query.
+
+    Args:
+        query: The search query string.
+        max_results: Maximum number of results to return.
+        topic: The topic category for the search.
+        include_raw_content: Whether to include raw page content.
+    """
+    if MODE == "offline":
+        response = {"query": query, "results": OFFLINE_RESULTS[:max_results]}
+    else:
+        response = tavily_client.search(
+            query,
+            max_results=max_results,
+            include_raw_content=include_raw_content,
+            topic=topic,
+        )
+    search_log.append({"query": query, "results": len(response.get("results") or [])})
+    return response
+
+
+# 每次真正执行搜索都记一笔。主 Agent 和子 Agent 调用的是同一个函数，
+# 所以即使搜索被委派给子 Agent、没有出现在主对话的消息里，这里也能看到。
+search_log = []
+
+
+print("搜索来源：", "本地样例（offline）" if MODE == "offline" else "Tavily API（live）")
+```
+
+    搜索来源： 本地样例（offline）
+
+
+### 1.1 先不经过 Agent，直接调用一次
+
+工具就是普通函数，可以直接调用。先看它返回什么结构，后面才知道 ToolMessage 里的内容从哪来。live 模式下，这一格会真实请求一次 Tavily，消耗额度（见第 5 节）。
+
+
+```python
+sample = internet_search("LangGraph 是什么", max_results=2)
+print("返回类型：", type(sample).__name__, "顶层键：", sorted(sample))
+for item in sample["results"]:
+    print("-", item["title"], "|", item["url"])
+    print("  ", item["content"][:80])
+assert sample["results"] and all("url" in item for item in sample["results"])
+```
+
+    返回类型： dict 顶层键： ['query', 'results']
+    - LangGraph overview | https://docs.langchain.com/oss/python/langgraph/overview
+       LangGraph 是用于构建、管理和部署长时间运行、有状态 Agent 的底层编排框架与运行时。
+    - langchain-ai/langgraph | https://github.com/langchain-ai/langgraph
+       LangGraph 用图描述工作流：节点执行步骤，边决定下一步，状态在步骤之间传递；支持持久化执行和人工介入。
+
+
+## 2. 组装研究助手
+
+下面是正文 Step 3 的代码，只把模型换成课程的 `create_model(...)`：
+
+- `research_instructions` 是 **系统提示词**：一条持续生效的行为说明，定义 Agent 的角色。它与用户的具体问题不同；
+- `middleware=[TodoListMiddleware()]` 加入任务规划中间件。**中间件**（middleware）是插在 Agent 运行过程中的扩展，这一个会给 Agent 增加 `write_todos` 工具和状态中的 `todos` 字段。v0.7 不再默认启用规划，需要时要像这样显式加入。
+
+offline 脚本按“规划 → 搜索 → 写笔记 → 更新计划 → 报告”的顺序发出请求，对应正文「Agent 在背后做了什么？」中的步骤。`write_todos` 的每一项有 `content`（内容）和 `status`（`pending` 待办、`in_progress` 进行中、`completed` 已完成）。`write_file` 写入的是 Agent 状态里的**虚拟文件**，不会在你的电脑上创建文件。
+
+注意：笔记内容和最终报告是脚本里提前写好的，脚本不会阅读搜索结果。它们用来观察文件怎样进入状态，不代表报告质量。
+
+
+```python
+from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+from langchain_core.messages import AIMessage, ToolMessage
+from course_notebooks.model_config import create_model
+from course_notebooks.testing import ScriptedChatModel
+
+NOTES_PATH = "/research/langgraph.md"
+PLAN = ["搜索 LangGraph 的定义与定位", f"把要点和来源写入 {NOTES_PATH}", "根据笔记撰写报告"]
+NOTES = """# LangGraph 研究笔记
+
+- 定位：构建、管理和部署有状态 Agent 的底层编排框架与运行时
+- 工作方式：节点执行步骤，边决定下一步，状态在步骤之间传递
+- 与 Deep Agents 的关系：Deep Agents 构建在 LangGraph 之上
+
+来源：
+- https://docs.langchain.com/oss/python/langgraph/overview
+- https://github.com/langchain-ai/langgraph
+"""
+
+
+def todos(statuses):
+    return [{"content": content, "status": status} for content, status in zip(PLAN, statuses)]
+
+
+model = create_model(ScriptedChatModel(responses=[
+    AIMessage(content="", tool_calls=[{"name": "write_todos", "id": "ch02-plan",
+        "args": {"todos": todos(["in_progress", "pending", "pending"])}}]),
+    AIMessage(content="", tool_calls=[{"name": "internet_search", "id": "ch02-search",
+        "args": {"query": "LangGraph 是什么", "max_results": 3}}]),
+    AIMessage(content="", tool_calls=[{"name": "write_file", "id": "ch02-notes",
+        "args": {"file_path": NOTES_PATH, "content": NOTES}}]),
+    AIMessage(content="", tool_calls=[{"name": "write_todos", "id": "ch02-plan-done",
+        "args": {"todos": todos(["completed", "completed", "completed"])}}]),
+    AIMessage(content="（脚本预设报告）LangGraph 是 LangChain 团队的底层 Agent 编排框架，"
+                      "用图组织步骤与状态；Deep Agents 构建在它之上。来源见研究笔记。"),
+]))
+
+research_instructions = """你是一位专业的研究员。
+你的工作是进行深入研究，然后撰写一份完整的研究报告。
+
+你可以使用 internet_search 工具搜索互联网获取信息。
+"""
+
+agent = create_deep_agent(
+    model=model,
+    tools=[internet_search],
+    system_prompt=research_instructions,
+    middleware=[TodoListMiddleware()],
+)
+```
+
+### 2.1 Agent 能用哪些工具？
+
+**已注册**表示模型可以选择这个工具，**已调用**表示本次运行真的执行了它。先只看注册清单：除了我们传入的 `internet_search`，Deep Agent 还带有文件工具（`write_file`、`read_file` 等）和委派子 Agent 的 `task`；`write_todos` 来自刚加入的 `TodoListMiddleware`。
+
+`agent.nodes["tools"]` 是图中执行工具的步骤，下面从中读出工具名。这是本课程锁定版本的内部结构，只用于观察，不需要记住。
+
+
+```python
+registered = sorted(agent.nodes["tools"].bound.tools_by_name)
+print("已注册的工具：", registered)
+assert {"internet_search", "write_todos", "write_file"} <= set(registered)
+```
+
+    已注册的工具： ['delete', 'edit_file', 'execute', 'glob', 'grep', 'internet_search', 'ls', 'read_file', 'task', 'write_file', 'write_todos']
+
+
+## 3. 运行：什么是 LangGraph？
+
+这就是正文 Step 4 的调用。运行前先清空 `search_log`：第 1.1 节那次直接调用也记在里面，但它不属于 Agent 的这次运行，不能拿来证明 Agent 搜索过。运行后按顺序打印每次工具请求和工具结果，找出 Agent 在一次 `invoke()` 里做了哪些事。工具结果只显示前 90 个字符。
+
+
+```python
+search_log.clear()  # 只统计下面这次运行里的搜索
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "什么是 LangGraph？"}]}
+)
+
+for message in result["messages"]:
+    if isinstance(message, AIMessage):
+        for call in message.tool_calls:
+            args = {key: (value[:40] + "…" if isinstance(value, str) and len(value) > 40 else value)
+                    for key, value in call["args"].items() if key != "todos"}
+            print("请求", call["name"], args or "", "ID:", call["id"])
+    if isinstance(message, ToolMessage):
+        print("  返回", message.name, message.status, str(message.content)[:90].replace("\n", " "))
+
+print("\n最终报告（前 200 字）：")
+print(result["messages"][-1].content[:200])
+print("\n本次运行实际执行的搜索：", search_log)
+```
+
+    请求 write_todos  ID: ch02-plan
+      返回 write_todos success Updated todo list to [{'content': '搜索 LangGraph 的定义与定位', 'status': 'in_progress'}, {'conte
+    请求 internet_search {'query': 'LangGraph 是什么', 'max_results': 3} ID: ch02-search
+      返回 internet_search success {"query": "LangGraph 是什么", "results": [{"title": "LangGraph overview", "url": "https://doc
+    请求 write_file {'file_path': '/research/langgraph.md', 'content': '# LangGraph 研究笔记\n\n- 定位：构建、管理和部署有状态 Agent…'} ID: ch02-notes
+      返回 write_file success Updated file /research/langgraph.md
+    请求 write_todos  ID: ch02-plan-done
+      返回 write_todos success Updated todo list to [{'content': '搜索 LangGraph 的定义与定位', 'status': 'completed'}, {'content
+    
+    最终报告（前 200 字）：
+    （脚本预设报告）LangGraph 是 LangChain 团队的底层 Agent 编排框架，用图组织步骤与状态；Deep Agents 构建在它之上。来源见研究笔记。
+    
+    本次运行实际执行的搜索： [{'query': 'LangGraph 是什么', 'results': 3}]
+
+
+**怎样读这段输出**：offline 模式下应看到四次工具请求，每次后面紧跟它的返回，最后是报告。`internet_search` 的返回是 JSON 文本，框架把函数返回的字典转成了文字，放进 ToolMessage 交给模型；`write_todos` 和 `write_file` 的返回只是一句确认（“Updated todo list…”“Updated file…”）。计划和文件的真正内容保存在状态里，下一节去读取。
+
+live 模式下，调用次数和顺序由模型决定：可能搜索多次，可能不写文件，也可能通过 `task` 把搜索交给子 Agent。子 Agent 内部的工具调用不在这份消息列表里（见 [第 5 章 Notebook](../ch05/01-subagent-delegation.ipynb)），这正是要在搜索函数里记录 `search_log` 的原因：最后一行列出本次运行真正执行过的搜索，offline 模式下是一次返回 3 条结果的搜索。
+
+## 4. 检查：哪些是必须的，哪些只做观察
+
+`check_research(state, search_log)` 把学习目标分成两类：
+
+**必须满足**（不满足就停止）：
+
+1. 这次运行中 `internet_search` 至少真正执行过一次，并拿到非空的 `results`。主 Agent 直接搜索、子 Agent 在委派任务里搜索都算，依据是 `search_log`；只有一次成功的 `task` 不够，因为子 Agent 也可能不搜索、直接凭已有知识回答；
+2. 对话以一条不再请求工具、内容非空的报告结束。
+
+**发生了才核对**（模型没有这样做不算失败）：
+
+3. 如果 `write_todos` 成功执行过，状态中的 `todos` 应等于**最后一次**提交的计划：每次调用都会用新列表替换旧列表；
+4. 如果 `write_file` 成功执行过，文件路径应出现在状态的 `files` 中；该文件之后没有被 `edit_file` 修改时，内容应与写入的一致。比较前先按框架的规则统一路径：传给工具的 `research/notes.md` 会保存成 `/research/notes.md`，这里直接用 Deep Agents 自己的 `validate_path` 做同样的转换。
+
+“成功执行”要求 ToolMessage 的 `status` 为 `success`，且它的 `tool_call_id` 能对应到同名工具的请求。只请求、没有成功执行的调用不计入。
+
+
+```python
+import json
+
+from deepagents.backends.utils import validate_path
+from langchain_core.messages import AIMessage, ToolMessage
+
+
+def check_research(state, search_log):
+    messages = state["messages"]
+    calls = {call["id"]: call for message in messages if isinstance(message, AIMessage)
+             for call in message.tool_calls}
+    done = [message for message in messages if isinstance(message, ToolMessage)
+            and message.status == "success" and message.tool_call_id in calls
+            and calls[message.tool_call_id]["name"] == message.name]
+
+    def has_results(message):
+        try:
+            return bool(json.loads(message.content).get("results"))
+        except (TypeError, ValueError, AttributeError):
+            return False
+
+    searched = [entry for entry in search_log if entry["results"]]
+    assert searched, "这次运行里 internet_search 没有真正执行并拿到结果（主 Agent 和子 Agent 的搜索都算）。"
+    direct = [m for m in done if m.name == "internet_search" and has_results(m)]
+    delegated = [m for m in done if m.name == "task"]
+    final = messages[-1]
+    assert isinstance(final, AIMessage) and not final.tool_calls and final.content, "缺少最终报告。"
+
+    plans = [calls[m.tool_call_id]["args"]["todos"] for m in done if m.name == "write_todos"]
+    if plans:
+        assert state.get("todos") == plans[-1], "todos 状态应等于最后一次 write_todos 提交的计划。"
+    written = {validate_path(calls[m.tool_call_id]["args"]["file_path"]): calls[m.tool_call_id]["args"]["content"]
+               for m in done if m.name == "write_file"}
+    edited = {validate_path(calls[m.tool_call_id]["args"]["file_path"]) for m in done if m.name == "edit_file"}
+    files = state.get("files", {})
+    for path, content in written.items():
+        assert path in files, f"{path} 应出现在虚拟文件系统中。"
+        if path not in edited:
+            assert files[path]["content"] == content, f"{path} 的内容与写入的不一致。"
+    print(f"已验证：本次运行执行了 {len(searched)} 次有结果的搜索（主 Agent 直接发起 {len(direct)} 次），"
+          f"{len(delegated)} 次子 Agent 委派，并得到最终报告。")
+    print(f"可选行为：计划更新 {len(plans)} 次，写入文件 {len(written)} 个，状态与调用一致。")
+    return calls, done
+
+
+calls, done = check_research(result, search_log)
+```
+
+    已验证：本次运行执行了 1 次有结果的搜索（主 Agent 直接发起 1 次），0 次子 Agent 委派，并得到最终报告。
+    可选行为：计划更新 2 次，写入文件 1 个，状态与调用一致。
+
+
+### 4.1 读取 Todo 列表和虚拟文件
+
+检查通过后，把状态中的两个字段打印出来：
+
+- `result.get("todos")`：当前计划。没有启用 `TodoListMiddleware`，或模型本次没有调用 `write_todos`，这里就没有内容；
+- `result["files"]`：虚拟文件系统，键是路径，值里的 `content` 是文件内容，另有创建和修改时间。
+
+最后把本次实际发生的工具调用对应到正文列出的五个步骤。`requested` 统计请求过但没有成功的调用，例如调用了一个没有注册的工具。
+
+
+```python
+from collections import Counter
+
+plan = result.get("todos")
+if plan:
+    print("Todo 列表：")
+    for item in plan:
+        print(f"  [{item['status']}] {item['content']}")
+else:
+    print("本次没有 todos 状态：没有启用 TodoListMiddleware，或模型没有调用 write_todos。")
+
+files = result.get("files", {})
+print("\n虚拟文件：", sorted(files) or "（无）")
+for path, data in files.items():
+    print(f"\n--- {path}（前 6 行）")
+    print("\n".join(data["content"].splitlines()[:6]))
+
+succeeded = Counter(message.name for message in done)
+requested = Counter(call["name"] for call in calls.values())
+print("\n对照正文「Agent 在背后做了什么？」：")
+for step, tool in [("规划任务", "write_todos"), ("搜索信息", "internet_search"),
+                   ("管理上下文", "write_file"), ("委派子任务", "task")]:
+    failed = requested[tool] - succeeded[tool]
+    note = f"，另有 {failed} 次请求未成功" if failed else ""
+    print(f"  {step}（{tool}）：成功 {succeeded[tool]} 次{note}")
+print("  综合报告：最终回复", len(result["messages"][-1].content), "字")
+```
+
+    Todo 列表：
+      [completed] 搜索 LangGraph 的定义与定位
+      [completed] 把要点和来源写入 /research/langgraph.md
+      [completed] 根据笔记撰写报告
+    
+    虚拟文件： ['/research/langgraph.md']
+    
+    --- /research/langgraph.md（前 6 行）
+    # LangGraph 研究笔记
+    
+    - 定位：构建、管理和部署有状态 Agent 的底层编排框架与运行时
+    - 工作方式：节点执行步骤，边决定下一步，状态在步骤之间传递
+    - 与 Deep Agents 的关系：Deep Agents 构建在 LangGraph 之上
+    
+    
+    对照正文「Agent 在背后做了什么？」：
+      规划任务（write_todos）：成功 2 次
+      搜索信息（internet_search）：成功 1 次
+      管理上下文（write_file）：成功 1 次
+      委派子任务（task）：成功 0 次
+      综合报告：最终回复 84 字
+
+
+offline 模式下，Todo 列表的三项都是 `completed`，因为脚本最后一次 `write_todos` 把它们全部标为完成；中间的 `in_progress` 版本已被替换。`/research/langgraph.md` 只存在于 Agent 状态中，重启内核就消失，也不会出现在磁盘上。委派子任务为 0 次：这个简单问题不需要子 Agent。
+
+这正是正文 v0.7 提醒的意思：流程图画的是“可能发生”的步骤，实际发生哪些要从消息和状态里核对。
+
+## 5. 成本、额度与网络失败
+
+以下只影响 live 模式，offline 不产生费用、不联网。
+
+| 来源 | 说明 |
+|---|---|
+| Tavily 额度 | 每次 `internet_search` 都是一次 API 请求。按 [Tavily 额度说明](https://docs.tavily.com/documentation/api-credits)，基础搜索每次消耗 1 Credit，高级搜索消耗 2 个；正文写作时免费计划每月 1,000 Credits。第 1.1 节的直接调用也算一次，Agent 自主搜索的次数不固定。额度与价格以官网为准 |
+| 模型调用 | 每一轮“模型思考 → 请求工具”都会调用一次模型。搜索结果会进入上下文，结果越多、`include_raw_content=True` 时越长，消耗的 Token 越多。免费模型也有限流 |
+| 网络失败 | `tavily_client.search` 在网络超时、Key 无效或额度用尽时会抛出异常。和第 2 章 Notebook（一）第 4 节一样，工具内部的异常会直接中断整次 `invoke()`，不会变成一条错误 ToolMessage |
+
+常见报错：
+
+| 现象 | 先检查什么 |
+|---|---|
+| `ValueError: live 模式需要 TAVILY_API_KEY` | 在仓库根目录 `.env` 设置 `TAVILY_API_KEY`；offline 不需要它 |
+| `ModuleNotFoundError: tavily` | live 模式需要 `--extra search` 安装搜索依赖组 |
+| Tavily 返回 401 / 429 / 432 或超时 | 401：Key 错误或缺失；429：请求过于频繁；432：超出套餐额度。超时则检查网络能否访问 `api.tavily.com` |
+| live 模式下 `check_research` 提示没有成功搜索 | 查看第 3 节的请求列表：小模型可能不调用工具，直接凭记忆回答。可用 `MODEL_NAME` 换用工具调用更可靠的模型 |
+| `NameError` | 从第一格依次运行，或重启内核并运行全部 |
+
+## 6. 改一个变量再观察
+
+**改哪里**：在第 2 节组装 Agent 的代码格中，把 `middleware=[TodoListMiddleware()],` 这一行删掉，其他代码都不动（仅在 offline 模式练习）。
+
+**先预测**：
+
+1. 第 2.1 节的注册清单里还有 `write_todos` 吗？那一格的断言会怎样？
+2. 脚本仍然会请求 `write_todos`，这次的 ToolMessage 状态是什么？
+3. `result` 里还有 `todos` 吗？`check_research` 会不会失败？
+
+**再运行**：选择“重启内核并运行全部”。第 2.1 节的断言会先停下，因为 `write_todos` 不在清单中。这说明规划工具来自中间件，不是 Deep Agent 默认自带的。把该格断言里的 `"write_todos",` 临时删掉后重新运行全部，核对第 3、4 节：两次 `write_todos` 都返回 `status: error`，内容是 “write_todos is not a valid tool”；`check_research` 仍然通过，因为规划本来就是可选行为，失败的调用不计入；第 4.1 节打印“本次没有 todos 状态”，并显示规划任务“另有 2 次请求未成功”。
+
+**恢复**：把 `middleware=[TodoListMiddleware()]` 和断言改回原样，重启内核并运行全部，确认 Todo 列表重新出现。
+
+## 小结与下一步
+
+- 研究助手 = 搜索工具 + 系统提示词 + `create_deep_agent()`；规划能力需要显式加入 `TodoListMiddleware()`。
+- 最终报告不能证明搜索发生过，要看到搜索工具在这次运行里真正执行并拿到结果；搜索委派给子 Agent 时不在主对话的消息里，所以在工具函数里记录。
+- `todos` 和 `files` 是状态的一部分，只在对应工具成功执行后才有内容；模型不一定每次都规划或写文件。
+
+本实验不启动外部进程，虚拟文件只在内存中，重启内核即可清理。继续阅读 [第 3 章：虚拟文件系统](../../content/ch03-virtual-filesystem.md)，了解 `files` 怎样帮助 Agent 管理上下文。
