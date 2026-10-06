@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`7b6f697b2a39`。
+> 本次执行模式：**offline**。源码指纹：`073615e22e15`。
 
 # 第 14 章实验：主 Agent 委派以后，怎样看见谁在做什么？
 
@@ -30,10 +30,11 @@ researcher 摘要 → 主 Agent 汇总
 
 需要基础 Python。每份 Notebook 都建立自己的变量；**内核**是执行代码、保存变量的 Python 进程。请从第一格顺序运行，安装与内核选择见 [README](../README.md)。
 
-- Python 3.12；锁定 deepagents 0.7.15、langchain 1.4.2、langgraph 1.2.11、langchain-openai 1.6.2，以 [uv.lock](../uv.lock)为准。下一格打印实际环境。
+- Python 3.12；锁定 deepagents 0.7.22、langchain 1.4.3、langchain-core 1.6.6、langgraph 1.2.13、langchain-openai 1.6.7，以 [uv.lock](../uv.lock)为准。下一格打印实际环境。
 - 默认 `offline` 使用公共 `ScriptedChatModel` 安排模型响应，不需要 Key，也不请求模型 API；图、同步委派、工具和流式观察真实执行。它不证明真实模型会正确委派或总结。
 - 这个脚本模型不实现 token 分块生成，输出是完整 `AIMessage`。因此可以验证中间步骤与消息流，不能据此验证逐 token 展示或网络首字延迟。
 - 显式 `live` 通过公共 `create_model` 使用 README 的模型配置，主、子 Agent 分别创建模型实例。模型需支持工具调用，可能产生费用；配置错误会报错，不回退。真实模型的文本、事件数与增量形式可以变化。
+- 公共模型入口会将后续工具分块中的空工具名转换为 `None`，避免当前 langchain-core v3 兼容层覆盖首块的工具名。说明与移除条件见 [README](../README.md)；此处理不改变工具参数或实验断言。
 - v3 仍是实验性接口，升级依赖后应重跑。下一格只隐藏已在此说明的重复实验性提示，其他错误正常报告。
 - 不需要搜索 Key、Agent Server、数据库或 Docker。实验的笔记是内存里的固定教学数据，不代表实时搜索结果，也不读取用户文件。
 
@@ -69,11 +70,12 @@ warnings.filterwarnings(
 ```
 
     运行模式： offline （脚本模型）
-    Python： 3.12.13 平台： Darwin arm64
-    deepagents==0.7.15
-    langchain==1.4.2
-    langgraph==1.2.11
-    langchain-openai==1.6.2
+    Python： 3.12.11 平台： Darwin arm64
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
 
 
 ## 2. 准备笔记与一项真实工具
@@ -248,7 +250,7 @@ with agent.stream_events(
     子 Agent： researcher 状态： started
     
     本次委派 path：
-    ('tools:3e65d706-b163-6805-7fcd-4f3a1765c516',)
+    ('tools:5c58fb76-b4bc-f452-ea4e-4305842f4c5e',)
     
     researcher 消息：
     正在读取笔记。
@@ -388,7 +390,7 @@ show_text("本次 raw 子 Agent path：", raw_path)
       custom: 2
     
     本次 raw 子 Agent path：
-    ('tools:30d47964-dc87-1cfb-dabc-33ea5fa805bb',)
+    ('tools:37254e35-0e31-0c30-1888-f2d94454c8f8',)
 
 
 ### 5.1 校验 seq、取证路径与完整消息

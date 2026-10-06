@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`366833ffcce5`。
+> 本次执行模式：**offline**。源码指纹：`94d5085710a4`。
 
 # 第 1 章 Notebook：Agent Harness 与最小运行结构
 
@@ -45,7 +45,7 @@ uv sync --project notebooks --locked
 uv run --project notebooks --locked python -m course_notebooks.run ch01-agent-harness
 ```
 
-核心依赖：deepagents 0.7.15、langchain 1.4.2、langgraph 1.2.11、langchain-openai 1.6.2；完整依赖由 uv.lock 锁定。下方输出记录本次实际环境。
+核心依赖：deepagents 0.7.22、langchain 1.4.3、langchain-core 1.6.6、langgraph 1.2.13、langchain-openai 1.6.7；完整依赖由 uv.lock 锁定。下方输出记录本次实际环境。
 
 ## 预期现象与运行模式
 
@@ -67,11 +67,12 @@ show_runtime()
 ```
 
     运行模式： offline （脚本模型）
-    Python： 3.12.13 平台： Darwin arm64
-    deepagents==0.7.15
-    langchain==1.4.2
-    langgraph==1.2.11
-    langchain-openai==1.6.2
+    Python： 3.12.11 平台： Darwin arm64
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
 
 
 ## 1. 初始化模型：先控制选择，再观察执行
