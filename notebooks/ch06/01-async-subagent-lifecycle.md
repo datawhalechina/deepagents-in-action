@@ -44,11 +44,12 @@ show_runtime()
 ```
 
     运行模式： offline （脚本模型）
-    Python： 3.12.13 平台： Darwin arm64
-    deepagents==0.7.15
-    langchain==1.4.2
-    langgraph==1.2.11
-    langchain-openai==1.6.2
+    Python： 3.12.11 平台： Darwin arm64
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
 
 
 ## 2. Notebook、服务与两个图是什么关系？
@@ -529,27 +530,27 @@ for observation in observations:
 
     
     start_async_task
-    Launched async subagent. task_id: 01a0e2b5-184f-7390-ac75-da1660cd1b24
+    Launched async subagent. task_id: 01a1108b-2e05-7c50-8545-faf12a70a658
     主 Agent 已返回，后台 run 仍为： pending
 
 
     
     list_async_tasks
     1 tracked task(s):
-    - task_id: 01a0e2b5-184f-7390-ac75-da1660cd1b24  agent: researcher  status:
+    - task_id: 01a1108b-2e05-7c50-8545-faf12a70a658  agent: researcher  status:
       running
 
 
     
     check_async_task
     status: running
-    thread_id: 01a0e2b5-184f-7390-ac75-da1660cd1b24
+    thread_id: 01a1108b-2e05-7c50-8545-faf12a70a658
 
 
     
     check_async_task
     status: success
-    thread_id: 01a0e2b5-184f-7390-ac75-da1660cd1b24
+    thread_id: 01a1108b-2e05-7c50-8545-faf12a70a658
     result: Research completed: 总结异步任务的状态变化
     
     阶段二：更新 → 新 run → 读取新结果
@@ -557,24 +558,24 @@ for observation in observations:
 
     
     start_async_task
-    Launched async subagent. task_id: 01a0e2b5-4354-7980-9457-c126340a0816
+    Launched async subagent. task_id: 01a1108b-58f9-7672-ad93-307534596527
 
 
     
     update_async_task
-    Updated async subagent. task_id: 01a0e2b5-4354-7980-9457-c126340a0816
+    Updated async subagent. task_id: 01a1108b-58f9-7672-ad93-307534596527
 
 
     
     check_async_task
     status: running
-    thread_id: 01a0e2b5-4354-7980-9457-c126340a0816
+    thread_id: 01a1108b-58f9-7672-ad93-307534596527
 
 
     
     check_async_task
     status: success
-    thread_id: 01a0e2b5-4354-7980-9457-c126340a0816
+    thread_id: 01a1108b-58f9-7672-ad93-307534596527
     result: Research completed: 追加要求：使用三条要点
     已验证：task ID 不变、run ID 更新、追加指令传递成功。
     
@@ -583,22 +584,22 @@ for observation in observations:
 
     
     start_async_task
-    Launched async subagent. task_id: 01a0e2b5-6e63-7f11-b774-3495f850286e
+    Launched async subagent. task_id: 01a1108b-840c-7ff3-9e10-11b813a8ec80
 
 
     
     cancel_async_task
-    Cancelled async subagent task: 01a0e2b5-6e63-7f11-b774-3495f850286e
+    Cancelled async subagent task: 01a1108b-840c-7ff3-9e10-11b813a8ec80
 
 
     
     list_async_tasks
     3 tracked task(s):
-    - task_id: 01a0e2b5-184f-7390-ac75-da1660cd1b24  agent: researcher  status:
+    - task_id: 01a1108b-2e05-7c50-8545-faf12a70a658  agent: researcher  status:
       success
-    - task_id: 01a0e2b5-4354-7980-9457-c126340a0816  agent: researcher  status:
+    - task_id: 01a1108b-58f9-7672-ad93-307534596527  agent: researcher  status:
       success
-    - task_id: 01a0e2b5-6e63-7f11-b774-3495f850286e  agent: researcher  status:
+    - task_id: 01a1108b-840c-7ff3-9e10-11b813a8ec80  agent: researcher  status:
       cancelled
     本次创建的任务、thread、服务进程与临时状态已清理。
     

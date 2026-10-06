@@ -4,7 +4,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_core.language_models import BaseChatModel
-from langchain_openai import ChatOpenAI
+
+from .streaming_model import StreamingChatOpenAI
 
 
 def repository_root(start: Path | None = None) -> Path:
@@ -46,4 +47,4 @@ def create_model(
             raise ValueError("live 模式缺少 SILICONFLOW_API_KEY，或完整的 MODEL_* 配置。")
         endpoint = os.getenv("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1")
         name = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
-    return ChatOpenAI(model=name, api_key=key, base_url=endpoint, temperature=0, timeout=60, max_retries=1)
+    return StreamingChatOpenAI(model=name, api_key=key, base_url=endpoint, temperature=0, timeout=60, max_retries=1)

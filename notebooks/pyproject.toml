@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.32.4"]
 build-backend = "hatchling.build"
 
 [project]
@@ -8,10 +8,10 @@ version = "0.1.0"
 description = "Reproducible mechanism experiments for Deep Agents in Action"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "deepagents==0.7.15", "langchain==1.4.2", "langgraph==1.2.11",
-  "langchain-openai==1.6.2", "python-dotenv>=1,<2",
-  "ipykernel>=6,<8", "nbclient>=0.10,<0.11", "nbconvert==7.17.1",
-  "nbformat>=5.10,<6",
+  "deepagents==0.7.22", "langchain==1.4.3", "langgraph==1.2.13",
+  "langchain-core==1.6.6", "langchain-openai==1.6.7", "python-dotenv>=1.2.4,<2",
+  "ipykernel>=7.4,<8", "nbclient>=0.11,<0.12", "nbconvert==7.17.1",
+  "nbformat>=5.11.1,<6",
 ]
 
 [project.optional-dependencies]
@@ -22,7 +22,7 @@ server = [
 search = ["tavily-python==0.8.4"]
 
 [dependency-groups]
-dev = ["pytest>=8,<10"]
+dev = ["pytest>=9.1.1,<10"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/course_notebooks"]

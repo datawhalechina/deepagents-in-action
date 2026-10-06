@@ -26,11 +26,12 @@ TEXT = "hello course"
 ```
 
     运行模式： offline （脚本模型）
-    Python： 3.12.13 平台： Darwin arm64
-    deepagents==0.7.15
-    langchain==1.4.2
-    langgraph==1.2.11
-    langchain-openai==1.6.2
+    Python： 3.12.11 平台： Darwin arm64
+    deepagents==0.7.22
+    langchain==1.4.3
+    langchain-core==1.6.6
+    langgraph==1.2.13
+    langchain-openai==1.6.7
 
 
 ### 先认清四个角色

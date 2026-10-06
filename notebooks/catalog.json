@@ -74,6 +74,16 @@
       "model": "optional",
       "services": [],
       "source_issue": 105
+    },
+    {
+      "id": "ch14-streaming",
+      "chapter_id": "ch14-streaming",
+      "title": "Streaming v3 的委派、工具与订阅时机",
+      "path": "ch14/01-streaming-projections.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
+      "source_issue": 105
     }
   ]
 }
