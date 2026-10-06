@@ -15,6 +15,7 @@
 | 第 2 章：研究助手 | [Notebook](ch02/02-research-assistant.ipynb) · [Markdown](ch02/02-research-assistant.md) · [HTML](ch02/02-research-assistant.html) | 搜索结果、Todo 状态与虚拟文件 | 默认脚本模型与本地搜索样例；live 需 Tavily Key 与 search 依赖组 |
 | 第 5 章：同步子 Agent | [Notebook](ch05/01-subagent-delegation.ipynb) · [Markdown](ch05/01-subagent-delegation.md) · [HTML](ch05/01-subagent-delegation.html) | 消息隔离、文件共享与显式读取 | 默认脚本模型；可选真实模型 |
 | 第 6 章：异步子 Agent | [Notebook](ch06/01-async-subagent-lifecycle.ipynb) · [Markdown](ch06/01-async-subagent-lifecycle.md) · [HTML](ch06/01-async-subagent-lifecycle.html) | 五个异步工具、服务状态与失败清理 | 默认脚本模型；真实本地 Agent Server；server 依赖组 |
+| 第 14 章：Streaming | [Notebook](ch14/01-streaming-projections.ipynb) · [Markdown](ch14/01-streaming-projections.md) · [HTML](ch14/01-streaming-projections.html) | 主、子投影与工具结果；custom、raw 顺序和晚订阅 | 默认脚本模型；可选真实模型 |
 <!-- course-notebook-index:end -->
 
 每份实验同时提供三种格式：Notebook 用于逐格运行，Markdown 可直接在 GitHub 阅读，HTML 在克隆或下载仓库后用浏览器打开（GitHub 文件页显示的是 HTML 源码）。三份文件位于同一目录，包含同一次执行的结果；当前提交的示例使用 offline 模式。
@@ -44,12 +45,14 @@ uv run --project notebooks --locked python -m course_notebooks.run template
 
 成功时，终端最后会显示 `template: passed (offline)`。打开 `artifacts/notebooks/template.html`，应看到实际工具返回 `echo: hello course`，以及“已验证：调用请求 → Python 工具执行 → 工具结果 → 最终回复”。仅看到模型回复“完成”还不够。
 
-`uv.lock` 锁定实际依赖；基础版本是 deepagents 0.7.15、langchain 1.4.2、langgraph 1.2.11、langchain-openai 1.6.2。服务类实验另外安装：
+`uv.lock` 锁定实际依赖；基础版本是 deepagents 0.7.22、langchain 1.4.3、langchain-core 1.6.6、langgraph 1.2.13、langchain-openai 1.6.7（2026-10-06 核对 PyPI 最新稳定版）。服务类实验另外安装：
 
 ```bash
 uv sync --project notebooks --locked --extra server
 uv run --project notebooks --locked --extra server python -m course_notebooks.run
 ```
+
+直接依赖已核对最新稳定版，传递依赖按上游兼容约束升级。最新的 `langgraph-api` 仍限制 gRPC、Protobuf、OpenTelemetry、`jsonschema-rs` 和 `structlog` 的版本；Pydantic 固定配套的 `pydantic-core`，LangChain 和模型 SDK 也限制 `uuid-utils`、`websockets`。因此锁文件中的部分传递依赖低于 PyPI 的全局最新版，不应通过忽略约束强行替换。
 
 执行器为每份实验创建临时工作目录，并直接使用项目 Python 创建专用内核；已有的用户 `python3` 内核不会改变执行环境。默认从第一格执行所有已登记实验，也可以在命令末尾指定一个或多个实验 ID，例如 `template`。
 
@@ -107,6 +110,10 @@ uv run --project notebooks --locked --extra server python -m course_notebooks.ru
 ```
 
 更换模型后重新执行，并记录模型名与执行报告；某个模型通过不能代表所有模型都通过。普通 fork CI 继续使用 offline，不提供供应商凭证。
+
+第 14 章的 v3 流式调用经过公共 `create_model` 中的 `StreamingChatOpenAI` 适配器：部分 OpenAI 兼容服务在后续工具参数分块中返回空工具名，`langchain-core 1.6.6` 会用它覆盖首块的名称。适配器只把这类空字符串转为“未提供名称”的 `None`，保留参数、调用 ID、文本和元数据；同步与异步路径都适用。升级上游后，应先运行 `tests/test_streaming_model.py`，确认移除适配器仍能通过，再删除这层兼容处理。
+
+2026-10-06，在上述锁定环境与兼容处理下，SiliconFlow 的 `Qwen/Qwen3-Coder-30B-A3B-Instruct` 和 `deepseek-ai/DeepSeek-V3.2` 均完整通过第 14 章 live 实验（typed、raw、晚订阅三个场景，各执行一次）。这份记录不代表其他章节或模型也已通过。
 
 ## 维护者与贡献者：验证并更新三种格式
 
