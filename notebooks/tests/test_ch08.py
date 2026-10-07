@@ -126,6 +126,38 @@ def test_repeated_object_arguments_stop_and_show_requests(chapter, capsys):
     assert len(edit_calls) == chapter["tool_error_guard"].stop_after
 
 
+def test_same_thread_recovers_after_repeated_tool_errors(chapter):
+    """保留失败历史后，同 Agent、同线程的修正请求仍能保存偏好和草稿。"""
+    chapter["store"].put(("alice", "memories"), chapter["STORE_KEY"],
+                         chapter["create_file_data"]("{}"))
+    broken = scripted_save(chapter, object_attempts=5)
+    corrected = scripted_save(chapter, object_attempts=0)
+
+    def responder(messages, tool_names):
+        latest = next(m for m in reversed(messages) if isinstance(m, HumanMessage))
+        reply = corrected if "修正" in latest.text else broken
+        return reply(messages, tool_names)
+
+    tool_error_agent(chapter, responder)
+    thread_id = "recover-same-thread"
+    with pytest.raises(AssertionError, match="同一个工具以相同参数反复失败"):
+        chapter["run_scene"]("保存", thread_id, "alice", "保存偏好")
+    state = chapter["agent"].get_state({"configurable": {"thread_id": thread_id}})
+    errors = [m for m in state.values["messages"]
+              if isinstance(m, ToolMessage) and m.status == "error"]
+    assert len(errors) == chapter["tool_error_guard"].stop_after
+
+    run = chapter["run_scene"]("保存", thread_id, "alice", "修正文本参数后保存偏好")
+    chapter["validate_saved"](run)
+    assert chapter["tool_error_guard"].stopped == []
+    assert [call["name"] for call in run["calls"]] == ["read_file", "edit_file", "write_file"]
+    # 首次模型请求及最终 checkpoint 都保留旧错误，恢复不是靠清空线程实现的。
+    assert all(error in run["first_request"] for error in errors)
+    restored = chapter["agent"].get_state({"configurable": {"thread_id": thread_id}})
+    assert all(error in restored.values["messages"] for error in errors)
+    assert restored.values["files"][chapter["DRAFT_PATH"]]["content"] == chapter["DRAFT_TEXT"]
+
+
 def test_real_offline_scenes_preserve_thread_and_user_boundaries(chapter):
     # Execute the notebook's own assertions against real tools, backends and checkpoints.
     execute_tag(chapter, "ch08-scenarios")

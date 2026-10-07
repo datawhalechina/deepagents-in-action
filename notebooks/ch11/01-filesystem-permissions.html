@@ -7803,71 +7803,95 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <blockquote>
-<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>2b88165f2dc1</code>。</p>
+<p>本次执行模式：<strong>offline</strong>。源码指纹：<code>0bc42aa4a8a9</code>。</p>
 </blockquote>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=750bea4e">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ec45d032">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="%E7%AC%AC-8-%E7%AB%A0-Notebook%EF%BC%9A%E8%B7%A8%E7%BA%BF%E7%A8%8B%E8%AE%B0%E5%BF%86%E4%B8%8E%E6%96%87%E4%BB%B6%E9%9A%94%E7%A6%BB">第 8 章 Notebook：跨线程记忆与文件隔离<a class="anchor-link" href="#%E7%AC%AC-8-%E7%AB%A0-Notebook%EF%BC%9A%E8%B7%A8%E7%BA%BF%E7%A8%8B%E8%AE%B0%E5%BF%86%E4%B8%8E%E6%96%87%E4%BB%B6%E9%9A%94%E7%A6%BB">¶</a></h1><p>对应课程正文：<a href="../../content/ch08-long-term-memory.md">第 8 章：长期记忆</a>。</p>
-<p>用户在一段对话中说“以后代码注释用中文”。新对话能否得到这个偏好？如果上一段对话还写了临时草稿，新对话会不会同时拿到草稿？本实验把<strong>共享的偏好</strong>与<strong>线程内的草稿</strong>放在同一个 Agent 中，直接检查文件工具、存储记录和实际模型请求。</p>
-<p><strong>预期结果</strong>：同一用户的新线程能读到更新后的偏好，读不到旧线程草稿；回到旧线程仍能读草稿；另一用户只读到自己的偏好。观察不到任一工具结果，就不能只凭 Agent 最后说“完成”判定成功。</p>
-<p>建议先理解 <a href="../ch01/01-agent-harness.ipynb">第 1 章的消息与工具循环</a>；本实验从第一格独立运行，不需要其他 Notebook 的内核状态。</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4b0733a9">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="1.-%E7%8E%AF%E5%A2%83%E3%80%81%E8%8C%83%E5%9B%B4%E4%B8%8E%E4%B8%89%E4%B8%AA%E5%AE%B9%E5%99%A8">1. 环境、范围与三个容器<a class="anchor-link" href="#1.-%E7%8E%AF%E5%A2%83%E3%80%81%E8%8C%83%E5%9B%B4%E4%B8%8E%E4%B8%89%E4%B8%AA%E5%AE%B9%E5%99%A8">¶</a></h2><p>按 <a href="../README.md">统一安装说明</a> 使用 Python 3.12 锁定环境。从仓库根目录运行：</p>
-<div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>course_notebooks.run<span class="w"> </span>ch08-long-term-memory
-</pre></div>
-<p>默认 <strong>offline</strong>：脚本模型按下面公开的规则请求文件工具；工具、Backend、Store、Checkpointer 和模型请求记录都真实执行。它验证数据边界，不证明真实模型会自主选择这些工具。按 README 配置支持工具调用的模型后，可显式加 <code>--mode live</code>；会产生网络请求与可能的费用。本实验不需要数据库或 Agent Server。</p>
+<h1 id="%E7%AC%AC-11-%E7%AB%A0%E5%AE%9E%E9%AA%8C%EF%BC%9A%E5%85%81%E8%AE%B8%E5%86%99%E5%B7%A5%E4%BD%9C%E5%8C%BA%EF%BC%8C%E4%B8%BA%E4%BB%80%E4%B9%88%E8%BF%98%E4%BC%9A%E5%86%99%E5%88%B0%E5%88%AB%E5%A4%84%EF%BC%9F">第 11 章实验：允许写工作区，为什么还会写到别处？<a class="anchor-link" href="#%E7%AC%AC-11-%E7%AB%A0%E5%AE%9E%E9%AA%8C%EF%BC%9A%E5%85%81%E8%AE%B8%E5%86%99%E5%B7%A5%E4%BD%9C%E5%8C%BA%EF%BC%8C%E4%B8%BA%E4%BB%80%E4%B9%88%E8%BF%98%E4%BC%9A%E5%86%99%E5%88%B0%E5%88%AB%E5%A4%84%EF%BC%9F">¶</a></h1><p>对应<a href="../../content/ch11-filesystem-permissions.md">第 11 章正文</a>。假设让 Agent 整理笔记：普通笔记可以修改，私有资料不能读取，报告发布前需要人工确认。我们把这些要求写成权限规则，并观察工具实际执行了什么。</p>
+<p>本实验只操作自动创建的教学临时目录。<code>/workspace/notes.txt</code> 等是 Agent 看到的虚拟路径，映射到这个临时目录内；不使用用户文件，也不把本地目录称为隔离沙箱。</p>
 <table>
 <thead>
 <tr>
-<th>容器</th>
-<th>保存什么</th>
-<th>本实验中的作用</th>
+<th>实验</th>
+<th>预期现象</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Agent State + <code>StateBackend</code></td>
-<td>当前线程的消息和虚拟文件</td>
-<td>保存草稿；换线程不能直接读取</td>
+<td>全局拒绝写入</td>
+<td>读取成功，覆盖写入被拒绝，原笔记保留</td>
 </tr>
 <tr>
-<td><code>InMemorySaver</code> / Checkpointer</td>
-<td>以 <code>thread_id</code> 为键保存 State 快照</td>
-<td>回到旧线程时恢复草稿</td>
+<td>仅配置工作区 <code>allow</code></td>
+<td>工作区外的教学文件仍能写入，因为未匹配默认允许</td>
 </tr>
 <tr>
-<td><code>InMemoryStore</code> + <code>StoreBackend</code></td>
-<td>以 namespace、key 保存共享文件</td>
-<td>同一用户的新线程读到偏好</td>
+<td>allow 后追加全局 deny</td>
+<td>工作区写入成功，工作区外写入失败</td>
+</tr>
+<tr>
+<td>交换规则顺序</td>
+<td>全局 deny 先命中，工作区也不能写</td>
+</tr>
+<tr>
+<td>先保护私有文件</td>
+<td>私有文件读取失败；把目录 allow 放在前面则会暴露它</td>
+</tr>
+<tr>
+<td>敏感写入 interrupt</td>
+<td>审批前报告未改，approve 后才写入</td>
+</tr>
+<tr>
+<td>审批场景写错路径</td>
+<td>兜底拒绝，不产生审批，文件保持原样</td>
 </tr>
 </tbody>
 </table>
-<p>它们都只在这个 Python 进程的内存中。<strong>跨线程可见不等于重启后还在</strong>；生产环境需要持久化的 Store 与 Checkpointer。<code>/memories/preferences.json</code>、<code>/workspace/draft.txt</code> 是 Agent 虚拟路径，不是电脑磁盘路径。</p>
-<p><code>show_runtime()</code> 展示当前模式与依赖版本；<code>show_text()</code> 把工具输出折行。</p>
-<h3 id="%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">硅流真实模型（live）<a class="anchor-link" href="#%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">¶</a></h3><p><strong>待验证</strong>（2026-10-06 核对）：当前版本尚无整本 live 通过记录。真实模型复测曾在保存场景反复提交同一组错误的 <code>edit_file</code> 参数；本节据此补上了文本参数的具体写法，以及重复错误的上限。暂不列出已验证型号，补验后再填写完整型号、日期、验证版本和记录链接。</p>
-<p>配置：在未提交的根目录 <code>.env</code> 中填写 <code>SILICONFLOW_API_KEY</code> 和完整 <code>MODEL_NAME</code>；公共入口不提供隐含模型默认值。模型必须支持工具调用。API 地址、固定参数与报告字段见 <a href="../README.md#live-records">README 模型记录说明</a>。随附输出仍为 offline。</p>
-<p>范围与服务：模型选择文件工具并填写参数；Backend、Store、Checkpointer、工具参数校验与证据核对真实执行。数据都在内存里，无额外服务。</p>
+<p>默认 offline 使用公共脚本模型安排工具请求；权限中间件、文件操作和审批恢复都真实执行。预设的结束回复不表示成功，下面用工具消息与实际文件核查结果。live 可以运行同一实验，但模型是否按要求调用工具需由实际结果验证。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch08-definitions" id="cell-id=4e0910fc">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ebf1fcf0">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E4%B8%89%E4%B8%AA%E5%85%B3%E9%94%AE%E6%A6%82%E5%BF%B5">1. 环境与三个关键概念<a class="anchor-link" href="#1.-%E7%8E%AF%E5%A2%83%E4%B8%8E%E4%B8%89%E4%B8%AA%E5%85%B3%E9%94%AE%E6%A6%82%E5%BF%B5">¶</a></h2><p>只需基础 Python。每份 Notebook 从第一格建立自己的变量；Jupyter / VS Code 的内核是运行这些代码的 Python 进程，不依赖其他章的内核状态。</p>
+<p>按<a href="../README.md">公共 README</a> 安装 Python 3.12 的锁定环境，在仓库根目录终端运行：</p>
+<div class="highlight"><pre><span></span>uv<span class="w"> </span>sync<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked
+uv<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>notebooks<span class="w"> </span>--locked<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>course_notebooks.run<span class="w"> </span>ch11-filesystem-permissions
+</pre></div>
+<p>默认不需要模型 Key、Docker、数据库或 Agent Server。真实模型需按 README 配置根目录未提交的 <code>.env</code>，并在命令末尾添加 <code>--mode live</code>；交互式内核先执行 <code>import os</code>、设置 <code>os.environ["COURSE_MODE"] = "live"</code>，再顺序运行。live 可能产生模型费用，失败不会自动退回 offline。</p>
+<h3 id="%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">硅流真实模型（live）<a class="anchor-link" href="#%E7%A1%85%E6%B5%81%E7%9C%9F%E5%AE%9E%E6%A8%A1%E5%9E%8B%EF%BC%88live%EF%BC%89">¶</a></h3><p><strong>待验证</strong>（2026-10-06 核对）：当前版本尚无整本 live 通过记录。真实模型复测曾在审批场景把目标路径写错，本节按复测结果补了兜底拒绝并收窄可见工具；暂不列出已验证型号，补验后再填写完整型号、日期、验证版本和记录链接。</p>
+<p>配置：在未提交的根目录 <code>.env</code> 中填写 <code>SILICONFLOW_API_KEY</code> 和完整 <code>MODEL_NAME</code>；公共入口不提供隐含模型默认值。API 地址、固定参数与报告字段见 <a href="../README.md#live-records">README 模型记录说明</a>。随附输出仍为 offline。</p>
+<p>范围与服务：模型提出读取、写入与审批请求；文件权限中间件、Backend 和审批恢复真实执行。教学文件在自动清理的临时目录内，无额外服务。</p>
+<ul>
+<li>**Backend（后端）**负责实际读写。本例使用 <code>FilesystemBackend(root_dir=..., virtual_mode=True)</code>，把 Agent 的虚拟路径映射到临时目录。</li>
+<li><strong>工具请求</strong>是模型提出的操作。<code>AIMessage.tool_calls</code> 记录工具名、参数与调用 ID；框架执行或拒绝后，用 <code>ToolMessage</code> 返回结果，<code>tool_call_id</code> 对应原请求。</li>
+<li><strong>权限规则</strong>在内置文件工具调用 Backend 前检查操作与路径。规则限制这些工具，不会限制 Notebook 自己的 Python 文件读写；我们用 Python 准备、核查教学文件。</li>
+</ul>
+<div class="highlight"><pre><span></span>模型提出 read_file / write_file 请求
+    ↓
+权限检查：从第一条规则开始，首条匹配生效
+    ├─ allow → Backend 执行 → 工具结果
+    ├─ deny → 权限错误，Backend 不执行
+    └─ interrupt → 暂停审批 → 人工决定是否执行
+没有匹配规则 → 默认允许
+</pre></div>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch11-imports" id="cell-id=c651bdc9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7875,21 +7899,21 @@ a.anchor-link {
 <div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tempfile</span><span class="w"> </span><span class="kn">import</span> <span class="n">TemporaryDirectory</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">deepagents</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilesystemPermission</span><span class="p">,</span> <span class="n">create_deep_agent</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">deepagents.backends</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilesystemBackend</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain.agents.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgentMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIMessage</span><span class="p">,</span> <span class="n">ToolMessage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langgraph.checkpoint.memory</span><span class="w"> </span><span class="kn">import</span> <span class="n">InMemorySaver</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langgraph.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">Command</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.model_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_model</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.nbtools</span><span class="w"> </span><span class="kn">import</span> <span class="n">show_runtime</span><span class="p">,</span> <span class="n">show_text</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">course_notebooks.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScriptedChatModel</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">deepagents</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_deep_agent</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">deepagents.backends</span><span class="w"> </span><span class="kn">import</span> <span class="n">CompositeBackend</span><span class="p">,</span> <span class="n">StateBackend</span><span class="p">,</span> <span class="n">StoreBackend</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">deepagents.backends.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_file_data</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">langchain.agents.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgentMiddleware</span><span class="p">,</span> <span class="n">hook_config</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseCallbackHandler</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIMessage</span><span class="p">,</span> <span class="n">HumanMessage</span><span class="p">,</span> <span class="n">SystemMessage</span><span class="p">,</span> <span class="n">ToolMessage</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">langgraph.checkpoint.memory</span><span class="w"> </span><span class="kn">import</span> <span class="n">InMemorySaver</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">langgraph.store.memory</span><span class="w"> </span><span class="kn">import</span> <span class="n">InMemoryStore</span>
 
 <span class="n">show_runtime</span><span class="p">()</span>
 </pre></div>
@@ -7917,18 +7941,18 @@ langchain-openai==1.6.7
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1d38c49d">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=897e48b1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2.-%E5%85%88%E5%87%86%E5%A4%87%E4%B8%A4%E4%B8%AA%E7%94%A8%E6%88%B7%E7%9A%84%E8%AE%B0%E5%BF%86%E6%96%87%E4%BB%B6">2. 先准备两个用户的记忆文件<a class="anchor-link" href="#2.-%E5%85%88%E5%87%86%E5%A4%87%E4%B8%A4%E4%B8%AA%E7%94%A8%E6%88%B7%E7%9A%84%E8%AE%B0%E5%BF%86%E6%96%87%E4%BB%B6">¶</a></h2><p><code>StoreBackend</code> 的 <code>namespace</code> 用用户 ID 隔离数据。这里用两个固定教学用户 <code>alice</code> 和 <code>bob</code>。Alice 先预置空 JSON 对象 <code>{}</code>；Bob 用同 schema 的另一对象：<code>comment_language="en"</code>、<code>variable_language="zh"</code>。Alice 保存后应为 <code>comment_language="zh"</code>、<code>variable_language="en"</code>。先预置文件，因为 <code>memory=[...]</code> 负责<strong>读取已有文件</strong>，不会为新用户自动创建文件。<code>create_file_data</code> 将文本转成 StoreBackend 期望的文件数据格式。</p>
-<p><code>CompositeBackend</code> 根据路径选择后端：<code>/memories/</code> 走 Store，其余路径走 State。路由会去掉 <code>/memories/</code> 前缀，所以 Agent 看见的 <code>/memories/preferences.json</code> 在 Store 中对应 key <code>/preferences.json</code>。此处的用户 ID 来自我们传入的运行上下文；实际服务应由经过身份验证的入口提供，不能直接信任任意客户端填的 ID。</p>
+<h2 id="2.-%E5%87%86%E5%A4%87%E5%90%8C%E4%B8%80%E7%BB%84%E6%96%87%E4%BB%B6%E4%B8%8E%E8%AF%B7%E6%B1%82">2. 准备同一组文件与请求<a class="anchor-link" href="#2.-%E5%87%86%E5%A4%87%E5%90%8C%E4%B8%80%E7%BB%84%E6%96%87%E4%BB%B6%E4%B8%8E%E8%AF%B7%E6%B1%82">¶</a></h2><p>每次比较都重新准备下面四个文件，避免上一次写入影响下一次结论。<code>/outside.txt</code> 只是<strong>工作区外、Backend 根目录内</strong>的教学文件，不是宿主机的任意文件。私有文件里的内容也是公开的教学文本。</p>
+<p><code>SEED</code> 保存初始内容；<code>WRITE_NOTES</code> 等字典描述待请求的工具。这里仅准备数据，还没有调用 Agent。<code>write_file</code> 在锁定版本中可以覆盖已有文件，因此拒绝写入后要核对原内容仍在。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch08-definitions" id="cell-id=f3b1d3d3">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch11-inputs" id="cell-id=0fb45b9f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7936,31 +7960,26 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">MEMORY_PATH</span> <span class="o">=</span> <span class="s2">"/memories/preferences.json"</span>
-<span class="n">DRAFT_PATH</span> <span class="o">=</span> <span class="s2">"/workspace/draft.txt"</span>
-<span class="n">STORE_KEY</span> <span class="o">=</span> <span class="s2">"/preferences.json"</span>
-<span class="n">EXPECTED_PREFERENCES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"comment_language"</span><span class="p">:</span> <span class="s2">"zh"</span><span class="p">,</span> <span class="s2">"variable_language"</span><span class="p">:</span> <span class="s2">"en"</span><span class="p">}</span>
-<span class="n">BOB_PREFERENCES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"comment_language"</span><span class="p">:</span> <span class="s2">"en"</span><span class="p">,</span> <span class="s2">"variable_language"</span><span class="p">:</span> <span class="s2">"zh"</span><span class="p">}</span>
-<span class="n">PREFERENCE_JSON</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">EXPECTED_PREFERENCES</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<span class="n">DRAFT_TEXT</span> <span class="o">=</span> <span class="s2">"仅本线程可见：草稿 42"</span>
-
-<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">UserContext</span><span class="p">:</span>
-    <span class="n">user_id</span><span class="p">:</span> <span class="nb">str</span>
-
-<span class="n">store</span> <span class="o">=</span> <span class="n">InMemoryStore</span><span class="p">()</span>
-<span class="n">store</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">"alice"</span><span class="p">,</span> <span class="s2">"memories"</span><span class="p">),</span> <span class="n">STORE_KEY</span><span class="p">,</span>
-          <span class="n">create_file_data</span><span class="p">(</span><span class="s2">"</span><span class="si">{}</span><span class="s2">"</span><span class="p">))</span>
-<span class="n">store</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="s2">"bob"</span><span class="p">,</span> <span class="s2">"memories"</span><span class="p">),</span> <span class="n">STORE_KEY</span><span class="p">,</span>
-          <span class="n">create_file_data</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">BOB_PREFERENCES</span><span class="p">)))</span>
-
-<span class="n">backend</span> <span class="o">=</span> <span class="n">CompositeBackend</span><span class="p">(</span>
-    <span class="n">default</span><span class="o">=</span><span class="n">StateBackend</span><span class="p">(),</span>
-    <span class="n">routes</span><span class="o">=</span><span class="p">{</span><span class="s2">"/memories/"</span><span class="p">:</span> <span class="n">StoreBackend</span><span class="p">(</span>
-        <span class="n">namespace</span><span class="o">=</span><span class="k">lambda</span> <span class="n">runtime</span><span class="p">:</span> <span class="p">(</span><span class="n">runtime</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span> <span class="s2">"memories"</span><span class="p">),</span>
-    <span class="p">)},</span>
-<span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"已初始化两个用户的偏好文件；虚拟路由：/memories/ → Store，其余 → State"</span><span class="p">)</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">SEED</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"/workspace/notes.txt"</span><span class="p">:</span> <span class="s2">"原始笔记</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span>
+    <span class="s2">"/workspace/private.txt"</span><span class="p">:</span> <span class="s2">"仅用于演示的私有资料</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span>
+    <span class="s2">"/outside.txt"</span><span class="p">:</span> <span class="s2">"工作区外的原始内容</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span>
+    <span class="s2">"/review/report.txt"</span><span class="p">:</span> <span class="s2">"尚未发布的旧报告</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">READ_NOTES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"read_file"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="s2">"/workspace/notes.txt"</span><span class="p">},</span>
+              <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"read-notes"</span><span class="p">}</span>
+<span class="n">WRITE_NOTES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"write_file"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">"file_path"</span><span class="p">:</span> <span class="s2">"/workspace/notes.txt"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="s2">"整理后的笔记</span><span class="se">\n</span><span class="s2">"</span><span class="p">},</span>
+    <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"write-notes"</span><span class="p">}</span>
+<span class="n">WRITE_OUTSIDE</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"write_file"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">"file_path"</span><span class="p">:</span> <span class="s2">"/outside.txt"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="s2">"工作区外被修改了</span><span class="se">\n</span><span class="s2">"</span><span class="p">},</span>
+    <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"write-outside"</span><span class="p">}</span>
+<span class="n">READ_PRIVATE</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"read_file"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="s2">"/workspace/private.txt"</span><span class="p">},</span>
+                <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"read-private"</span><span class="p">}</span>
+<span class="n">WRITE_REVIEW</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"write_file"</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s2">"file_path"</span><span class="p">:</span> <span class="s2">"/review/report.txt"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="s2">"经人工确认的新报告</span><span class="se">\n</span><span class="s2">"</span><span class="p">},</span>
+    <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"write-review"</span><span class="p">}</span>
+<span class="n">show_text</span><span class="p">(</span><span class="s2">"初始教学文件："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">SEED</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -7973,53 +7992,33 @@ langchain-openai==1.6.7
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>已初始化两个用户的偏好文件；虚拟路由：/memories/ → Store，其余 → State
+<pre>
+初始教学文件：
+{
+  "/workspace/notes.txt": "原始笔记\n",
+  "/workspace/private.txt": "仅用于演示的私有资料\n",
+  "/outside.txt": "工作区外的原始内容\n",
+  "/review/report.txt": "尚未发布的旧报告\n"
+}
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5e73fd06">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=6c4ab9d7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="3.-%E6%8C%87%E5%AE%9A%E5%B7%A5%E5%85%B7%E8%B0%83%E7%94%A8%EF%BC%8C%E5%B9%B6%E8%AE%B0%E5%BD%95%E7%9C%9F%E6%AD%A3%E8%BF%9B%E5%85%A5%E6%A8%A1%E5%9E%8B%E7%9A%84%E8%AF%B7%E6%B1%82">3. 指定工具调用，并记录真正进入模型的请求<a class="anchor-link" href="#3.-%E6%8C%87%E5%AE%9A%E5%B7%A5%E5%85%B7%E8%B0%83%E7%94%A8%EF%BC%8C%E5%B9%B6%E8%AE%B0%E5%BD%95%E7%9C%9F%E6%AD%A3%E8%BF%9B%E5%85%A5%E6%A8%A1%E5%9E%8B%E7%9A%84%E8%AF%B7%E6%B1%82">¶</a></h2><p><code>AIMessage</code> 中的 <code>tool_calls</code> 只是模型提出的调用请求；框架随后执行工具并产生 <code>ToolMessage</code>。默认脚本模型按当前用户消息和本轮已返回的工具结果决定下一步，不直接改 Store 或 State：</p>
-<table>
-<thead>
-<tr>
-<th>场景</th>
-<th>请求的工具</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>保存</td>
-<td><code>read_file</code> 偏好 → <code>edit_file</code> 偏好 → <code>write_file</code> 草稿</td>
-</tr>
-<tr>
-<td>新线程</td>
-<td><code>read_file</code> 偏好 → <code>read_file</code> 草稿</td>
-</tr>
-<tr>
-<td>旧线程</td>
-<td><code>read_file</code> 草稿</td>
-</tr>
-<tr>
-<td>其他用户</td>
-<td><code>read_file</code> 偏好</td>
-</tr>
-</tbody>
-</table>
-<p><code>edit_file</code> 的 <code>old_string</code>、<code>new_string</code> 是<strong>字符串</strong>参数：<code>old_string</code> 用 <code>read_file</code> 返回的原文件正文，<code>new_string</code> 用 <code>json.dumps(对象, ensure_ascii=False)</code> 得到的文本。传 JSON 对象会被工具的真实参数校验拒绝，工具层不会替模型把对象转成字符串。</p>
-<p>同一个工具以完全相同的参数反复失败达到上限时，<code>StopRepeatedToolErrors</code> 会在下一次模型请求前结束本次执行，<code>run_scene</code> 先展示这些实际请求和工具返回，再明确失败。</p>
-<p>最后一句“已完成”由脚本预设，不能当证据。<code>tool_names</code> 是 Agent 当次提供的工具名；本例先核对所需工具确实注册。真实模型模式下 <code>create_model</code> 会选用 README 中配置的模型，这张固定调用表不再决定其行为。</p>
+<h3 id="%E7%94%A8%E5%90%8C%E4%B8%80%E5%A5%97%E8%BF%90%E8%A1%8C%E6%AD%A5%E9%AA%A4%E6%AF%94%E8%BE%83%E8%A7%84%E5%88%99">用同一套运行步骤比较规则<a class="anchor-link" href="#%E7%94%A8%E5%90%8C%E4%B8%80%E5%A5%97%E8%BF%90%E8%A1%8C%E6%AD%A5%E9%AA%A4%E6%AF%94%E8%BE%83%E8%A7%84%E5%88%99">¶</a></h3><p><code>make_agent()</code> 将模型、Backend 和权限组装成可执行的图（Graph），即模型提出请求、工具返回结果的循环。图中的节点负责具体步骤，例如调用模型或执行工具。<code>invoke()</code> 启动这个循环，返回的 <code>result["messages"]</code> 是 Agent State（运行数据）中的消息历史。</p>
+<p><code>LimitVisibleTools</code> 是本章用来收窄“模型可见工具”的小中间件：它不改变权限判断，只减少模型能选用的工具，让场景要求不只靠提示词约束。</p>
+<p>每个实验创建新模型。offline 响应列表按 <code>calls</code> 依次提出请求，最后给出结束回复；它不会理解权限或根据错误调整任务。live 使用公共 <code>create_model()</code> 的模型配置，收到同样的工具名、参数和顺序要求。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs celltag_ch08-definitions" id="cell-id=dbd505a1">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs celltag_ch11-agent" id="cell-id=ca382af1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8027,49 +8026,58 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">scripted_reply</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">tool_names</span><span class="p">):</span>
-    <span class="n">latest</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">message</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
-                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">HumanMessage</span><span class="p">))</span>
-    <span class="n">scene</span> <span class="o">=</span> <span class="n">messages</span><span class="p">[</span><span class="n">latest</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"："</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">returned</span> <span class="o">=</span> <span class="p">[</span><span class="n">message</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span><span class="p">[</span><span class="n">latest</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
-    <span class="n">plans</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">"保存"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"read_file"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="n">MEMORY_PATH</span><span class="p">}),</span>
-               <span class="p">(</span><span class="s2">"edit_file"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="n">MEMORY_PATH</span><span class="p">,</span>
-                              <span class="s2">"old_string"</span><span class="p">:</span> <span class="s2">"</span><span class="si">{}</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"new_string"</span><span class="p">:</span> <span class="n">PREFERENCE_JSON</span><span class="p">}),</span>
-               <span class="p">(</span><span class="s2">"write_file"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="n">DRAFT_PATH</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="n">DRAFT_TEXT</span><span class="p">})],</span>
-        <span class="s2">"新线程"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"read_file"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="n">MEMORY_PATH</span><span class="p">}),</span>
-                   <span class="p">(</span><span class="s2">"read_file"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="n">DRAFT_PATH</span><span class="p">})],</span>
-        <span class="s2">"旧线程"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"read_file"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="n">DRAFT_PATH</span><span class="p">})],</span>
-        <span class="s2">"其他用户"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"read_file"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"file_path"</span><span class="p">:</span> <span class="n">MEMORY_PATH</span><span class="p">})],</span>
-    <span class="p">}</span>
-    <span class="n">steps</span> <span class="o">=</span> <span class="n">plans</span><span class="p">[</span><span class="n">scene</span><span class="p">]</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">returned</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"已完成实验；请检查工具结果。"</span><span class="p">)</span>
-    <span class="n">name</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="n">steps</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">returned</span><span class="p">)]</span>
-    <span class="k">assert</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">tool_names</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"Agent 没有注册工具 </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span>
-    <span class="k">return</span> <span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">tool_calls</span><span class="o">=</span><span class="p">[{</span>
-        <span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span> <span class="s2">"id"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"ch08-</span><span class="si">{</span><span class="n">scene</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">returned</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
-    <span class="p">}])</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">LimitVisibleTools</span><span class="p">(</span><span class="n">AgentMiddleware</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""按场景收窄模型可见工具，让本场景的要求不只靠提示词约束。"""</span>
 
-<span class="n">model</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="n">ScriptedChatModel</span><span class="p">(</span><span class="n">responder</span><span class="o">=</span><span class="n">scripted_reply</span><span class="p">))</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">allowed</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allowed</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">allowed</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrap_model_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">handler</span><span class="p">):</span>
+        <span class="n">kept</span> <span class="o">=</span> <span class="p">[</span><span class="n">tool</span> <span class="k">for</span> <span class="n">tool</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">tools</span> <span class="k">if</span> <span class="n">tool</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">allowed</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">handler</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">override</span><span class="p">(</span><span class="n">tools</span><span class="o">=</span><span class="n">kept</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">make_agent</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">rules</span><span class="p">,</span> <span class="n">calls</span><span class="p">,</span> <span class="n">checkpointer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tool_names</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">responses</span> <span class="o">=</span> <span class="p">[</span><span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">tool_calls</span><span class="o">=</span><span class="p">[</span><span class="n">call</span><span class="p">])</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">]</span>
+    <span class="n">responses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AIMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">"本轮结束；请核对工具结果和实际文件。"</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">create_deep_agent</span><span class="p">(</span>
+        <span class="n">model</span><span class="o">=</span><span class="n">create_model</span><span class="p">(</span><span class="n">ScriptedChatModel</span><span class="p">(</span><span class="n">responses</span><span class="o">=</span><span class="n">responses</span><span class="p">)),</span>
+        <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span>
+        <span class="n">permissions</span><span class="o">=</span><span class="n">rules</span><span class="p">,</span>
+        <span class="n">checkpointer</span><span class="o">=</span><span class="n">checkpointer</span><span class="p">,</span>
+        <span class="n">middleware</span><span class="o">=</span><span class="p">[]</span> <span class="k">if</span> <span class="n">tool_names</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[</span><span class="n">LimitVisibleTools</span><span class="p">(</span><span class="n">tool_names</span><span class="p">)],</span>
+        <span class="n">system_prompt</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"仅按用户给出的顺序调用指定工具，参数原样保留。"</span>
+            <span class="s2">"不委派、不规划、不调用其他工具。遇到拒绝不要绕过或重试；"</span>
+            <span class="s2">"继续处理列表中的下一项，处理完毕后结束。"</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">task_input</span><span class="p">(</span><span class="n">calls</span><span class="p">):</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"messages"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"user"</span><span class="p">,</span> <span class="s2">"依次请求以下工具：</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span>
+                          <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">tasks</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))]}</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=77d891ad">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=75c7b681">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><code>memory=[MEMORY_PATH]</code> 会让框架在模型请求中加入<strong>已有文件</strong>的内容。为了验证“模型真的收到更新后的偏好”，下面使用 LangChain 的回调记录 <code>on_chat_model_start</code> 收到的实际 messages 对象。回调只观察，不替模型生成答案；验收只解析首次实际 <code>SystemMessage</code> 的 <code>&lt;agent_memory&gt;</code> 内、<code>MEMORY_PATH</code> 标题下的 JSON 正文，不在用户指令或整个 prompt 中搜语言关键词。输出只展示解析后的对象，避免打印整个系统提示词。</p>
+<p><code>check_calls()</code> 从模型消息中提取实际请求，先输出预期与实际的差异，再核对任务匹配和结果关联。仅 <code>WRITE_NOTES</code>、<code>WRITE_OUTSIDE</code>、<code>WRITE_REVIEW</code> 明确指定的教学 <code>content</code> 允许有或没有一个末尾 <code>\n</code>；正文其他差异、工具名、路径、其他参数和调用顺序仍严格比较。不使用全局 <code>.strip()</code>，也不改写实际请求。随后各实验独立核对读取/拒绝状态、错误内容和真实文件效果。嵌套推导式先遍历模型消息，再取出各条消息中的工具调用；<code>zip()</code> 将请求与结果逐项配对。</p>
+<p><code>run_case()</code> 为一次比较创建临时目录，准备文件、调用 Agent、读取文件副本。所有需要目录的操作都在同一个 <code>with TemporaryDirectory()</code> 中：正常结束或抛出 Python 异常都会清理。它不判断某项权限应该放行还是拒绝，具体实验的断言负责检查这一点。</p>
+<p>准备文件时，<code>lstrip("/")</code> 去掉虚拟路径开头的斜杠，再用 <code>root / ...</code> 拼接到临时根目录下。例如 <code>/workspace/notes.txt</code> 对应临时目录里的 <code>workspace/notes.txt</code>；Agent 工具访问时则由 Backend 完成路径映射。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch08-definitions" id="cell-id=a36a4de6">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs celltag_ch11-runner" id="cell-id=d963f439">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8077,107 +8085,84 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ModelRequestRecorder</span><span class="p">(</span><span class="n">BaseCallbackHandler</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">requests</span> <span class="o">=</span> <span class="p">[]</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">on_chat_model_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">serialized</span><span class="p">,</span> <span class="n">messages</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">requests</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">messages</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">requested_calls</span><span class="p">(</span><span class="n">messages</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">call</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">]</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">StopRepeatedToolErrors</span><span class="p">(</span><span class="n">AgentMiddleware</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""同一个工具以完全相同参数反复失败到上限时，显式结束本次执行。</span>
-
-<span class="sd">    结果仍然保留：调用方先展示实际请求与工具返回，再判定失败。</span>
-<span class="sd">    真实模型一直提交同一组错误参数时，不会重试到限流或超时。</span>
-<span class="sd">    """</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stop_after</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stop_after</span> <span class="o">=</span> <span class="n">stop_after</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stopped</span> <span class="o">=</span> <span class="p">[]</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">before_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">runtime</span><span class="p">):</span>
-        <span class="c1"># 每次 invoke 都是一次新的执行，重新统计。</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stopped</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">return</span> <span class="kc">None</span>
-
-    <span class="nd">@hook_config</span><span class="p">(</span><span class="n">can_jump_to</span><span class="o">=</span><span class="p">[</span><span class="s2">"end"</span><span class="p">])</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">before_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">runtime</span><span class="p">):</span>
-        <span class="n">messages</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span>
-        <span class="n">latest</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">message</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
-                     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">HumanMessage</span><span class="p">))</span>
-        <span class="n">calls</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="p">{},</span> <span class="p">{}</span>
-        <span class="c1"># 保留 checkpoint 历史，只统计本次用户请求之后的错误。</span>
-        <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span><span class="p">[</span><span class="n">latest</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]:</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">):</span>
-                <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">:</span>
-                    <span class="n">calls</span><span class="p">[</span><span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]]</span> <span class="o">=</span> <span class="n">call</span>
-            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="n">message</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"error"</span><span class="p">:</span>
-                <span class="n">call</span> <span class="o">=</span> <span class="n">calls</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">tool_call_id</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">call</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">signature</span> <span class="o">=</span> <span class="p">(</span><span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
-                        <span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">],</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
-                    <span class="n">counts</span><span class="p">[</span><span class="n">signature</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">signature</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stopped</span> <span class="o">=</span> <span class="p">[</span><span class="n">signature</span> <span class="k">for</span> <span class="n">signature</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">counts</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-                        <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_after</span><span class="p">]</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s2">"jump_to"</span><span class="p">:</span> <span class="s2">"end"</span><span class="p">}</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stopped</span> <span class="k">else</span> <span class="kc">None</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_task_match</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">optional_newline</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""仅教学 write_file 正文可少一个末尾换行；不改写真实请求。"""</span>
+    <span class="n">comparison</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span>
+    <span class="n">teaching_texts</span> <span class="o">=</span> <span class="p">{</span><span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span>
+                      <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="p">(</span><span class="n">WRITE_NOTES</span><span class="p">,</span> <span class="n">WRITE_OUTSIDE</span><span class="p">,</span> <span class="n">WRITE_REVIEW</span><span class="p">)}</span>
+    <span class="k">if</span> <span class="n">actual</span> <span class="o">!=</span> <span class="n">expected</span><span class="p">:</span>
+        <span class="n">show_text</span><span class="p">(</span><span class="s2">"任务预期："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">show_text</span><span class="p">(</span><span class="s2">"实际请求（差异先展示，再判断）："</span><span class="p">,</span>
+                  <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"任务预期与实际请求：无差异。"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">wanted</span><span class="p">,</span> <span class="n">got</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">comparison</span><span class="p">):</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">wanted</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"content"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">optional_newline</span> <span class="ow">and</span> <span class="n">wanted</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">==</span> <span class="n">got</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"write_file"</span>
+                <span class="ow">and</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">teaching_texts</span>
+                <span class="ow">and</span> <span class="n">got</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"content"</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">text</span><span class="o">.</span><span class="n">removesuffix</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">))):</span>
+            <span class="n">got</span><span class="p">[</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span> <span class="o">=</span> <span class="n">text</span>
+    <span class="k">assert</span> <span class="n">comparison</span> <span class="o">==</span> <span class="n">expected</span><span class="p">,</span> <span class="s2">"工具名称、参数或顺序与任务要求不同"</span>
 
 
-<span class="n">tool_error_guard</span> <span class="o">=</span> <span class="n">StopRepeatedToolErrors</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_calls</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">planned_calls</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">optional_newline</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">calls</span> <span class="o">=</span> <span class="n">requested_calls</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">planned_calls</span><span class="p">]</span>
+    <span class="n">actual</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">]</span>
+    <span class="n">check_task_match</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">optional_newline</span><span class="o">=</span><span class="n">optional_newline</span><span class="p">)</span>
+    <span class="n">replies</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">messages</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)]</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">replies</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">calls</span><span class="p">),</span> <span class="s2">"工具返回数量不符"</span>
+    <span class="k">for</span> <span class="n">call</span><span class="p">,</span> <span class="n">reply</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">calls</span><span class="p">,</span> <span class="n">replies</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="o">==</span> <span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="ow">and</span> <span class="n">reply</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"请求工具："</span><span class="p">,</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">])</span>
+        <span class="n">show_text</span><span class="p">(</span><span class="s2">"参数："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">],</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"调用 ID："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span><span class="p">,</span> <span class="s2">"状态："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
+        <span class="n">show_text</span><span class="p">(</span><span class="s2">"实际返回："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">AIMessage</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">messages</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tool_calls</span>
+    <span class="k">return</span> <span class="n">replies</span>
 
-<span class="n">agent</span> <span class="o">=</span> <span class="n">create_deep_agent</span><span class="p">(</span>
-    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
-    <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span>
-    <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">,</span>
-    <span class="n">checkpointer</span><span class="o">=</span><span class="n">InMemorySaver</span><span class="p">(),</span>
-    <span class="n">context_schema</span><span class="o">=</span><span class="n">UserContext</span><span class="p">,</span>
-    <span class="n">memory</span><span class="o">=</span><span class="p">[</span><span class="n">MEMORY_PATH</span><span class="p">],</span>
-    <span class="n">middleware</span><span class="o">=</span><span class="p">[</span><span class="n">tool_error_guard</span><span class="p">],</span>
-    <span class="n">system_prompt</span><span class="o">=</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">"用户要求记住偏好时，先读取 </span><span class="si">{</span><span class="n">MEMORY_PATH</span><span class="si">}</span><span class="s2">，再用 edit_file 更新原文件。"</span>
-        <span class="s2">"偏好文件只保存用户指定的两字段 JSON 对象，不加日期或其他字段；"</span>
-        <span class="s2">"edit_file 的 old_string 用 read_file 返回的原文件正文，"</span>
-        <span class="s2">"new_string 用 json.dumps(偏好对象, ensure_ascii=False) 得到的字符串；"</span>
-        <span class="s2">"两个参数都必须是字符串，工具不会把 JSON 对象自动转成字符串。"</span>
-        <span class="sa">f</span><span class="s2">"然后继续用 write_file 将本轮临时草稿写到 </span><span class="si">{</span><span class="n">DRAFT_PATH</span><span class="si">}</span><span class="s2">。"</span>
-        <span class="s2">"用户要求查看文件时，用 read_file 回答。工具出错时不要声称读到了内容。"</span>
-    <span class="p">),</span>
-<span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Agent 已组装；尚未执行任何场景。"</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">run_case</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">rules</span><span class="p">,</span> <span class="n">calls</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">==="</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="s2">"==="</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">TemporaryDirectory</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">"course-ch11-"</span><span class="p">)</span> <span class="k">as</span> <span class="n">folder</span><span class="p">:</span>
+        <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">virtual_path</span><span class="p">,</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">SEED</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">virtual_path</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+        <span class="n">backend</span> <span class="o">=</span> <span class="n">FilesystemBackend</span><span class="p">(</span><span class="n">root_dir</span><span class="o">=</span><span class="n">root</span><span class="p">,</span> <span class="n">virtual_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">agent</span> <span class="o">=</span> <span class="n">make_agent</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">rules</span><span class="p">,</span> <span class="n">calls</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">task_input</span><span class="p">(</span><span class="n">calls</span><span class="p">),</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">"recursion_limit"</span><span class="p">:</span> <span class="mi">24</span><span class="p">})</span>
+        <span class="n">replies</span> <span class="o">=</span> <span class="n">check_calls</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">],</span> <span class="n">calls</span><span class="p">)</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"/"</span> <span class="o">+</span> <span class="n">file</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">as_posix</span><span class="p">():</span> <span class="n">file</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+                 <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">root</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">"*"</span><span class="p">)</span> <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">is_file</span><span class="p">()}</span>
+    <span class="k">assert</span> <span class="ow">not</span> <span class="n">root</span><span class="o">.</span><span class="n">exists</span><span class="p">(),</span> <span class="s2">"教学目录没有清理"</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"教学目录已清理；文件内容副本留在 files 中。"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="s2">"calls"</span><span class="p">:</span> <span class="n">requested_calls</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]),</span>
+            <span class="s2">"replies"</span><span class="p">:</span> <span class="n">replies</span><span class="p">,</span> <span class="s2">"files"</span><span class="p">:</span> <span class="n">files</span><span class="p">}</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Agent 已组装；尚未执行任何场景。
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b6f407f1">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=0a50797f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="4.-%E8%BF%90%E8%A1%8C%E5%9C%BA%E6%99%AF%E5%B9%B6%E6%95%B4%E7%90%86%E8%AF%81%E6%8D%AE">4. 运行场景并整理证据<a class="anchor-link" href="#4.-%E8%BF%90%E8%A1%8C%E5%9C%BA%E6%99%AF%E5%B9%B6%E6%95%B4%E7%90%86%E8%AF%81%E6%8D%AE">¶</a></h2><p><code>invoke</code> 启动一次 Agent 执行。<code>messages</code> 是输入消息；<code>configurable.thread_id</code> 选择要恢复的对话线程；<code>context</code> 提供 namespace 所需的用户 ID。返回的 <code>messages</code> 包含模型请求和工具结果。</p>
-<p>旧线程的历史也会出现在返回值里，所以辅助函数只截取<strong>本次最新用户消息之后</strong>的记录。它逐条打印工具名、参数、状态和折行后的结果，同时按 <code>tool_call_id</code> 将工具结果与请求对应。回调记录的第一条请求用于检查这次执行起步时注入了哪份记忆。</p>
-<p>锁定版本的 <code>read_file</code> 以 <code>@@ lines 1-N of N @@</code> 标明完整范围，后面才是文件正文；辅助函数核对范围和正文行数，拒绝不完整分页。Store 正文、工具正文和系统 memory 正文统一用 <code>json.loads</code> 解析，要求整个对象严格相等：换序和空白可接受，缺字段、错值、额外日期都失败。</p>
-<p>同一个工具以完全相同参数连续失败达到上限时，<code>StopRepeatedToolErrors</code> 会在下一次模型请求前结束本次执行：<code>jump_to="end"</code> 让结果仍完整保留，<code>run_scene</code> 先打印这些实际请求与工具返回，再明确失败。这样模型重复提交同一组错误参数时不会一直重试到限流或超时。错误只统计最新用户消息之后的本次执行；同一线程追加修正后的请求时重新统计，历史消息仍保留在 checkpoint 中。</p>
+<p><code>recursion_limit=24</code> 限制图的执行步数，超过后报错，不是模型费用上限。目录的真实路径不出现在输出中；离开 <code>with</code> 后只保留消息和文件内容副本，后面的检查不需要目录继续存在。</p>
+<h2 id="3.-%E5%8F%AA%E8%AF%BB%EF%BC%9A%E8%83%BD%E8%AF%BB%E5%8F%96%EF%BC%8C%E4%B8%8D%E8%83%BD%E8%A6%86%E7%9B%96%E5%86%99%E5%85%A5">3. 只读：能读取，不能覆盖写入<a class="anchor-link" href="#3.-%E5%8F%AA%E8%AF%BB%EF%BC%9A%E8%83%BD%E8%AF%BB%E5%8F%96%EF%BC%8C%E4%B8%8D%E8%83%BD%E8%A6%86%E7%9B%96%E5%86%99%E5%85%A5">¶</a></h2><p>规则的 <code>operations</code> 指定操作组，<code>paths</code> 指定匹配的虚拟路径，<code>mode</code> 指定处理方式。下面的 <code>write</code> 组覆盖内置的 <code>write_file</code>、<code>edit_file</code>、<code>delete</code>；<code>/**</code> 匹配整个文件空间。先读笔记，再尝试覆盖，预期第二个结果是权限错误，原笔记内容不变。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs celltag_ch08-definitions" id="cell-id=5e961131">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch11-readonly" id="cell-id=36a2cb00">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8185,156 +8170,72 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">scene_evidence</span><span class="p">(</span><span class="n">messages</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""只验收最新用户消息后的调用；返回必须在对应调用之后且 ID、工具名唯一匹配。"""</span>
-    <span class="n">latest</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">message</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
-                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">HumanMessage</span><span class="p">))</span>
-    <span class="n">calls</span><span class="p">,</span> <span class="n">returns</span><span class="p">,</span> <span class="n">pending</span><span class="p">,</span> <span class="n">seen</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">{},</span> <span class="nb">set</span><span class="p">()</span>
-    <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span><span class="p">[</span><span class="n">latest</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]:</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">:</span>
-                <span class="k">assert</span> <span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">,</span> <span class="s2">"工具调用 ID 重复"</span>
-                <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">])</span>
-                <span class="n">pending</span><span class="p">[</span><span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]]</span> <span class="o">=</span> <span class="n">call</span>
-                <span class="n">calls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">call</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">):</span>
-            <span class="n">call</span> <span class="o">=</span> <span class="n">pending</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">tool_call_id</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="k">assert</span> <span class="n">call</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"工具返回没有唯一的先前调用"</span>
-            <span class="k">assert</span> <span class="n">message</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"工具返回名称与调用不一致"</span>
-            <span class="n">returns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="ow">not</span> <span class="n">pending</span><span class="p">,</span> <span class="s2">"工具调用缺少返回"</span>
-    <span class="k">return</span> <span class="n">calls</span><span class="p">,</span> <span class="n">returns</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">run_scene</span><span class="p">(</span><span class="n">scene</span><span class="p">,</span> <span class="n">thread_id</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">instruction</span><span class="p">):</span>
-    <span class="n">recorder</span> <span class="o">=</span> <span class="n">ModelRequestRecorder</span><span class="p">()</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
-        <span class="p">{</span><span class="s2">"messages"</span><span class="p">:</span> <span class="p">[(</span><span class="s2">"user"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">scene</span><span class="si">}</span><span class="s2">：</span><span class="si">{</span><span class="n">instruction</span><span class="si">}</span><span class="s2">"</span><span class="p">)]},</span>
-        <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">"configurable"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"thread_id"</span><span class="p">:</span> <span class="n">thread_id</span><span class="p">},</span> <span class="s2">"callbacks"</span><span class="p">:</span> <span class="p">[</span><span class="n">recorder</span><span class="p">]},</span>
-        <span class="n">context</span><span class="o">=</span><span class="n">UserContext</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">user_id</span><span class="p">),</span>
-    <span class="p">)</span>
-    <span class="n">calls</span><span class="p">,</span> <span class="n">returns</span> <span class="o">=</span> <span class="n">scene_evidence</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">])</span>
-    <span class="k">assert</span> <span class="n">recorder</span><span class="o">.</span><span class="n">requests</span><span class="p">,</span> <span class="s2">"没有记录到模型请求"</span>
-    <span class="n">run</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="s2">"calls"</span><span class="p">:</span> <span class="n">calls</span><span class="p">,</span> <span class="s2">"returns"</span><span class="p">:</span> <span class="n">returns</span><span class="p">,</span>
-           <span class="s2">"first_request"</span><span class="p">:</span> <span class="n">recorder</span><span class="o">.</span><span class="n">requests</span><span class="p">[</span><span class="mi">0</span><span class="p">]}</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">【</span><span class="si">{</span><span class="n">scene</span><span class="si">}</span><span class="s2">】用户=</span><span class="si">{</span><span class="n">user_id</span><span class="si">}</span><span class="s2">，线程=</span><span class="si">{</span><span class="n">thread_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"  本轮工具调用数："</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">calls</span><span class="p">))</span>
-    <span class="k">for</span> <span class="n">call</span><span class="p">,</span> <span class="n">reply</span> <span class="ow">in</span> <span class="p">((</span><span class="n">call</span><span class="p">,</span> <span class="nb">next</span><span class="p">(</span><span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">returns</span>
-                                   <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="o">==</span> <span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]))</span>
-                        <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">call</span><span class="p">[</span><span class="s1">'id'</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">call</span><span class="p">[</span><span class="s1">'name'</span><span class="p">]</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">call</span><span class="p">[</span><span class="s1">'args'</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'file_path'</span><span class="p">)</span><span class="si">}</span><span class="s2">) → "</span>
-              <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">reply</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-        <span class="n">show_text</span><span class="p">(</span><span class="s2">"  工具返回："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">78</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">tool_error_guard</span><span class="o">.</span><span class="n">stopped</span><span class="p">:</span>
-        <span class="c1"># 相同参数反复失败：已显式结束，先展示实际请求与工具返回再判定失败。</span>
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">arguments</span> <span class="ow">in</span> <span class="n">tool_error_guard</span><span class="o">.</span><span class="n">stopped</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">calls</span><span class="p">:</span>
-                <span class="n">signature</span> <span class="o">=</span> <span class="p">(</span><span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
-                    <span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">],</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
-                <span class="k">if</span> <span class="n">signature</span> <span class="o">!=</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">arguments</span><span class="p">):</span>
-                    <span class="k">continue</span>
-                <span class="n">reply</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">returns</span>
-                             <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="o">==</span> <span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">])</span>
-                <span class="n">show_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">"重复失败的 </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> 请求 </span><span class="si">{</span><span class="n">call</span><span class="p">[</span><span class="s1">'id'</span><span class="p">]</span><span class="si">}</span><span class="s2">："</span><span class="p">,</span>
-                          <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">],</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
-                <span class="n">show_text</span><span class="p">(</span><span class="s2">"  对应工具返回："</span><span class="p">,</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">78</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span>
-            <span class="s2">"同一个工具以相同参数反复失败，本次执行已按上限结束；"</span>
-            <span class="s2">"上面是实际请求与工具返回。"</span>
-        <span class="p">)</span>
-    <span class="k">return</span> <span class="n">run</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">tool_reply</span><span class="p">(</span><span class="n">run</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""调用关联已经由 scene_evidence 核对；按工具名和路径选本轮结果。"""</span>
-    <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">run</span><span class="p">[</span><span class="s2">"calls"</span><span class="p">]:</span>
-        <span class="k">if</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">==</span> <span class="n">name</span> <span class="ow">and</span> <span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"file_path"</span><span class="p">)</span> <span class="o">==</span> <span class="n">path</span><span class="p">:</span>
-            <span class="k">return</span> <span class="nb">next</span><span class="p">(</span><span class="n">message</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">run</span><span class="p">[</span><span class="s2">"returns"</span><span class="p">]</span>
-                        <span class="k">if</span> <span class="n">message</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="o">==</span> <span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">])</span>
-    <span class="k">return</span> <span class="kc">None</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">parse_preferences</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">expected</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""对象严格相等：允许换序、空白，不允许缺字段、错误值或额外字段。"""</span>
-    <span class="n">value</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">==</span> <span class="n">expected</span><span class="p">,</span> <span class="s2">"偏好 JSON 对象不符合预期"</span>
-    <span class="k">return</span> <span class="n">value</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">read_file_content</span><span class="p">(</span><span class="n">reply</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""取完整文件正文，不能把范围头一起交给 json.loads 或接受部分分页。"""</span>
-    <span class="k">assert</span> <span class="n">reply</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">reply</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span><span class="p">,</span> <span class="s2">"文件读取未成功"</span>
-    <span class="n">lines</span> <span class="o">=</span> <span class="n">reply</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
-    <span class="n">header</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">"@@ lines (\d+)-(\d+) of (\d+) @@"</span><span class="p">,</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="n">lines</span> <span class="k">else</span> <span class="kc">None</span>
-    <span class="k">assert</span> <span class="n">header</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"缺少完整文件范围头"</span>
-    <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">header</span><span class="o">.</span><span class="n">groups</span><span class="p">())</span>
-    <span class="k">assert</span> <span class="n">start</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">end</span> <span class="o">==</span> <span class="n">total</span> <span class="ow">and</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">"拒绝不完整分页"</span>
-    <span class="n">body</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
-    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">body</span><span class="p">)</span> <span class="o">==</span> <span class="n">total</span><span class="p">,</span> <span class="s2">"文件正文行数不完整"</span>
-    <span class="k">return</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">memory_content</span><span class="p">(</span><span class="n">first_request</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""只取实际 SystemMessage 的 agent_memory 中指定路径下的文件正文。"""</span>
-    <span class="n">system</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">first_request</span>
-                       <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">SystemMessage</span><span class="p">))</span>
-    <span class="n">blocks</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^&lt;agent_memory&gt;\n(.*?)\n\n&lt;/agent_memory&gt;"</span><span class="p">,</span>
-                        <span class="n">system</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">MULTILINE</span> <span class="o">|</span> <span class="n">re</span><span class="o">.</span><span class="n">DOTALL</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"没有唯一的实际 memory 注入块"</span>
-    <span class="n">path</span><span class="p">,</span> <span class="n">separator</span><span class="p">,</span> <span class="n">content</span> <span class="o">=</span> <span class="n">blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">"</span><span class="se">\n\n</span><span class="s2">"</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">separator</span> <span class="ow">and</span> <span class="n">path</span> <span class="o">==</span> <span class="n">MEMORY_PATH</span><span class="p">,</span> <span class="s2">"memory 未加载指定偏好文件"</span>
-    <span class="k">return</span> <span class="n">content</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">validate_preferences</span><span class="p">(</span><span class="n">run</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">expected</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Store、真实 read_file 和首次系统 memory 各自独立验收同一完整对象。"""</span>
-    <span class="n">record</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">user_id</span><span class="p">,</span> <span class="s2">"memories"</span><span class="p">),</span> <span class="n">STORE_KEY</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">record</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"用户 namespace 中没有偏好记录"</span>
-    <span class="n">stored</span> <span class="o">=</span> <span class="n">parse_preferences</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"content"</span><span class="p">],</span> <span class="n">expected</span><span class="p">)</span>
-    <span class="n">read</span> <span class="o">=</span> <span class="n">parse_preferences</span><span class="p">(</span><span class="n">read_file_content</span><span class="p">(</span><span class="n">tool_reply</span><span class="p">(</span><span class="n">run</span><span class="p">,</span> <span class="s2">"read_file"</span><span class="p">,</span> <span class="n">MEMORY_PATH</span><span class="p">)),</span> <span class="n">expected</span><span class="p">)</span>
-    <span class="n">injected</span> <span class="o">=</span> <span class="n">parse_preferences</span><span class="p">(</span><span class="n">memory_content</span><span class="p">(</span><span class="n">run</span><span class="p">[</span><span class="s2">"first_request"</span><span class="p">]),</span> <span class="n">expected</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s2">"store"</span><span class="p">:</span> <span class="n">stored</span><span class="p">,</span> <span class="s2">"read_file"</span><span class="p">:</span> <span class="n">read</span><span class="p">,</span> <span class="s2">"agent_memory"</span><span class="p">:</span> <span class="n">injected</span><span class="p">}</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">validate_saved</span><span class="p">(</span><span class="n">run</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""先读再编辑、草稿写入成功及最终产物是验收目标，不限制额外工具调用。"""</span>
-    <span class="n">read</span> <span class="o">=</span> <span class="n">tool_reply</span><span class="p">(</span><span class="n">run</span><span class="p">,</span> <span class="s2">"read_file"</span><span class="p">,</span> <span class="n">MEMORY_PATH</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">read</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">read</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span><span class="p">,</span> <span class="s2">"read_file 未成功"</span>
-    <span class="c1"># 参数错误被拒绝后可以重试；这里取真正成功的那次 edit_file，仍要求先读再编辑。</span>
-    <span class="n">edits</span> <span class="o">=</span> <span class="p">[</span><span class="n">reply</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">run</span><span class="p">[</span><span class="s2">"calls"</span><span class="p">]</span>
-             <span class="k">if</span> <span class="n">call</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"edit_file"</span> <span class="ow">and</span> <span class="n">call</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"file_path"</span><span class="p">)</span> <span class="o">==</span> <span class="n">MEMORY_PATH</span>
-             <span class="k">for</span> <span class="n">reply</span> <span class="ow">in</span> <span class="n">run</span><span class="p">[</span><span class="s2">"returns"</span><span class="p">]</span> <span class="k">if</span> <span class="n">reply</span><span class="o">.</span><span class="n">tool_call_id</span> <span class="o">==</span> <span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]]</span>
-    <span class="n">edit</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">reply</span> <span class="k">for</span> <span class="n">reply</span> <span class="ow">in</span> <span class="n">edits</span> <span class="k">if</span> <span class="n">reply</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">edit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"edit_file 未成功"</span>
-    <span class="n">draft</span> <span class="o">=</span> <span class="n">tool_reply</span><span class="p">(</span><span class="n">run</span><span class="p">,</span> <span class="s2">"write_file"</span><span class="p">,</span> <span class="n">DRAFT_PATH</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">draft</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">draft</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span><span class="p">,</span> <span class="s2">"write_file 未成功"</span>
-    <span class="n">call_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">call</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="k">for</span> <span class="n">call</span> <span class="ow">in</span> <span class="n">run</span><span class="p">[</span><span class="s2">"calls"</span><span class="p">]]</span>
-    <span class="k">assert</span> <span class="n">call_ids</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">read</span><span class="o">.</span><span class="n">tool_call_id</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">call_ids</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">edit</span><span class="o">.</span><span class="n">tool_call_id</span><span class="p">),</span> <span class="s2">"必须先读再编辑"</span>
-    <span class="n">parse_preferences</span><span class="p">(</span><span class="n">read_file_content</span><span class="p">(</span><span class="n">read</span><span class="p">),</span> <span class="p">{})</span>
-    <span class="n">parse_preferences</span><span class="p">(</span><span class="n">memory_content</span><span class="p">(</span><span class="n">run</span><span class="p">[</span><span class="s2">"first_request"</span><span class="p">]),</span> <span class="p">{})</span>
-    <span class="n">record</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="s2">"alice"</span><span class="p">,</span> <span class="s2">"memories"</span><span class="p">),</span> <span class="n">STORE_KEY</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">record</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"Alice 的 namespace 中没有保存偏好"</span>
-    <span class="n">parse_preferences</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"content"</span><span class="p">],</span> <span class="n">EXPECTED_PREFERENCES</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">run</span><span class="p">[</span><span class="s2">"result"</span><span class="p">][</span><span class="s2">"files"</span><span class="p">][</span><span class="n">DRAFT_PATH</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span> <span class="o">==</span> <span class="n">DRAFT_TEXT</span>
-    <span class="k">assert</span> <span class="n">MEMORY_PATH</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">run</span><span class="p">[</span><span class="s2">"result"</span><span class="p">][</span><span class="s2">"files"</span><span class="p">],</span> <span class="s2">"偏好不应写入 State"</span>
-    <span class="k">assert</span> <span class="n">store</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="s2">"alice"</span><span class="p">,</span> <span class="s2">"memories"</span><span class="p">),</span> <span class="n">DRAFT_PATH</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"草稿不应写入 Store"</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">READ_ONLY</span> <span class="o">=</span> <span class="p">[</span><span class="n">FilesystemPermission</span><span class="p">(</span><span class="n">operations</span><span class="o">=</span><span class="p">[</span><span class="s2">"write"</span><span class="p">],</span> <span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="s2">"/**"</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"deny"</span><span class="p">)]</span>
+<span class="n">readonly_case</span> <span class="o">=</span> <span class="n">run_case</span><span class="p">(</span><span class="s2">"全局只读"</span><span class="p">,</span> <span class="n">READ_ONLY</span><span class="p">,</span> <span class="p">[</span><span class="n">READ_NOTES</span><span class="p">,</span> <span class="n">WRITE_NOTES</span><span class="p">])</span>
+<span class="k">assert</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">status</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">readonly_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">]]</span> <span class="o">==</span> <span class="p">[</span><span class="s2">"success"</span><span class="p">,</span> <span class="s2">"error"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="s2">"原始笔记"</span> <span class="ow">in</span> <span class="n">readonly_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+<span class="k">assert</span> <span class="s2">"permission denied"</span> <span class="ow">in</span> <span class="n">readonly_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+<span class="k">assert</span> <span class="n">readonly_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">]</span> <span class="o">==</span> <span class="n">SEED</span><span class="p">,</span> <span class="s2">"被拒绝的写入改变了文件"</span>
+<span class="n">show_text</span><span class="p">(</span><span class="s2">"拒绝后实际笔记："</span><span class="p">,</span> <span class="n">readonly_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="s2">"/workspace/notes.txt"</span><span class="p">])</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f51013fe">
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>
+=== 全局只读 ===
+任务预期与实际请求：无差异。
+请求工具： read_file
+
+参数：
+{
+  "file_path": "/workspace/notes.txt"
+}
+调用 ID： read-notes 状态： success
+
+实际返回：
+@@ lines 1-1 of 1 @@
+原始笔记
+请求工具： write_file
+
+参数：
+{
+  "file_path": "/workspace/notes.txt",
+  "content": "整理后的笔记\n"
+}
+调用 ID： write-notes 状态： error
+
+实际返回：
+Error: permission denied for write on /workspace/notes.txt
+教学目录已清理；文件内容副本留在 files 中。
+
+拒绝后实际笔记：
+原始笔记
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=10678b71">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="4.1-%E7%AC%AC%E4%B8%80%E6%AE%B5%E5%AF%B9%E8%AF%9D%EF%BC%9A%E6%9B%B4%E6%96%B0%E5%81%8F%E5%A5%BD%E5%B9%B6%E5%86%99%E8%8D%89%E7%A8%BF">4.1 第一段对话：更新偏好并写草稿<a class="anchor-link" href="#4.1-%E7%AC%AC%E4%B8%80%E6%AE%B5%E5%AF%B9%E8%AF%9D%EF%BC%9A%E6%9B%B4%E6%96%B0%E5%81%8F%E5%A5%BD%E5%B9%B6%E5%86%99%E8%8D%89%E7%A8%BF">¶</a></h3><p><code>edit_file</code> 更新 Store 中已有偏好；<code>write_file</code> 写入 State 中的草稿。验收检查偏好先读再编辑、所需工具成功，再核对 Alice 的 Store JSON 和 State 草稿；额外工具调用完整保留，不因此判错。<code>edit_file</code> 的两个正文参数是字符串：<code>old_string</code> 用读取到的原文，<code>new_string</code> 用 <code>json.dumps(偏好对象, ensure_ascii=False)</code>；传 JSON 对象会被工具参数校验拒绝。即使工具报告成功，写错 namespace 或内容也不能通过。此时用户 <code>alice</code> 的记忆提示词仍是本轮开始时加载的旧对象 <code>{}</code>；写入后的值要在<strong>新线程</strong>检查。</p>
+<p>读取请求未命中这条 <code>write</code> 规则，所以默认允许。写入命中 <code>deny</code>，工具结果的 <code>status</code> 是 <code>error</code>，返回权限错误；应用核查的笔记仍为“原始笔记”。最终结束回复没有参与成功判断。</p>
+<h2 id="4.-allow-%E5%B7%A5%E4%BD%9C%E5%8C%BA%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%8D%E7%AD%89%E4%BA%8E%E7%99%BD%E5%90%8D%E5%8D%95%EF%BC%9F">4. allow 工作区为什么不等于白名单？<a class="anchor-link" href="#4.-allow-%E5%B7%A5%E4%BD%9C%E5%8C%BA%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%8D%E7%AD%89%E4%BA%8E%E7%99%BD%E5%90%8D%E5%8D%95%EF%BC%9F">¶</a></h2><p>规则按列表顺序检查，<strong>第一条同时匹配操作与路径的规则生效</strong>。如果没有匹配规则，默认允许。先只配置工作区 <code>allow</code>，然后故意请求写 <code>/outside.txt</code>：它不匹配工作区，却仍应写入成功。</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch08-scenarios" id="cell-id=7c73bdc0">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch11-default-allow" id="cell-id=b98408bd">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8342,21 +8243,16 @@ langchain-openai==1.6.7
 <div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">saved</span> <span class="o">=</span> <span class="n">run_scene</span><span class="p">(</span>
-    <span class="s2">"保存"</span><span class="p">,</span> <span class="s2">"alice-original"</span><span class="p">,</span> <span class="s2">"alice"</span><span class="p">,</span>
-    <span class="sa">f</span><span class="s2">"请把 </span><span class="si">{</span><span class="n">MEMORY_PATH</span><span class="si">}</span><span class="s2"> 更新为 JSON 对象 </span><span class="si">{</span><span class="n">PREFERENCE_JSON</span><span class="si">}</span><span class="s2">，"</span>
-    <span class="s1">'字段 comment_language 必须为 "zh"，variable_language 必须为 "en"；'</span>
-    <span class="s2">"只保留这两个字段，不添加日期或其他字段。"</span>
-    <span class="s2">"先用 read_file 读取原文件，再用 edit_file 替换整个文件："</span>
-    <span class="s1">'old_string 用 read_file 返回的原文件正文（初始是字符串 "</span><span class="si">{}</span><span class="s1">"），'</span>
-    <span class="sa">f</span><span class="s2">"new_string 用字符串 </span><span class="si">{</span><span class="n">PREFERENCE_JSON</span><span class="si">!r}</span><span class="s2">；"</span>
-    <span class="s2">"这两个参数都必须是字符串，不要传 JSON 对象。"</span>
-    <span class="sa">f</span><span class="s2">"然后继续用 write_file 写临时草稿 </span><span class="si">{</span><span class="n">DRAFT_PATH</span><span class="si">}</span><span class="s2">，内容是“</span><span class="si">{</span><span class="n">DRAFT_TEXT</span><span class="si">}</span><span class="s2">”。"</span><span class="p">,</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">WORKSPACE_ALLOW</span> <span class="o">=</span> <span class="n">FilesystemPermission</span><span class="p">(</span>
+    <span class="n">operations</span><span class="o">=</span><span class="p">[</span><span class="s2">"read"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">],</span> <span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="s2">"/workspace/**"</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"allow"</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="n">validate_saved</span><span class="p">(</span><span class="n">saved</span><span class="p">)</span>
-<span class="n">alice_record</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="s2">"alice"</span><span class="p">,</span> <span class="s2">"memories"</span><span class="p">),</span> <span class="n">STORE_KEY</span><span class="p">)</span>
-<span class="n">show_text</span><span class="p">(</span><span class="s2">"Store 中 Alice 的偏好 JSON："</span><span class="p">,</span> <span class="n">alice_record</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"content"</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"旧线程的 State 文件："</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">saved</span><span class="p">[</span><span class="s2">"result"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"files"</span><span class="p">,</span> <span class="p">{})))</span>
+<span class="n">DENY_ALL</span> <span class="o">=</span> <span class="n">FilesystemPermission</span><span class="p">(</span>
+    <span class="n">operations</span><span class="o">=</span><span class="p">[</span><span class="s2">"read"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">],</span> <span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="s2">"/**"</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"deny"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">allow_only_case</span> <span class="o">=</span> <span class="n">run_case</span><span class="p">(</span><span class="s2">"只有工作区 allow"</span><span class="p">,</span> <span class="p">[</span><span class="n">WORKSPACE_ALLOW</span><span class="p">],</span> <span class="p">[</span><span class="n">WRITE_OUTSIDE</span><span class="p">])</span>
+<span class="k">assert</span> <span class="n">allow_only_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span>
+<span class="k">assert</span> <span class="n">allow_only_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="s2">"/outside.txt"</span><span class="p">]</span> <span class="o">==</span> <span class="n">allow_only_case</span><span class="p">[</span><span class="s2">"calls"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span>
+<span class="n">show_text</span><span class="p">(</span><span class="s2">"工作区外实际内容："</span><span class="p">,</span> <span class="n">allow_only_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="s2">"/outside.txt"</span><span class="p">])</span>
 </pre></div>
 </div>
 </div>
@@ -8370,54 +8266,40 @@ langchain-openai==1.6.7
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
-【保存】用户=alice，线程=alice-original
-  本轮工具调用数： 3
-  ch08-保存-0: read_file(/memories/preferences.json) → success
+=== 只有工作区 allow ===
+任务预期与实际请求：无差异。
+请求工具： write_file
 
-  工具返回：
-@@ lines 1-1 of 1 @@
-{}
-  ch08-保存-1: edit_file(/memories/preferences.json) → success
+参数：
+{
+  "file_path": "/outside.txt",
+  "content": "工作区外被修改了\n"
+}
+调用 ID： write-outside 状态： success
 
-  工具返回：
-Successfully replaced 1 instance(s) of the string in
-  '/memories/preferences.json'
-  ch08-保存-2: write_file(/workspace/draft.txt) → success
+实际返回：
+Updated file /outside.txt
+教学目录已清理；文件内容副本留在 files 中。
 
-  工具返回：
-Updated file /workspace/draft.txt
-
-Store 中 Alice 的偏好 JSON：
-{"comment_language": "zh", "variable_language": "en"}
-旧线程的 State 文件： ['/workspace/draft.txt']
+工作区外实际内容：
+工作区外被修改了
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=496868d5">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=bc9002bb">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>看上面的工具返回与 Store：偏好和草稿经不同后端写入。<code>Store.get</code> 是 Python 直接核对存储内容；它本身不能证明新线程的模型已经看到了偏好，所以下一步还要检查模型请求。</p>
+<p>这个结果说明：<code>allow</code> 是一条放行规则，本身不会改变其他路径的默认行为。形成工作区白名单，需要在最后追加全局 <code>deny</code>。接下来同时请求工作区与工作区外写入，应只有前者成功。</p>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=94d936dc">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="4.2-%E5%90%8C%E4%B8%80%E7%94%A8%E6%88%B7%E7%9A%84%E6%96%B0%E7%BA%BF%E7%A8%8B%EF%BC%9A%E5%81%8F%E5%A5%BD%E5%8F%AF%E8%AF%BB%EF%BC%8C%E8%8D%89%E7%A8%BF%E4%B8%8D%E5%8F%AF%E8%AF%BB">4.2 同一用户的新线程：偏好可读，草稿不可读<a class="anchor-link" href="#4.2-%E5%90%8C%E4%B8%80%E7%94%A8%E6%88%B7%E7%9A%84%E6%96%B0%E7%BA%BF%E7%A8%8B%EF%BC%9A%E5%81%8F%E5%A5%BD%E5%8F%AF%E8%AF%BB%EF%BC%8C%E8%8D%89%E7%A8%BF%E4%B8%8D%E5%8F%AF%E8%AF%BB">¶</a></h3><p>给 <code>alice</code> 换一个 <code>thread_id</code>，但复用同一个 Store。预期偏好读取成功，草稿读取报“文件不存在”。这个错误是<strong>预期边界</strong>，不是 Notebook 执行失败。</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch08-scenarios" id="cell-id=044c8b72">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch11-order" id="cell-id=224132c1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8425,16 +8307,20 @@ Store 中 Alice 的偏好 JSON：
 <div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">fresh</span> <span class="o">=</span> <span class="n">run_scene</span><span class="p">(</span>
-    <span class="s2">"新线程"</span><span class="p">,</span> <span class="s2">"alice-fresh"</span><span class="p">,</span> <span class="s2">"alice"</span><span class="p">,</span>
-    <span class="sa">f</span><span class="s2">"请分别读取 </span><span class="si">{</span><span class="n">MEMORY_PATH</span><span class="si">}</span><span class="s2"> 和 </span><span class="si">{</span><span class="n">DRAFT_PATH</span><span class="si">}</span><span class="s2">，报告实际工具结果。"</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="n">draft_miss</span> <span class="o">=</span> <span class="n">tool_reply</span><span class="p">(</span><span class="n">fresh</span><span class="p">,</span> <span class="s2">"read_file"</span><span class="p">,</span> <span class="n">DRAFT_PATH</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">draft_miss</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">draft_miss</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"error"</span>
-<span class="k">assert</span> <span class="n">DRAFT_PATH</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fresh</span><span class="p">[</span><span class="s2">"result"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"files"</span><span class="p">,</span> <span class="p">{})</span>
-<span class="n">alice_evidence</span> <span class="o">=</span> <span class="n">validate_preferences</span><span class="p">(</span><span class="n">fresh</span><span class="p">,</span> <span class="s2">"alice"</span><span class="p">,</span> <span class="n">EXPECTED_PREFERENCES</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"首次模型请求中的偏好对象："</span><span class="p">,</span> <span class="n">alice_evidence</span><span class="p">[</span><span class="s2">"agent_memory"</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"新线程读不到旧草稿。"</span><span class="p">)</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">WORKSPACE_ONLY</span> <span class="o">=</span> <span class="p">[</span><span class="n">WORKSPACE_ALLOW</span><span class="p">,</span> <span class="n">DENY_ALL</span><span class="p">]</span>
+<span class="n">workspace_case</span> <span class="o">=</span> <span class="n">run_case</span><span class="p">(</span><span class="s2">"工作区 allow + 全局 deny"</span><span class="p">,</span> <span class="n">WORKSPACE_ONLY</span><span class="p">,</span>
+                          <span class="p">[</span><span class="n">WRITE_NOTES</span><span class="p">,</span> <span class="n">WRITE_OUTSIDE</span><span class="p">])</span>
+<span class="k">assert</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">status</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">workspace_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">]]</span> <span class="o">==</span> <span class="p">[</span><span class="s2">"success"</span><span class="p">,</span> <span class="s2">"error"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="n">workspace_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="s2">"/workspace/notes.txt"</span><span class="p">]</span> <span class="o">==</span> <span class="n">workspace_case</span><span class="p">[</span><span class="s2">"calls"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span>
+<span class="k">assert</span> <span class="s2">"permission denied"</span> <span class="ow">in</span> <span class="n">workspace_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+<span class="k">assert</span> <span class="n">workspace_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="s2">"/outside.txt"</span><span class="p">]</span> <span class="o">==</span> <span class="n">SEED</span><span class="p">[</span><span class="s2">"/outside.txt"</span><span class="p">]</span>
+
+<span class="n">reversed_case</span> <span class="o">=</span> <span class="n">run_case</span><span class="p">(</span><span class="s2">"交换顺序：全局 deny 在前"</span><span class="p">,</span> <span class="p">[</span><span class="n">DENY_ALL</span><span class="p">,</span> <span class="n">WORKSPACE_ALLOW</span><span class="p">],</span>
+                         <span class="p">[</span><span class="n">WRITE_NOTES</span><span class="p">])</span>
+<span class="k">assert</span> <span class="n">reversed_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"error"</span>
+<span class="k">assert</span> <span class="s2">"permission denied"</span> <span class="ow">in</span> <span class="n">reversed_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+<span class="k">assert</span> <span class="n">reversed_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">]</span> <span class="o">==</span> <span class="n">SEED</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"已核对：兜底拒绝放在最后；放在最前面会连工作区一起拒绝。"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8448,47 +8334,65 @@ Store 中 Alice 的偏好 JSON：
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
-【新线程】用户=alice，线程=alice-fresh
-  本轮工具调用数： 2
-  ch08-新线程-0: read_file(/memories/preferences.json) → success
+=== 工作区 allow + 全局 deny ===
+任务预期与实际请求：无差异。
+请求工具： write_file
 
-  工具返回：
-@@ lines 1-1 of 1 @@
-{"comment_language": "zh", "variable_language": "en"}
-  ch08-新线程-1: read_file(/workspace/draft.txt) → error
+参数：
+{
+  "file_path": "/workspace/notes.txt",
+  "content": "整理后的笔记\n"
+}
+调用 ID： write-notes 状态： success
 
-  工具返回：
-Error: File '/workspace/draft.txt' not found
-首次模型请求中的偏好对象： {'comment_language': 'zh', 'variable_language': 'en'}
-新线程读不到旧草稿。
+实际返回：
+Updated file /workspace/notes.txt
+请求工具： write_file
+
+参数：
+{
+  "file_path": "/outside.txt",
+  "content": "工作区外被修改了\n"
+}
+调用 ID： write-outside 状态： error
+
+实际返回：
+Error: permission denied for write on /outside.txt
+教学目录已清理；文件内容副本留在 files 中。
+
+=== 交换顺序：全局 deny 在前 ===
+任务预期与实际请求：无差异。
+请求工具： write_file
+
+参数：
+{
+  "file_path": "/workspace/notes.txt",
+  "content": "整理后的笔记\n"
+}
+调用 ID： write-notes 状态： error
+
+实际返回：
+Error: permission denied for write on /workspace/notes.txt
+教学目录已清理；文件内容副本留在 files 中。
+已核对：兜底拒绝放在最后；放在最前面会连工作区一起拒绝。
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a8e4785b">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=22ee32b7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><code>read_file</code> 的成功返回说明 Agent 能通过虚拟文件工具读取 Store；首次模型请求的系统 memory 正文也严格等于 Alice 的 JSON 对象，说明 <code>memory=</code> 确实将已有文件注入。草稿读取失败只说明<strong>新线程隔离</strong>，不代表旧线程的数据被删除。</p>
+<p>前一组中，工作区请求先命中 allow；外部请求跳过第一条，命中全局 deny。后一组中，全局 deny 先命中，后面的 allow 根本不会参与这次判断。规则不是全部叠加，也不是自动选择最具体的一条。</p>
+<h2 id="5.-%E7%A7%81%E6%9C%89%E6%96%87%E4%BB%B6%E7%9A%84%E6%8B%92%E7%BB%9D%E8%A7%84%E5%88%99%E6%94%BE%E5%9C%A8%E5%93%AA%E9%87%8C%EF%BC%9F">5. 私有文件的拒绝规则放在哪里？<a class="anchor-link" href="#5.-%E7%A7%81%E6%9C%89%E6%96%87%E4%BB%B6%E7%9A%84%E6%8B%92%E7%BB%9D%E8%A7%84%E5%88%99%E6%94%BE%E5%9C%A8%E5%93%AA%E9%87%8C%EF%BC%9F">¶</a></h2><p><code>/workspace/private.txt</code> 同时属于工作区和私有文件。要让它受到保护，必须把具体路径的 deny 放在目录 allow <strong>之前</strong>。下面对同一读取请求比较两种顺序；所有读取内容均为教学文本。</p>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ed3205e4">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="4.3-%E5%9B%9E%E5%88%B0%E6%97%A7%E7%BA%BF%E7%A8%8B%EF%BC%9A%E8%8D%89%E7%A8%BF%E4%BB%8D%E5%9C%A8">4.3 回到旧线程：草稿仍在<a class="anchor-link" href="#4.3-%E5%9B%9E%E5%88%B0%E6%97%A7%E7%BA%BF%E7%A8%8B%EF%BC%9A%E8%8D%89%E7%A8%BF%E4%BB%8D%E5%9C%A8">¶</a></h3><p>复用 <code>alice-original</code> 的 <code>thread_id</code>，由 Checkpointer 恢复旧 State。查看工具结果，并直接读取该线程的 checkpoint 里的 <code>files</code> 字段。这个字段是 Agent State 的一部分，不是 Store 记录。</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch08-scenarios" id="cell-id=e7ad777f">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch11-private" id="cell-id=9c9f9240">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8496,17 +8400,21 @@ Error: File '/workspace/draft.txt' not found
 <div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">resumed</span> <span class="o">=</span> <span class="n">run_scene</span><span class="p">(</span>
-    <span class="s2">"旧线程"</span><span class="p">,</span> <span class="s2">"alice-original"</span><span class="p">,</span> <span class="s2">"alice"</span><span class="p">,</span>
-    <span class="sa">f</span><span class="s2">"回到原对话，请读取先前的临时草稿 </span><span class="si">{</span><span class="n">DRAFT_PATH</span><span class="si">}</span><span class="s2">。"</span><span class="p">,</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">PRIVATE_DENY</span> <span class="o">=</span> <span class="n">FilesystemPermission</span><span class="p">(</span>
+    <span class="n">operations</span><span class="o">=</span><span class="p">[</span><span class="s2">"read"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">],</span> <span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="s2">"/workspace/private.txt"</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"deny"</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="n">draft_read</span> <span class="o">=</span> <span class="n">tool_reply</span><span class="p">(</span><span class="n">resumed</span><span class="p">,</span> <span class="s2">"read_file"</span><span class="p">,</span> <span class="n">DRAFT_PATH</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">draft_read</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">draft_read</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span>
-<span class="k">assert</span> <span class="n">read_file_content</span><span class="p">(</span><span class="n">draft_read</span><span class="p">)</span> <span class="o">==</span> <span class="n">DRAFT_TEXT</span>
-<span class="n">old_state</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">({</span><span class="s2">"configurable"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"thread_id"</span><span class="p">:</span> <span class="s2">"alice-original"</span><span class="p">}})</span>
-<span class="k">assert</span> <span class="n">old_state</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="s2">"files"</span><span class="p">][</span><span class="n">DRAFT_PATH</span><span class="p">][</span><span class="s2">"content"</span><span class="p">]</span> <span class="o">==</span> <span class="n">DRAFT_TEXT</span>
-<span class="n">parse_preferences</span><span class="p">(</span><span class="n">memory_content</span><span class="p">(</span><span class="n">resumed</span><span class="p">[</span><span class="s2">"first_request"</span><span class="p">]),</span> <span class="p">{})</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"旧线程 checkpoint 中仍有："</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">old_state</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="s2">"files"</span><span class="p">]))</span>
+<span class="n">PROTECTED</span> <span class="o">=</span> <span class="p">[</span><span class="n">PRIVATE_DENY</span><span class="p">,</span> <span class="n">WORKSPACE_ALLOW</span><span class="p">,</span> <span class="n">DENY_ALL</span><span class="p">]</span>
+<span class="n">protected_case</span> <span class="o">=</span> <span class="n">run_case</span><span class="p">(</span><span class="s2">"先拒绝私有文件"</span><span class="p">,</span> <span class="n">PROTECTED</span><span class="p">,</span> <span class="p">[</span><span class="n">READ_PRIVATE</span><span class="p">])</span>
+<span class="k">assert</span> <span class="n">protected_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"error"</span>
+<span class="k">assert</span> <span class="s2">"permission denied"</span> <span class="ow">in</span> <span class="n">protected_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+<span class="k">assert</span> <span class="n">SEED</span><span class="p">[</span><span class="s2">"/workspace/private.txt"</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">protected_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+<span class="k">assert</span> <span class="n">protected_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">]</span> <span class="o">==</span> <span class="n">SEED</span>
+
+<span class="n">exposed_case</span> <span class="o">=</span> <span class="n">run_case</span><span class="p">(</span><span class="s2">"先放行整个工作区"</span><span class="p">,</span> <span class="p">[</span><span class="n">WORKSPACE_ALLOW</span><span class="p">,</span> <span class="n">PRIVATE_DENY</span><span class="p">,</span> <span class="n">DENY_ALL</span><span class="p">],</span>
+                        <span class="p">[</span><span class="n">READ_PRIVATE</span><span class="p">])</span>
+<span class="k">assert</span> <span class="n">exposed_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span>
+<span class="k">assert</span> <span class="n">SEED</span><span class="p">[</span><span class="s2">"/workspace/private.txt"</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">in</span> <span class="n">exposed_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"同一个文件，仅改变规则顺序，读取结果就发生了变化。"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8520,42 +8428,58 @@ Error: File '/workspace/draft.txt' not found
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
-【旧线程】用户=alice，线程=alice-original
-  本轮工具调用数： 1
-  ch08-旧线程-0: read_file(/workspace/draft.txt) → success
+=== 先拒绝私有文件 ===
+任务预期与实际请求：无差异。
+请求工具： read_file
 
-  工具返回：
+参数：
+{
+  "file_path": "/workspace/private.txt"
+}
+调用 ID： read-private 状态： error
+
+实际返回：
+Error: permission denied for read on /workspace/private.txt
+教学目录已清理；文件内容副本留在 files 中。
+
+=== 先放行整个工作区 ===
+任务预期与实际请求：无差异。
+请求工具： read_file
+
+参数：
+{
+  "file_path": "/workspace/private.txt"
+}
+调用 ID： read-private 状态： success
+
+实际返回：
 @@ lines 1-1 of 1 @@
-仅本线程可见：草稿 42
-旧线程 checkpoint 中仍有： ['/workspace/draft.txt']
+仅用于演示的私有资料
+教学目录已清理；文件内容副本留在 files 中。
+同一个文件，仅改变规则顺序，读取结果就发生了变化。
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9c0ede58">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d13c3806">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>注意时机：这个旧线程恢复了先前已经加载的记忆提示词。即使 Store 文件现在已更新，旧线程的首次模型请求仍可能保留本轮之前注入的旧文本。因此本实验用<strong>新线程</strong>检查“更新后重新注入”，不把旧线程提示词当作实时同步证据。</p>
+<p>拒绝结果不包含私有文件正文；错误顺序下，真实返回中能读到它。规则需要按“具体保护路径 → 业务放行目录 → 全局兜底”组织。这些检查证明的是本次工具调用的边界，不是对模型推理质量的评价。</p>
+<h2 id="6.-interrupt%EF%BC%9A%E5%85%88%E6%9A%82%E5%81%9C%EF%BC%8C%E6%89%B9%E5%87%86%E5%90%8E%E5%86%99%E5%85%A5">6. interrupt：先暂停，批准后写入<a class="anchor-link" href="#6.-interrupt%EF%BC%9A%E5%85%88%E6%9A%82%E5%81%9C%EF%BC%8C%E6%89%B9%E5%87%86%E5%90%8E%E5%86%99%E5%85%A5">¶</a></h2><p>对 <code>/review/**</code> 的写入使用 <code>mode="interrupt"</code>；再补一条全局 <code>deny</code> 兜底，其余路径的写入直接拒绝。这样即使模型写错路径，也不能未经审批成功。框架会根据权限规则配置工具审批，本例不另写 <code>interrupt_on</code>。</p>
+<p>本场景还用 <code>LimitVisibleTools</code> 把模型可见工具收窄为 <code>write_file</code>，让“只写这份报告”不只靠提示词约束；每次工具调用前，权限规则仍由框架实际检查。</p>
+<p><code>InMemorySaver</code> 是内存 Checkpointer，用于保存 Agent 的状态与待恢复执行进度。<code>thread_id</code> 标识这条会话；恢复必须使用相同配置。</p>
+<p>本例指定 <code>version="v2"</code> 选择返回格式：<code>paused.value</code> 是 State，<code>paused.interrupts</code> 是中断列表。</p>
+<p>Checkpointer 不会保存暂停在某一行的 Python 调用栈；恢复时会重新进入被中断的节点。如果这个节点中还有发送请求等操作，需要避免重复执行带来的影响。</p>
+<p>下一格在同一临时目录生命周期内完成暂停与批准：先打印模型实际发出的工具请求、实际工具返回和当前文件内容，再看有没有产生审批。确有待审批动作后，检查实际文件未变、尚无写入 ToolMessage；按有限换行容差确认它符合任务后，先用 <code>deepcopy</code> 保存实际 <code>action_requests</code> 和调用 ID，再用 <code>Command(resume=...)</code> 提交 approve。恢复后按实际批准请求严格核对工具关联和参数，最终文件必须与实际批准的 <code>content</code> 逐字相同；这里不能再用预设的 <code>WRITE_REVIEW</code> 正文代替批准内容。<code>get_state(config)</code> 读取已保存的快照，<code>next</code> 表示还有待继续执行的节点。更完整的决策与恢复说明见<a href="../../content/ch09-human-in-the-loop.md">第 9 章正文</a>。</p>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7621b2c8">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="4.4-%E5%8F%A6%E4%B8%80%E4%B8%AA%E7%94%A8%E6%88%B7%EF%BC%9Anamespace-%E9%9A%94%E7%A6%BB">4.4 另一个用户：namespace 隔离<a class="anchor-link" href="#4.4-%E5%8F%A6%E4%B8%80%E4%B8%AA%E7%94%A8%E6%88%B7%EF%BC%9Anamespace-%E9%9A%94%E7%A6%BB">¶</a></h3><p>同一个 Agent 与同一个 Store，改用 <code>bob</code> 的运行上下文。预期 Store、真实 <code>read_file</code> 正文、首次系统 memory 正文都严格等于 Bob 的对象 <code>{"comment_language": "en", "variable_language": "zh"}</code>；任一处串入 Alice 的对象都会失败。</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch08-scenarios" id="cell-id=57610f80">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch11-review" id="cell-id=a4dc64f3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8563,14 +8487,68 @@ Error: File '/workspace/draft.txt' not found
 <div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">other_user</span> <span class="o">=</span> <span class="n">run_scene</span><span class="p">(</span>
-    <span class="s2">"其他用户"</span><span class="p">,</span> <span class="s2">"bob-first"</span><span class="p">,</span> <span class="s2">"bob"</span><span class="p">,</span>
-    <span class="sa">f</span><span class="s2">"请读取你自己的偏好文件 </span><span class="si">{</span><span class="n">MEMORY_PATH</span><span class="si">}</span><span class="s2">。"</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="n">bob_evidence</span> <span class="o">=</span> <span class="n">validate_preferences</span><span class="p">(</span><span class="n">other_user</span><span class="p">,</span> <span class="s2">"bob"</span><span class="p">,</span> <span class="n">BOB_PREFERENCES</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">BOB_PREFERENCES</span> <span class="o">!=</span> <span class="n">EXPECTED_PREFERENCES</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"首次模型请求中的偏好对象："</span><span class="p">,</span> <span class="n">bob_evidence</span><span class="p">[</span><span class="s2">"agent_memory"</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Bob 的工具结果、Store 文件和首次模型请求均严格匹配 Bob 的对象。"</span><span class="p">)</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">REVIEW_RULES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">FilesystemPermission</span><span class="p">(</span><span class="n">operations</span><span class="o">=</span><span class="p">[</span><span class="s2">"write"</span><span class="p">],</span> <span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="s2">"/review/**"</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"interrupt"</span><span class="p">),</span>
+    <span class="c1"># 兜底：其余写入直接拒绝，模型写错路径也不能绕过审批。</span>
+    <span class="n">FilesystemPermission</span><span class="p">(</span><span class="n">operations</span><span class="o">=</span><span class="p">[</span><span class="s2">"write"</span><span class="p">],</span> <span class="n">paths</span><span class="o">=</span><span class="p">[</span><span class="s2">"/**"</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"deny"</span><span class="p">),</span>
+<span class="p">]</span>
+<span class="k">with</span> <span class="n">TemporaryDirectory</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">"course-ch11-review-"</span><span class="p">)</span> <span class="k">as</span> <span class="n">folder</span><span class="p">:</span>
+    <span class="n">review_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+    <span class="n">report_path</span> <span class="o">=</span> <span class="n">review_root</span> <span class="o">/</span> <span class="s2">"review"</span> <span class="o">/</span> <span class="s2">"report.txt"</span>
+    <span class="n">report_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
+    <span class="n">report_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">SEED</span><span class="p">[</span><span class="s2">"/review/report.txt"</span><span class="p">],</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+    <span class="n">review_backend</span> <span class="o">=</span> <span class="n">FilesystemBackend</span><span class="p">(</span><span class="n">root_dir</span><span class="o">=</span><span class="n">review_root</span><span class="p">,</span> <span class="n">virtual_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">reviewer</span> <span class="o">=</span> <span class="n">make_agent</span><span class="p">(</span><span class="n">review_backend</span><span class="p">,</span> <span class="n">REVIEW_RULES</span><span class="p">,</span> <span class="p">[</span><span class="n">WRITE_REVIEW</span><span class="p">],</span> <span class="n">InMemorySaver</span><span class="p">(),</span>
+                          <span class="n">tool_names</span><span class="o">=</span><span class="p">{</span><span class="s2">"write_file"</span><span class="p">})</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"configurable"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"thread_id"</span><span class="p">:</span> <span class="s2">"ch11-review"</span><span class="p">},</span> <span class="s2">"recursion_limit"</span><span class="p">:</span> <span class="mi">24</span><span class="p">}</span>
+    <span class="n">paused</span> <span class="o">=</span> <span class="n">reviewer</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">task_input</span><span class="p">([</span><span class="n">WRITE_REVIEW</span><span class="p">]),</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">)</span>
+    <span class="c1"># 先展示实际请求、工具返回和文件状态，再判断有没有产生审批。</span>
+    <span class="n">show_text</span><span class="p">(</span><span class="s2">"审批前实际 AI 工具请求："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+        <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span>
+         <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">requested_calls</span><span class="p">(</span><span class="n">paused</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">])],</span>
+        <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">))</span>
+    <span class="n">show_text</span><span class="p">(</span><span class="s2">"审批前实际工具返回："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+        <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s2">"status"</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">text</span><span class="p">}</span>
+         <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">paused</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)],</span>
+        <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">))</span>
+    <span class="n">show_text</span><span class="p">(</span><span class="s2">"审批前实际文件："</span><span class="p">,</span> <span class="n">report_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">paused</span><span class="o">.</span><span class="n">interrupts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"应出现一组权限审批中断"</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="n">paused</span><span class="o">.</span><span class="n">interrupts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">expected_action</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">WRITE_REVIEW</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">WRITE_REVIEW</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span>
+    <span class="n">actions</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">a</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">a</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">[</span><span class="s2">"action_requests"</span><span class="p">]]</span>
+    <span class="n">check_task_match</span><span class="p">(</span><span class="n">actions</span><span class="p">,</span> <span class="p">[</span><span class="n">expected_action</span><span class="p">])</span>
+    <span class="n">approved_action</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="s2">"action_requests"</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">approved_calls</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">requested_calls</span><span class="p">(</span><span class="n">paused</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]))</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">approved_calls</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="k">assert</span> <span class="p">[{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="s2">"args"</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">"args"</span><span class="p">]}</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">approved_calls</span><span class="p">]</span> <span class="o">==</span> <span class="n">actions</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="s2">"review_configs"</span><span class="p">])</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="k">assert</span> <span class="s2">"approve"</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">[</span><span class="s2">"review_configs"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"allowed_decisions"</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">ToolMessage</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">paused</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">])</span>
+    <span class="k">assert</span> <span class="n">report_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span> <span class="o">==</span> <span class="n">SEED</span><span class="p">[</span><span class="s2">"/review/report.txt"</span><span class="p">]</span>
+    <span class="n">snapshot</span> <span class="o">=</span> <span class="n">reviewer</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">next</span> <span class="ow">and</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">interrupts</span>
+    <span class="k">assert</span> <span class="n">requested_calls</span><span class="p">(</span><span class="n">snapshot</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">])</span> <span class="o">==</span> <span class="n">approved_calls</span>
+    <span class="n">show_text</span><span class="p">(</span><span class="s2">"待审批动作："</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">actions</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"已保存待恢复进度；审批前没有执行写入。"</span><span class="p">)</span>
+
+    <span class="n">resumed</span> <span class="o">=</span> <span class="n">reviewer</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
+        <span class="n">Command</span><span class="p">(</span><span class="n">resume</span><span class="o">=</span><span class="p">{</span><span class="s2">"decisions"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"approve"</span><span class="p">}]}),</span>
+        <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"v2"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">assert</span> <span class="ow">not</span> <span class="n">resumed</span><span class="o">.</span><span class="n">interrupts</span>
+    <span class="n">review_replies</span> <span class="o">=</span> <span class="n">check_calls</span><span class="p">(</span>
+        <span class="n">resumed</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">],</span> <span class="n">approved_calls</span><span class="p">,</span> <span class="n">optional_newline</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">assert</span> <span class="n">review_replies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"success"</span>
+    <span class="n">published_report</span> <span class="o">=</span> <span class="n">report_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">published_report</span> <span class="o">==</span> <span class="n">approved_action</span><span class="p">[</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"content"</span><span class="p">],</span> <span class="s2">"文件与实际批准内容不一致"</span>
+    <span class="k">assert</span> <span class="ow">not</span> <span class="n">reviewer</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">next</span>
+    <span class="n">show_text</span><span class="p">(</span><span class="s2">"批准后实际文件："</span><span class="p">,</span> <span class="n">published_report</span><span class="p">)</span>
+
+<span class="k">assert</span> <span class="ow">not</span> <span class="n">review_root</span><span class="o">.</span><span class="n">exists</span><span class="p">(),</span> <span class="s2">"审批实验留下了教学目录"</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"审批实验目录已清理。"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8584,38 +8562,168 @@ Error: File '/workspace/draft.txt' not found
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>
-【其他用户】用户=bob，线程=bob-first
-  本轮工具调用数： 1
-  ch08-其他用户-0: read_file(/memories/preferences.json) → success
+审批前实际 AI 工具请求：
+[
+  {
+    "name": "write_file",
+    "args": {
+      "file_path": "/review/report.txt",
+      "content": "经人工确认的新报告\n"
+    }
+  }
+]
 
-  工具返回：
-@@ lines 1-1 of 1 @@
-{"comment_language": "en", "variable_language": "zh"}
-首次模型请求中的偏好对象： {'comment_language': 'en', 'variable_language': 'zh'}
-Bob 的工具结果、Store 文件和首次模型请求均严格匹配 Bob 的对象。
+审批前实际工具返回：
+[]
+
+审批前实际文件：
+尚未发布的旧报告
+任务预期与实际请求：无差异。
+
+待审批动作：
+[
+  {
+    "name": "write_file",
+    "args": {
+      "file_path": "/review/report.txt",
+      "content": "经人工确认的新报告\n"
+    }
+  }
+]
+已保存待恢复进度；审批前没有执行写入。
+任务预期与实际请求：无差异。
+请求工具： write_file
+
+参数：
+{
+  "file_path": "/review/report.txt",
+  "content": "经人工确认的新报告\n"
+}
+调用 ID： write-review 状态： success
+
+实际返回：
+Updated file /review/report.txt
+
+批准后实际文件：
+经人工确认的新报告
+审批实验目录已清理。
 </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=87fdb240">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ch11-review-extra-1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="5.-%E5%9B%9E%E9%A1%BE%E3%80%81%E8%BE%B9%E7%95%8C%E4%B8%8E%E7%BB%83%E4%B9%A0">5. 回顾、边界与练习<a class="anchor-link" href="#5.-%E5%9B%9E%E9%A1%BE%E3%80%81%E8%BE%B9%E7%95%8C%E4%B8%8E%E7%BB%83%E4%B9%A0">¶</a></h2><p>本次从实际证据得到四个结论：</p>
-<ol>
-<li><code>edit_file</code> 更新了 <code>alice</code> 的 Store 文件；同用户新线程的 <code>read_file</code> 成功，首次模型请求含更新后的偏好。</li>
-<li>新线程读取旧草稿得到工具错误；旧线程读取成功，checkpoint 的 State 中仍有草稿。</li>
-<li><code>bob</code> 的工具结果、Store 文件和首次模型请求使用另一 namespace。</li>
-<li>这些记录都在内存里；<strong>跨线程共享</strong>是本实验的结论，不是进程重启后的持久化保证。也没有测试访问控制：实际用户身份应由服务入口认证。</li>
+<h3 id="%E5%85%9C%E5%BA%95%E8%A7%84%E5%88%99%E5%9B%9E%E5%BD%92%EF%BC%9A%E5%86%99%E9%94%99%E8%B7%AF%E5%BE%84">兜底规则回归：写错路径<a class="anchor-link" href="#%E5%85%9C%E5%BA%95%E8%A7%84%E5%88%99%E5%9B%9E%E5%BD%92%EF%BC%9A%E5%86%99%E9%94%99%E8%B7%AF%E5%BE%84">¶</a></h3><p>真实模型复测时曾把 <code>/review/report.txt</code> 写成 <code>/report/report.txt</code>。如果只有 <code>/review/**</code> 的 interrupt 规则，这个错误路径不匹配任何规则，按“未匹配默认允许”执行，报告就在没有审批的情况下被改写。</p>
+<p>下一格用同一套真实权限中间件与 <code>FilesystemBackend</code> 运行这个错误路径：写入必须返回权限错误，全部教学文件与 <code>SEED</code> 逐字相同，也不会产生审批。模型故意写错路径，我们不替它改成目标路径。</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell celltag_ch11-review-fallback" id="cell-id=ch11-review-extra-2">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [10]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">WRONG_REVIEW</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">WRITE_REVIEW</span><span class="p">)</span>
+<span class="n">WRONG_REVIEW</span><span class="p">[</span><span class="s2">"args"</span><span class="p">][</span><span class="s2">"file_path"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"/report/report.txt"</span>
+<span class="n">WRONG_REVIEW</span><span class="p">[</span><span class="s2">"id"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"write-wrong-report"</span>
+<span class="n">wrong_case</span> <span class="o">=</span> <span class="n">run_case</span><span class="p">(</span><span class="s2">"审批场景写错路径"</span><span class="p">,</span> <span class="n">REVIEW_RULES</span><span class="p">,</span> <span class="p">[</span><span class="n">WRONG_REVIEW</span><span class="p">])</span>
+<span class="k">assert</span> <span class="n">wrong_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"error"</span>
+<span class="k">assert</span> <span class="s2">"permission denied"</span> <span class="ow">in</span> <span class="n">wrong_case</span><span class="p">[</span><span class="s2">"replies"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+<span class="k">assert</span> <span class="n">wrong_case</span><span class="p">[</span><span class="s2">"files"</span><span class="p">]</span> <span class="o">==</span> <span class="n">SEED</span><span class="p">,</span> <span class="s2">"未获批准的写入改变了文件"</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"写错路径已被兜底拒绝；没有写入，也没有产生审批。"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>
+=== 审批场景写错路径 ===
+任务预期与实际请求：无差异。
+请求工具： write_file
+
+参数：
+{
+  "file_path": "/report/report.txt",
+  "content": "经人工确认的新报告\n"
+}
+调用 ID： write-wrong-report 状态： error
+
+实际返回：
+Error: permission denied for write on /report/report.txt
+教学目录已清理；文件内容副本留在 files 中。
+写错路径已被兜底拒绝；没有写入，也没有产生审批。
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=0b8f6c83">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>审批前看到旧报告与待审批写入，没有工具执行结果；approve 后出现关联到实际调用 ID 的成功结果，文件逐字等于实际批准的正文（包括其是否带末尾换行）。这里是 Notebook 代码代表审查方批准，没有图形审批界面。Checkpointer 使用内存，进程退出后存档不再保留；临时文件目录已经删除。</p>
+<h2 id="7.-%E7%BB%83%E4%B9%A0%E3%80%81%E8%BE%B9%E7%95%8C%E4%B8%8E%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98">7. 练习、边界与常见问题<a class="anchor-link" href="#7.-%E7%BB%83%E4%B9%A0%E3%80%81%E8%BE%B9%E7%95%8C%E4%B8%8E%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98">¶</a></h2><h3 id="%E6%94%B9%E4%B8%80%E6%9D%A1%E8%B7%AF%E5%BE%84%E5%86%8D%E8%A7%82%E5%AF%9F">改一条路径再观察<a class="anchor-link" href="#%E6%94%B9%E4%B8%80%E6%9D%A1%E8%B7%AF%E5%BE%84%E5%86%8D%E8%A7%82%E5%AF%9F">¶</a></h3><ol>
+<li>把第 5 节 <code>PRIVATE_DENY.paths</code> 中的 <code>/workspace/private.txt</code> 改为 <code>/workspace/other.txt</code>，先预测原私有文件还能否读取。</li>
+<li>重启内核并全部运行。第 5 节“先拒绝私有文件”的请求会跳过不匹配的 deny，命中目录 allow，输出应出现教学私有内容；原本要求 error 的断言会失败。</li>
+<li>这表示规则没有覆盖目标路径，不是框架忽略了 deny。该次比较的目录在断言前已经清理。恢复原路径，重启内核并全部运行，实验应再次通过。</li>
 </ol>
-<p>保存场景的 <code>edit_file</code> 参数必须是字符串；同一组错误参数重复到上限时，<code>StopRepeatedToolErrors</code> 会显式结束并展示实际请求与返回，不会重试到限流或超时。</p>
-<p><strong>改一个变量再观察</strong>：把 4.2 中 <code>run_scene</code> 的线程 ID 从 <code>"alice-fresh"</code> 改成 <code>"alice-original"</code>，保持用户仍为 <code>alice</code>。先预测草稿读取的状态：它应从预期错误变成成功，后面的 <code>assert draft_miss.status == "error"</code> 会停止。看打印出来的 <code>read_file</code> 结果核对原因。然后恢复线程 ID、重启内核并从第一格全部运行，四个场景应重新通过。</p>
-<p>还可把脚本保存对象加一个 <code>date</code> 字段，预测 Store 严格比较应失败；或故意将 namespace 固定为 Alice，预测 Bob 的工具即使 success，JSON 验收也会失败。检查 <code>/memories/preferences.json</code>（Store key 为 <code>/preferences.json</code>）的对象，恢复修改后重启内核全部运行。</p>
-<p>如果 <code>memory=</code> 提示词断言失败，先检查是否预置了对应 Store 文件、路由 key 是否去掉 <code>/memories/</code> 前缀，以及是否用了新的线程。下一步可回到 <a href="../../content/ch08-long-term-memory.md">第 8 章正文</a>了解持久化 Store、更多作用域和记忆整理。重启当前内核即可清理本实验的内存数据。</p>
+<h3 id="%E6%9D%83%E9%99%90%E6%8E%A7%E5%88%B6%E7%9A%84%E8%8C%83%E5%9B%B4">权限控制的范围<a class="anchor-link" href="#%E6%9D%83%E9%99%90%E6%8E%A7%E5%88%B6%E7%9A%84%E8%8C%83%E5%9B%B4">¶</a></h3><ul>
+<li><code>FilesystemPermission</code> 控制内置文件工具；Notebook 的 Python、应用直接调用 Backend、自定义工具、MCP 或 execute 不由这组工具规则统一约束。实际接入其他入口时，需要分别配置控制措施。</li>
+<li>本例使用无 execute 的 <code>FilesystemBackend</code>。锁定版本还会限制权限规则与支持命令执行的 Backend 的组合，不能仅加一条 deny 就声称 Shell 已被保护。</li>
+<li>本例演示单文件 read_file / write_file，不覆盖目录删除、批量搜索、子 Agent 规则继承或 CompositeBackend 路由；这些属于正文和相关章节的进一步主题。</li>
+<li>临时目录只提供教学文件管理，不提供进程隔离。普通 Python 异常由 with 清理；强行杀死内核可能留下临时目录，不保证这种情况下的自动回收。</li>
+<li>offline 验证权限与审批机制；live 的工具选择与真实模型质量需要另行验证。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>检查什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>工作区外仍能写入</td>
+<td>是否只有 allow、忘了末尾全局 deny</td>
+</tr>
+<tr>
+<td>工作区也被拒绝</td>
+<td>全局 deny 是否排在目录 allow 前面</td>
+</tr>
+<tr>
+<td>私有文件可以读取</td>
+<td>路径是否匹配，私有 deny 是否先于目录 allow</td>
+</tr>
+<tr>
+<td>中断无法恢复</td>
+<td>是否配置 Checkpointer、是否使用原 thread_id 与 Agent 实例</td>
+</tr>
+<tr>
+<td>live 的调用断言失败</td>
+<td>核对实际工具名、参数和顺序，不以 offline 的结束回复代替证据</td>
+</tr>
+</tbody>
+</table>
+<p>实验目录已清理，剩余消息与文件内容副本都在内核内存中；重启内核即可释放。回到<a href="../../content/ch11-filesystem-permissions.md">第 11 章正文</a>了解完整权限策略，贡献时参考<a href="../CONTRIBUTING.md">Notebook 制作指南</a>。</p>
 </div>
 </div>
 </div>

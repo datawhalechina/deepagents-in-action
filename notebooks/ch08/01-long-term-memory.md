@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`e9a5c6f575c5`。
+> 本次执行模式：**offline**。源码指纹：`2b88165f2dc1`。
 
 # 第 8 章 Notebook：跨线程记忆与文件隔离
 
@@ -184,8 +184,12 @@ class StopRepeatedToolErrors(AgentMiddleware):
 
     @hook_config(can_jump_to=["end"])
     def before_model(self, state, runtime):
+        messages = state["messages"]
+        latest = max(i for i, message in enumerate(messages)
+                     if isinstance(message, HumanMessage))
         calls, counts = {}, {}
-        for message in state["messages"]:
+        # 保留 checkpoint 历史，只统计本次用户请求之后的错误。
+        for message in messages[latest + 1:]:
             if isinstance(message, AIMessage):
                 for call in message.tool_calls:
                     calls[call["id"]] = call
@@ -234,7 +238,7 @@ print("Agent 已组装；尚未执行任何场景。")
 
 锁定版本的 `read_file` 以 `@@ lines 1-N of N @@` 标明完整范围，后面才是文件正文；辅助函数核对范围和正文行数，拒绝不完整分页。Store 正文、工具正文和系统 memory 正文统一用 `json.loads` 解析，要求整个对象严格相等：换序和空白可接受，缺字段、错值、额外日期都失败。
 
-同一个工具以完全相同参数连续失败达到上限时，`StopRepeatedToolErrors` 会在下一次模型请求前结束本次执行：`jump_to="end"` 让结果仍完整保留，`run_scene` 先打印这些实际请求与工具返回，再明确失败。这样模型重复提交同一组错误参数时不会一直重试到限流或超时。
+同一个工具以完全相同参数连续失败达到上限时，`StopRepeatedToolErrors` 会在下一次模型请求前结束本次执行：`jump_to="end"` 让结果仍完整保留，`run_scene` 先打印这些实际请求与工具返回，再明确失败。这样模型重复提交同一组错误参数时不会一直重试到限流或超时。错误只统计最新用户消息之后的本次执行；同一线程追加修正后的请求时重新统计，历史消息仍保留在 checkpoint 中。
 
 
 ```python
