@@ -18,6 +18,7 @@
 | 第 7 章：Skills | [Notebook](ch07/01-skills-progressive-disclosure.ipynb) · [Markdown](ch07/01-skills-progressive-disclosure.md) · [HTML](ch07/01-skills-progressive-disclosure.html) | 元数据注入、分阶段文件读取与缺失资源 | 默认脚本模型；可选真实模型 |
 | 第 9 章：Human-in-the-Loop | [Notebook](ch09/01-tool-approval-and-resume.ipynb) · [Markdown](ch09/01-tool-approval-and-resume.md) · [HTML](ch09/01-tool-approval-and-resume.html) | 四种决策、审批前零执行、参数修改与批量校验 | 默认脚本模型；可选真实模型；无需外部服务 |
 | 第 10 章：沙箱执行 | [Notebook](ch10/01-sandbox-execution-and-files.ipynb) · [Markdown](ch10/01-sandbox-execution-and-files.md) · [HTML](ch10/01-sandbox-execution-and-files.html) | 真实容器执行、文件传输、退出码与资源回收 | 默认脚本模型；可选真实模型；Docker Engine；首次下载镜像需网络 |
+| 第 11 章：文件系统权限 | [Notebook](ch11/01-filesystem-permissions.ipynb) · [Markdown](ch11/01-filesystem-permissions.md) · [HTML](ch11/01-filesystem-permissions.html) | 规则顺序、默认允许、拒绝与人工审批 | 默认脚本模型；可选真实模型；自动清理的教学临时目录 |
 | 第 14 章：Streaming | [Notebook](ch14/01-streaming-projections.ipynb) · [Markdown](ch14/01-streaming-projections.md) · [HTML](ch14/01-streaming-projections.html) | 主、子投影与工具结果；custom、raw 顺序和晚订阅 | 默认脚本模型；可选真实模型 |
 <!-- course-notebook-index:end -->
 
@@ -132,6 +133,7 @@ uv run --project notebooks --locked python -m course_notebooks.run ch14-streamin
 | 第 7 章 | `Qwen/Qwen3-Coder-30B-A3B-Instruct` | 2026-10-06；[`ae27a77`](https://github.com/datawhalechina/deepagents-in-action/commit/ae27a77f0e9fe66d0ce81ff6a8d384075fbefb77)，[#133 评审](https://github.com/datawhalechina/deepagents-in-action/pull/133#pullrequestreview-5429855673) | 模型读取 Skill 与参考文件；缺失资源场景，无额外服务 |
 | 第 9 章 | `Qwen/Qwen3-Coder-30B-A3B-Instruct` | 2026-10-06；[`0052010`](https://github.com/datawhalechina/deepagents-in-action/commit/0052010b95ea9088c27546209bda1e4b94f2bf1d)，[#135 评审](https://github.com/datawhalechina/deepagents-in-action/pull/135#pullrequestreview-5429856799) | 模型提出工具请求，审批与恢复；教学工具只记录参数，不发送邮件 |
 | 第 10 章 | `Qwen/Qwen3-Coder-30B-A3B-Instruct` | 2026-10-06；[`b46217f`](https://github.com/datawhalechina/deepagents-in-action/commit/b46217faf2ae217131e4ccc1c33c4a406c06b659)，[#136 评审](https://github.com/datawhalechina/deepagents-in-action/pull/136#pullrequestreview-5429857769) | 模型选择 execute/read_file；分析程序预先提供；需真实 Docker，首次拉取镜像需网络 |
+| 第 11 章 | 待验证 | 2026-10-06 核对 | 模型提出读写与审批请求；文件权限中间件真实执行；教学临时目录，无额外服务 |
 | 第 14 章 | `Qwen/Qwen3-Coder-30B-A3B-Instruct`；`deepseek-ai/DeepSeek-V3.2` | 2026-10-06；[#140 修复说明](https://github.com/datawhalechina/deepagents-in-action/pull/140#issuecomment-6013556021)，最终版本 [`8fcd9d5`](https://github.com/datawhalechina/deepagents-in-action/commit/8fcd9d596b98a0c10f1729e8d2fd60741e0d2d9b) | 主、子 Agent 用真实模型；typed、raw、晚订阅三个场景，无额外服务 |
 
 第 7、9、10 章的验证版本已合入 main，合并时仅解决目录注册冲突，章节执行代码保留。第 14 章在修复工作区实测后同步 main；最终版本的流式适配器、实验代码与实测一致，模型调用依赖未变。本次模型说明更新沿用这些记录，没有把新一轮 offline 执行标成 live。
