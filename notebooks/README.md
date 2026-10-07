@@ -16,6 +16,7 @@
 | 第 5 章：同步子 Agent | [Notebook](ch05/01-subagent-delegation.ipynb) · [Markdown](ch05/01-subagent-delegation.md) · [HTML](ch05/01-subagent-delegation.html) | 消息隔离、文件共享与显式读取 | 默认脚本模型；可选真实模型 |
 | 第 6 章：异步子 Agent | [Notebook](ch06/01-async-subagent-lifecycle.ipynb) · [Markdown](ch06/01-async-subagent-lifecycle.md) · [HTML](ch06/01-async-subagent-lifecycle.html) | 五个异步工具、服务状态与失败清理 | 默认脚本模型；真实本地 Agent Server；server 依赖组 |
 | 第 7 章：Skills | [Notebook](ch07/01-skills-progressive-disclosure.ipynb) · [Markdown](ch07/01-skills-progressive-disclosure.md) · [HTML](ch07/01-skills-progressive-disclosure.html) | 元数据注入、分阶段文件读取与缺失资源 | 默认脚本模型；可选真实模型 |
+| 第 8 章：长期记忆 | [Notebook](ch08/01-long-term-memory.ipynb) · [Markdown](ch08/01-long-term-memory.md) · [HTML](ch08/01-long-term-memory.html) | 跨线程 Store 共享、State 隔离、用户 namespace 与实际模型请求 | 默认脚本模型；可选真实模型 |
 | 第 9 章：Human-in-the-Loop | [Notebook](ch09/01-tool-approval-and-resume.ipynb) · [Markdown](ch09/01-tool-approval-and-resume.md) · [HTML](ch09/01-tool-approval-and-resume.html) | 四种决策、审批前零执行、参数修改与批量校验 | 默认脚本模型；可选真实模型；无需外部服务 |
 | 第 10 章：沙箱执行 | [Notebook](ch10/01-sandbox-execution-and-files.ipynb) · [Markdown](ch10/01-sandbox-execution-and-files.md) · [HTML](ch10/01-sandbox-execution-and-files.html) | 真实容器执行、文件传输、退出码与资源回收 | 默认脚本模型；可选真实模型；Docker Engine；首次下载镜像需网络 |
 | 第 11 章：文件系统权限 | [Notebook](ch11/01-filesystem-permissions.ipynb) · [Markdown](ch11/01-filesystem-permissions.md) · [HTML](ch11/01-filesystem-permissions.html) | 规则顺序、默认允许、拒绝与人工审批 | 默认脚本模型；可选真实模型；自动清理的教学临时目录 |
@@ -131,6 +132,7 @@ uv run --project notebooks --locked python -m course_notebooks.run ch14-streamin
 | 第 5 章 | 待验证 | 2026-10-06 核对 | 主、子 Agent 用真实模型；资料是本地固定样例，无搜索服务 |
 | 第 6 章 | 待验证 | 2026-10-06 核对 | 主 Agent 用真实模型；researcher 为固定回显图；需真实本地 Agent Server、`server` 依赖组 |
 | 第 7 章 | `Qwen/Qwen3-Coder-30B-A3B-Instruct` | 2026-10-06；[`ae27a77`](https://github.com/datawhalechina/deepagents-in-action/commit/ae27a77f0e9fe66d0ce81ff6a8d384075fbefb77)，[#133 评审](https://github.com/datawhalechina/deepagents-in-action/pull/133#pullrequestreview-5429855673) | 模型读取 Skill 与参考文件；缺失资源场景，无额外服务 |
+| 第 8 章 | 待验证 | 2026-10-06 核对 | 模型读取与编辑偏好、写草稿；工具与 Store/Checkpointer 真实执行；内存教学数据，无额外服务 |
 | 第 9 章 | `Qwen/Qwen3-Coder-30B-A3B-Instruct` | 2026-10-06；[`0052010`](https://github.com/datawhalechina/deepagents-in-action/commit/0052010b95ea9088c27546209bda1e4b94f2bf1d)，[#135 评审](https://github.com/datawhalechina/deepagents-in-action/pull/135#pullrequestreview-5429856799) | 模型提出工具请求，审批与恢复；教学工具只记录参数，不发送邮件 |
 | 第 10 章 | `Qwen/Qwen3-Coder-30B-A3B-Instruct` | 2026-10-06；[`b46217f`](https://github.com/datawhalechina/deepagents-in-action/commit/b46217faf2ae217131e4ccc1c33c4a406c06b659)，[#136 评审](https://github.com/datawhalechina/deepagents-in-action/pull/136#pullrequestreview-5429857769) | 模型选择 execute/read_file；分析程序预先提供；需真实 Docker，首次拉取镜像需网络 |
 | 第 11 章 | 待验证 | 2026-10-06 核对 | 模型提出读写与审批请求；文件权限中间件真实执行；教学临时目录，无额外服务 |
