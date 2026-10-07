@@ -118,6 +118,16 @@
       "source_issue": 105
     },
     {
+      "id": "ch13-grading-rubrics",
+      "chapter_id": "ch13-grading-rubrics",
+      "title": "评分量规的取证、修订与验收",
+      "path": "ch13/01-rubric-revision.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
+      "source_issue": 105
+    },
+    {
       "id": "ch14-streaming",
       "chapter_id": "ch14-streaming",
       "title": "Streaming v3 的委派、工具与订阅时机",
