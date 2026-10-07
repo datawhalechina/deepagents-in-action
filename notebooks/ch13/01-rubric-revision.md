@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`5f11d254ece8`。
+> 本次执行模式：**offline**。源码指纹：`9fe2effa01d6`。
 
 # 第 13 章实验：报告写完了，为什么还不能交付？
 
@@ -258,7 +258,7 @@ print("\n独立检查：缺总额会失败，完整报告通过，非法 JSON �
 1. 收到 Middleware 整理的对话记录时，取最后一份候选 JSON，请求 `check_report`。
 2. 收到真实工具返回的 `ToolMessage` 时，核对请求与结果关联，再按 `ok` 和 `criteria` 请求 `GraderResponse`。同一候选只检查一次：拿到本候选的检查结果后就直接返回结论。
 
-评分 prompt 把这步写清楚，`grader_middleware` 再兜住它：下一格定义的 `StopRepeatedEvidence` 会在本候选证据到手后把 `check_report` 从评分模型的可见工具中移除，并在重复取证超过上限时明确终止本次评分，而不是无限循环。
+评分 prompt 把这步写清楚，`grader_middleware` 再兜住它：下一格定义的 `StopRepeatedEvidence` 只在本候选的 `check_report` 工具消息为 `status="success"` 时移除该工具；缺少参数等错误仍可修正重试。每次评分最多调用模型 6 次，取证前的结构化输出重试也计入上限。
 
 `GraderResponse` 是 LangChain 为结构化评审提供的输出工具，接收结论、解释和标准列表；它不是检查报告的业务工具。框架会校验这些字段，RubricMiddleware 再决定是否修订。
 
@@ -306,14 +306,14 @@ def scripted_grader(messages, tool_names):
 
 `on_evaluation` 每次收到一份评审字典；`iteration` 从 0 开始，`grading_run_id` 关联同次尝试的各轮。回调保存并展示这些信息，不负责放行，也不修改循环。
 
-`grader_middleware=[...]` 作用在评分 Agent 上，不改工作 Agent。`StopRepeatedEvidence` 只做两件事：本候选已有 `check_report` 结果时，不再把该工具交给评分模型；评分模型仍重复取证时按上限抛出明确错误，让本次评分以 `grader_error` 结束，`accepted()` 因此拒绝交付。评分 prompt 负责要求“取得本候选结果后返回结构化 `GraderResponse`”，中间件负责兜住不听要求的调用。
+`grader_middleware=[...]` 作用在评分 Agent 上，不改工作 Agent。`StopRepeatedEvidence` 在每次评分 Agent 的 `invoke()` 入口通过 `before_agent` 重置计数，每个评分候选独立计数；之后每次模型调用都累加，最多允许 6 次，包含取得证据前因缺少 `explanation`、`criteria` 等字段而触发的结构化输出重试。超过上限抛出明确错误，本次评分以 `grader_error` 结束，`accepted()` 因此拒绝交付。只有 `check_report` 返回 `status="success"` 后才收窄工具；这表示检查正常执行，不要求业务 `ok=true`，参数校验错误则仍允许修正。评分 prompt 要求取得本候选结果后返回结构化 `GraderResponse`。
 
 每次 `run_report()` 都新建两个模型、证据记录和评审记录，避免响应列表计数与上一场实验混用。`max_iterations` 是评分轮数上限；`recursion_limit=24` 是外层图的执行步数上限，两者都不等于费用上限。实验顺序执行，不使用 Checkpointer 或跨调用续聊。
 
 
 ```python
 class StopRepeatedEvidence(AgentMiddleware):
-    """已取得本候选检查结果后，收窄评分模型可见工具并限制重复取证。"""
+    """限制每次评分的模型调用，成功取证后收窄可见工具。"""
 
     def __init__(self, tool_name="check_report", max_model_calls=6):
         super().__init__()
@@ -321,16 +321,18 @@ class StopRepeatedEvidence(AgentMiddleware):
         self.max_model_calls = max_model_calls
         self._model_calls = 0
 
+    def before_agent(self, state, runtime):
+        # 每个候选的 grader invoke 独立计数，结构化重试不会重置。
+        self._model_calls = 0
+
     def wrap_model_call(self, request, handler):
         has_evidence = any(
             isinstance(message, ToolMessage) and message.name == self.tool_name
+            and message.status == "success"
             for message in request.messages
         )
-        if not has_evidence:
-            # 每次评分都从只有 HumanMessage 的输入重新开始，计数也重新开始。
-            self._model_calls = 0
-        else:
-            # 本候选的检查结果已经到手，不再把 check_report 交给评分模型。
+        if has_evidence:
+            # 只有检查工具成功执行才收窄；参数错误仍可修正并重试。
             request = request.override(
                 tools=[tool for tool in request.tools
                        if getattr(tool, "name", None) != self.tool_name]
@@ -338,7 +340,7 @@ class StopRepeatedEvidence(AgentMiddleware):
         self._model_calls += 1
         if self._model_calls > self.max_model_calls:
             raise RuntimeError(
-                "评分模型在已有本候选检查结果后仍重复调用 check_report；"
+                f"评分模型调用超过上限（每次评分最多 {self.max_model_calls} 次）；"
                 "已按上限终止本次评分。"
             )
         return handler(request)
@@ -684,7 +686,7 @@ print("是否交付：", accepted(unchecked_result, unchecked_evaluations, unche
 | live 返回 `grader_error` | 检查模型配置、网络与结构化输出支持；这是评分调用链异常，不代表报告通过 |
 | live 未调用检查工具就声称通过 | 本实验的取证断言会失败；检查 Rubric、工具描述与实际模型行为 |
 | live 两轮仍不通过 | 查看具体差距，先核对标准与输出，不要仅增加预算 |
-| live 反复调用检查工具 | 本候选取证后 `grader_middleware` 会收窄可见工具；仍超上限则明确结束为 `grader_error`，本次不交付 |
+| live 反复取证或结构化输出重试 | 每个候选独立限制为 6 次模型调用，取证前重试也计数；检查工具成功返回后才收窄，超限结束为 `grader_error`，本次不交付 |
 | 重跑出现不同轮数 | offline 应稳定；live 可以首轮通过或继续修订 |
 
 **验证范围**：本实验通过真实中间件、工具与消息验证修订路径、预算终止和未评分拒绝。`failed`（标准无法评估）与 `grader_error`（评分链路异常）的独立触发、事件流、跨线程恢复、并发记录和真实模型质量不在默认实验的验证范围内。验收函数只核对本次顺序调用的最后结论、最新候选和实际工具记录，不提供跨调用证据追踪或生产审计保证。

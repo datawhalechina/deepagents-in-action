@@ -216,3 +216,99 @@ def test_unbounded_evidence_repetition_fails_closed(experiment):
     assert not scope["accepted"](result, evaluations, records)
     # 有上限：重复取证被截断，而不是无限制调用检查工具。
     assert 1 <= len(records) <= 7
+
+
+def test_schema_retries_before_evidence_are_bounded(experiment):
+    """没有取证时的结构化输出错误也必须在六次模型请求后拒绝交付。"""
+    scope, _ = experiment
+    calls = []
+
+    def invalid_grader(messages, tool_names):
+        assert "check_report" in tool_names and "GraderResponse" in tool_names
+        if calls:
+            reply = messages[-1]
+            assert isinstance(reply, scope["ToolMessage"])
+            assert reply.name == "GraderResponse"
+            assert "explanation" in reply.text and "criteria" in reply.text
+        calls.append(messages)
+        if len(calls) > 6:
+            raise AssertionError("不应发出第七次模型请求")
+        return scope["AIMessage"](content="", tool_calls=[{
+            "id": f"invalid-{len(calls)}", "name": "GraderResponse",
+            "args": {"result": "satisfied"},
+        }])
+
+    result, evaluations, records = scope["run_report"](grader=invalid_grader)
+    assert len(calls) == 6
+    assert records == []
+    assert evaluations[-1]["result"] == "grader_error"
+    assert "模型调用超过上限" in evaluations[-1]["explanation"]
+    assert not scope["accepted"](result, evaluations, records)
+
+
+def test_each_candidate_has_its_own_model_call_budget(experiment):
+    """两个候选各自经历 schema 重试后仍可取证评分，不共用六次预算。"""
+    scope, _ = experiment
+    calls_per_candidate = []
+
+    def retrying_grader(messages, tool_names):
+        if isinstance(messages[-1], scope["HumanMessage"]):
+            calls_per_candidate.append(0)
+        calls_per_candidate[-1] += 1
+        attempt = calls_per_candidate[-1]
+        if attempt <= 3:
+            assert "check_report" in tool_names
+            if attempt > 1:
+                assert messages[-1].name == "GraderResponse"
+                assert "explanation" in messages[-1].text
+            return scope["AIMessage"](content="", tool_calls=[{
+                "id": f"invalid-{attempt}", "name": "GraderResponse",
+                "args": {"result": "satisfied"},
+            }])
+        if attempt == 4:
+            # 从本次评分的输入读取最新候选，工具仍由真实框架执行。
+            inputs = [m for m in messages if isinstance(m, scope["HumanMessage"])]
+            return scope["scripted_grader"](inputs, tool_names)
+        assert "check_report" not in tool_names
+        return scope["scripted_grader"](messages, tool_names)
+
+    result, evaluations, records = scope["run_report"](grader=retrying_grader)
+    assert calls_per_candidate == [5, 5]
+    assert [e["result"] for e in evaluations] == ["needs_revision", "satisfied"]
+    assert [r["evidence"]["ok"] for r in records] == [False, True]
+    assert scope["accepted"](result, evaluations, records)
+
+
+def test_invalid_evidence_arguments_can_be_corrected(experiment):
+    """缺 report 的校验错误不能隐藏检查工具；修正后取证一次并交付。"""
+    scope, _ = experiment
+    replies = []
+
+    def correcting_grader(messages, tool_names):
+        if isinstance(messages[-1], scope["HumanMessage"]):
+            return scope["AIMessage"](content="", tool_calls=[{
+                "id": "missing-report", "name": "check_report", "args": {},
+            }])
+        reply = messages[-1]
+        replies.append(reply)
+        assert reply.name == "check_report"
+        if reply.status == "error":
+            assert reply.tool_call_id == "missing-report" and "report" in reply.text
+            assert "check_report" in tool_names
+            inputs = [m for m in messages if isinstance(m, scope["HumanMessage"])]
+            return scope["scripted_grader"](inputs, tool_names)
+        assert "check_report" not in tool_names
+        return scope["scripted_grader"](messages, tool_names)
+
+    def controlled_model(scripted):
+        if scripted.responder is not None:
+            return scripted
+        return scope["ScriptedChatModel"](responses=[scope["AIMessage"](content=scope["GOOD_REPORT"])])
+
+    scope["create_model"] = controlled_model
+    result, evaluations, records = scope["run_report"](grader=correcting_grader)
+    assert [reply.status for reply in replies] == ["error", "success"]
+    assert len(records) == 1
+    assert records[0]["call_id"] == "check-complete"
+    assert evaluations[-1]["result"] == "satisfied"
+    assert scope["accepted"](result, evaluations, records)

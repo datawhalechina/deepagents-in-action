@@ -98,6 +98,16 @@
       "source_issue": 105
     },
     {
+      "id": "ch11-filesystem-permissions",
+      "chapter_id": "ch11-filesystem-permissions",
+      "title": "文件系统权限的规则顺序、拒绝与审批",
+      "path": "ch11/01-filesystem-permissions.ipynb",
+      "dependencies": [],
+      "model": "optional",
+      "services": [],
+      "source_issue": 105
+    },
+    {
       "id": "ch13-grading-rubrics",
       "chapter_id": "ch13-grading-rubrics",
       "title": "评分量规的取证、修订与验收",
