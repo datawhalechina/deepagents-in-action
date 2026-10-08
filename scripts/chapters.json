@@ -224,11 +224,23 @@
     "published": true,
     "pubDate": "2026-08-21"
   },
+  "ch17-decision-harness": {
+    "title": "Decision Model Harness — 用模型路由与 Auto Mode 控制 Agent",
+    "chapter": 17,
+    "section": "前沿预览",
+    "order": 19,
+    "description": "从运维场景的改造前后理解决策模型的价值与基础原理，用轻量示例说明 LangChain / Deep Agents 如何支持模型路由、工具检查和执行控制。",
+    "slides": [
+      { "id": "ch17", "title": "Lec 21: Decision Model Harness — 用模型路由与 Auto Mode 控制 Agent" }
+    ],
+    "published": true,
+    "pubDate": "2026-10-08"
+  },
   "release-v0-7": {
     "title": "Deep Agents v0.7：更轻、更透明、更可配置的 Harness",
     "chapter": 0,
     "section": "版本更新",
-    "order": 19,
+    "order": 20,
     "description": "面向从 0.5、0.6 一路跟学的读者，理解精简默认 Prompt、Todo 改为可选、Middleware 原位置换和文件工具语义变化，完成到 v0.7 的可验证迁移。",
     "slides": [
       {

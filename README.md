@@ -20,7 +20,7 @@
 
 </div>
 
-基于 LangChain / LangGraph 的中文开源课程，配套 **16 章图文、视频与实验模板**。从第一个 Agent 开始，逐步掌握任务规划、文件系统、子 Agent 协作与上下文管理。
+基于 LangChain / LangGraph 的中文开源课程，配套 **17 章图文与实验模板，并持续补充视频**。从第一个 Agent 开始，逐步掌握任务规划、文件系统、子 Agent 协作与上下文管理。
 
 **从这里开始：** [环境准备](https://datawhalechina.github.io/deepagents-in-action/chapters/pre01-agentseek-create/) → [5 分钟上手](https://datawhalechina.github.io/deepagents-in-action/chapters/ch02-quickstart/) → [课程大纲](#课程大纲)
 
@@ -38,6 +38,7 @@
 | 第 13 章：`RubricMiddleware`（Beta） | 章节以 `deepagents==0.7.1` 验证 |
 | 第 14 章：Event Streaming v3 | `deepagents>=0.6` |
 | 第 15 章：Interpreters（Beta） | Python 3.11+、`langchain-quickjs>=0.2.0` |
+| 第 17 章：Decision Model Harness | Python 3.11+；以 `deepagents==0.7.23`、`langchain-typesafe[experimental]==0.0.1a3` 验证 |
 
 示例默认通过 [硅基流动](https://cloud.siliconflow.cn/i/Fq9zUwPf) 接入支持工具调用的模型，使用 `MODEL_NAME` 环境变量配置模型名。小模型可用于简单试跑；任务规划、上下文总结和多 Agent 编排需要更强的模型能力。
 
@@ -178,6 +179,10 @@ agentseek dev
 #### 第 16 章：[Dynamic Subagents — 用代码编排多个 Agent](https://datawhalechina.github.io/deepagents-in-action/chapters/ch16-dynamic-subagents/)
 
 运行六种编排模式，观察真实调用事件。模板：[`deepagents/subagents-dynamic`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/deepagents/subagents-dynamic)
+
+#### 第 17 章：[Decision Model Harness — 用模型路由与 Auto Mode 控制 Agent](https://datawhalechina.github.io/deepagents-in-action/chapters/ch17-decision-harness/)
+
+从运维查询、故障分析与重启授权场景出发，理解决策模型的价值与基础原理，用轻量示例说明 LangChain / Deep Agents 的模型路由与工具检查。
 
 后续课程内容将根据 Deep Agents 的官方能力演进持续更新。
 
