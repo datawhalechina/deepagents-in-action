@@ -25,7 +25,7 @@ LINK = re.compile(r"!?\[[^\]]*\]\(([^\s)]+)\)")
 
 
 def validate_catalog(root, entries):
-    chapters = json.loads((root / "scripts/chapters.json").read_text())
+    chapters = json.loads((root / "scripts/chapters.json").read_text(encoding="utf-8"))
     seen = set()
     for entry in entries:
         if entry["id"] in seen or not re.fullmatch(r"[a-z0-9-]+", entry["id"]):
@@ -113,7 +113,7 @@ def export_reading(nb, path, root, output_dir, notebook_id, commit, *, relative_
             cell.source = LINK.sub(resolve, cell.source)
     for extension, exporter in (("html", HTMLExporter()), ("md", MarkdownExporter())):
         body, resources = exporter.from_notebook_node(reading, resources={"unique_key": notebook_id})
-        (output_dir / f"{notebook_id}.{extension}").write_text(body)
+        (output_dir / f"{notebook_id}.{extension}").write_text(body, encoding="utf-8")
         for filename, data in resources.get("outputs", {}).items():
             asset = output_dir / filename
             asset.parent.mkdir(parents=True, exist_ok=True)
@@ -162,7 +162,7 @@ def execute_one(entry, root, output_dir, *, mode, timeout, write_back=False):
             kernels = temporary / "kernels"
             spec = kernels / "course"
             spec.mkdir(parents=True)
-            (spec / "kernel.json").write_text(json.dumps({"argv": [sys.executable, "-m", "ipykernel_launcher", "-f", "{connection_file}"], "display_name": "Course project Python", "language": "python"}))
+            (spec / "kernel.json").write_text(json.dumps({"argv": [sys.executable, "-m", "ipykernel_launcher", "-f", "{connection_file}"], "display_name": "Course project Python", "language": "python"}), encoding="utf-8")
             env["COURSE_REPO_ROOT"] = str(stage)
             env["IPYTHONDIR"] = str(temporary / "ipython")
             env["JUPYTER_RUNTIME_DIR"] = str(temporary / "runtime")
@@ -202,10 +202,10 @@ def run_entries(entries, root, output_dir, *, mode, timeout=180, write_back=Fals
               "lock_hash": hashlib.sha256((root / "notebooks/uv.lock").read_bytes()).hexdigest() if (root / "notebooks/uv.lock").exists() else None,
               "results": [{"id": e["id"], "status": "not_run"} for e in entries]}
     report_path = output_dir / "report.json"
-    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     for index, entry in enumerate(entries):
         report["results"][index] = execute_one(entry, root, output_dir, mode=mode, timeout=timeout, write_back=write_back)
-        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         if report["results"][index]["status"] == "failed":
             break
     return report
@@ -222,7 +222,7 @@ def main(argv=None):
     parser.add_argument("--timeout", type=int, default=180)
     args = parser.parse_args(argv)
     root = repository_root()
-    catalog = json.loads((root / "notebooks/catalog.json").read_text())
+    catalog = json.loads((root / "notebooks/catalog.json").read_text(encoding="utf-8"))
     entries = catalog["notebooks"]
     try:
         validate_catalog(root, entries)

@@ -1,4 +1,6 @@
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -21,6 +23,38 @@ def make_repo(tmp_path, sources):
                         "title": name, "dependencies": [], "services": [], "model": "optional"})
     (tmp_path / "notebooks/catalog.json").write_text(json.dumps({"schema_version": 1, "notebooks": entries}))
     return entries
+
+
+@pytest.mark.parametrize("export", [False, True])
+def test_cli_preserves_unicode_without_utf8_mode(tmp_path, export):
+    entries = make_repo(tmp_path, {"ok": "print('研究完成 🐳')"})
+    (tmp_path / "scripts/chapters.json").write_text(
+        json.dumps({"ch01-agent-harness": {"title": "智能体实验 🐳"}}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    entries[0]["title"] = "智能体实验 🐳"
+    (tmp_path / "notebooks/catalog.json").write_text(
+        json.dumps({"schema_version": 1, "notebooks": entries}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    env = dict(os.environ, PYTHONUTF8="0", PYTHONCOERCECLOCALE="0",
+               LC_ALL="C", PYTHONIOENCODING="utf-8")
+    command = [sys.executable, "-X", "utf8=0", "-m", "course_notebooks.run", "ok"]
+    result = subprocess.run(
+        command + (["--write-back"] if export else ["--check-only"]),
+        cwd=tmp_path, env=env, capture_output=True, text=True, encoding="utf-8", timeout=90,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    if export:
+        for directory, stem in ((tmp_path / "artifacts/notebooks", "ok"),
+                                (tmp_path / "notebooks/ch01", "ok")):
+            for suffix in (".html", ".md"):
+                assert "研究完成 🐳" in (directory / f"{stem}{suffix}").read_text(encoding="utf-8")
+        checked = subprocess.run(
+            command + ["--check-reading"], cwd=tmp_path, env=env,
+            capture_output=True, text=True, encoding="utf-8", timeout=90,
+        )
+        assert checked.returncode == 0, checked.stdout + checked.stderr
 
 
 def test_project_kernel_ignores_user_kernel_and_offline_keys(tmp_path, monkeypatch):
@@ -69,7 +103,7 @@ def test_export_keeps_filename_label_when_resolving_relative_link(tmp_path):
     output = tmp_path / "output"
     output.mkdir()
     export_reading(nb, path, tmp_path, output, "ok", "test-commit")
-    assert "[local_server.py](https://github.com/" in (output / "ok.md").read_text()
+    assert "[local_server.py](https://github.com/" in (output / "ok.md").read_text(encoding="utf-8")
 
 
 def test_failed_batch_removes_previous_selected_artifacts(tmp_path):
@@ -95,11 +129,11 @@ def test_write_back_saves_reading_formats_with_executed_output_and_local_links(t
     report = run_entries(entries, tmp_path, tmp_path / "output", mode="offline", timeout=30, write_back=True)
     assert report["results"][0]["status"] == "passed"
     for suffix in (".html", ".md"):
-        reading = path.with_suffix(suffix).read_text()
+        reading = path.with_suffix(suffix).read_text(encoding="utf-8")
         assert "visible tool result" in reading
         assert "offline" in reading
-    assert "[helper](helper.py)" in path.with_suffix(".md").read_text()
-    assert 'href="helper.py"' in path.with_suffix(".html").read_text()
+    assert "[helper](helper.py)" in path.with_suffix(".md").read_text(encoding="utf-8")
+    assert 'href="helper.py"' in path.with_suffix(".html").read_text(encoding="utf-8")
     from course_notebooks.run import validate_reading
     validate_reading(tmp_path, entries)
     path.with_suffix(".md").write_text("stale reading copy")
@@ -120,7 +154,7 @@ def test_failed_write_back_preserves_source_and_reading_copies(tmp_path):
     assert report["results"][0]["status"] == "failed"
     assert path.read_bytes() == original
     for suffix in (".html", ".md"):
-        assert path.with_suffix(suffix).read_text() == "previous reading copy"
+        assert path.with_suffix(suffix).read_text(encoding="utf-8") == "previous reading copy"
 
 
 @pytest.mark.parametrize("generic", [False, True])
@@ -158,7 +192,7 @@ def test_live_artifacts_record_the_kernel_model_without_credentials(tmp_path, mo
     saved = nbformat.read(output / "configured.ipynb", as_version=4)
     assert saved.metadata.course_run.model_configuration == expected
     for filename in ("report.json", "configured.ipynb", "configured.md", "configured.html"):
-        text = (output / filename).read_text()
+        text = (output / filename).read_text(encoding="utf-8")
         assert "environment-model" in text
         for secret in ("runner-secret-key", "private-user", "private-password", "url-secret-token"):
             assert secret not in text
@@ -189,5 +223,5 @@ def test_credentials_in_model_metadata_withhold_artifacts_and_report_value(tmp_p
     report = run_entries(entries, tmp_path, output, mode="live", timeout=30)
     assert report["results"][0]["status"] == "failed"
     assert "artifacts withheld" in report["results"][0]["error"]
-    assert "runner-secret-key" not in (output / "report.json").read_text()
+    assert "runner-secret-key" not in (output / "report.json").read_text(encoding="utf-8")
     assert not (output / "bad.ipynb").exists()
