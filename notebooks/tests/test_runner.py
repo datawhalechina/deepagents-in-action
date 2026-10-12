@@ -7,7 +7,7 @@ from pathlib import Path
 import nbformat
 import pytest
 
-from course_notebooks.run import export_reading, run_entries, validate_catalog
+from course_notebooks.run import export_reading, run_entries, source_hash, validate_catalog, validate_reading
 
 
 def make_repo(tmp_path, sources):
@@ -104,6 +104,76 @@ def test_export_keeps_filename_label_when_resolving_relative_link(tmp_path):
     output.mkdir()
     export_reading(nb, path, tmp_path, output, "ok", "test-commit")
     assert "[local_server.py](https://github.com/" in (output / "ok.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("text", ["line\n", "line\n\n", "line  \n    nested\t \n  \n", "line\n    "])
+def test_reading_export_is_platform_independent_without_stripping_whitespace(tmp_path, monkeypatch, text):
+    import nbconvert.utils.text
+
+    source = "value = '''first  \n    \nlast'''\nprint(value)  "
+    entries = make_repo(tmp_path, {"ok": source})
+    path = tmp_path / "notebooks" / entries[0]["path"]
+    nb = nbformat.read(path, as_version=4)
+    nb.cells.insert(0, nbformat.v4.new_markdown_cell("hard break  \nnext line"))
+    nb.cells[1].outputs = [
+        nbformat.v4.new_output("stream", name="stdout", text=text),
+        nbformat.v4.new_output("display_data", data={"text/plain": text}),
+        nbformat.v4.new_output("error", ename="Example", evalue="", traceback=[text]),
+    ]
+    nb.metadata["course_run"] = {"mode": "offline", "source_hash": source_hash(nb)}
+    exports = []
+    for index, separator in enumerate(("\n", "\r\n")):
+        # Exercise the real nbconvert filter on both host line-separator settings.
+        monkeypatch.setattr(nbconvert.utils.text.os, "linesep", separator)
+        output = tmp_path / f"output-{index}"
+        output.mkdir()
+        export_reading(nb, path, tmp_path, output, "ok", None, relative_links=True)
+        exports.append({suffix: (output / f"ok.{suffix}").read_bytes() for suffix in ("html", "md")})
+    assert exports[0] == exports[1]
+    assert all(b"\r\n" not in body for body in exports[0].values())
+    markdown = exports[0]["md"].decode("utf-8")
+    assert source in markdown
+    assert "hard break  \nnext line" in markdown
+    if text == "line  \n    nested\t \n  \n":
+        assert "    line  \n        nested\t \n      \n" in markdown
+    if text == "line\n    ":
+        assert "    line\n        \n" in markdown
+
+
+@pytest.mark.parametrize("suffix", ["md", "html"])
+@pytest.mark.parametrize("separator", [b"\n", b"\r\n"])
+def test_reading_validation_accepts_checkout_newlines_but_rejects_changed_text(tmp_path, suffix, separator):
+    entries = make_repo(tmp_path, {"ok": "print('trailing spaces')  "})
+    path = tmp_path / "notebooks" / entries[0]["path"]
+    nb = nbformat.read(path, as_version=4)
+    nb.metadata["course_run"] = {"mode": "offline", "source_hash": source_hash(nb), "status": "passed"}
+    nbformat.write(nb, path)
+    export_reading(nb, path, tmp_path, path.parent, path.stem, None, relative_links=True)
+    saved = path.with_suffix(f".{suffix}")
+    content = saved.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", separator)
+    saved.write_bytes(content)
+    validate_reading(tmp_path, entries)
+    saved.write_bytes(content + b" ")
+    with pytest.raises(ValueError, match="reading copy"):
+        validate_reading(tmp_path, entries)
+
+
+def test_reading_validation_compares_exported_images_byte_for_byte(tmp_path):
+    entries = make_repo(tmp_path, {"ok": "display(image)"})
+    path = tmp_path / "notebooks" / entries[0]["path"]
+    nb = nbformat.read(path, as_version=4)
+    png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6VvAAAAAASUVORK5CYII="
+    nb.cells[0].outputs = [nbformat.v4.new_output("display_data", data={"image/png": png})]
+    nb.metadata["course_run"] = {"mode": "offline", "source_hash": source_hash(nb), "status": "passed"}
+    nbformat.write(nb, path)
+    export_reading(nb, path, tmp_path, path.parent, path.stem, None, relative_links=True)
+    validate_reading(tmp_path, entries)
+    image = next(path.parent.glob("*.png"))
+    original = image.read_bytes()
+    assert b"\r\n" in original
+    image.write_bytes(original.replace(b"\r\n", b"\n"))
+    with pytest.raises(ValueError, match="reading copy"):
+        validate_reading(tmp_path, entries)
 
 
 def test_failed_batch_removes_previous_selected_artifacts(tmp_path):

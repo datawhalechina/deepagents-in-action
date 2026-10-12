@@ -85,6 +85,13 @@ def stage_chapter(root, path, stage):
         shutil.copy2(chapter, stage / "content" / chapter.name)
 
 
+def _markdown_indent(text):
+    # nbconvert uses os.linesep here, but notebook output is LF on every platform.
+    # Remove only the prefix added after a final newline, preserving source spaces.
+    indented = re.sub(r"^", "    ", text, flags=re.MULTILINE)
+    return indented[:-4] if indented.endswith("\n    ") else indented
+
+
 def export_reading(nb, path, root, output_dir, notebook_id, commit, *, relative_links=False):
     reading = nbformat.reads(nbformat.writes(nb), as_version=4)
     config = nb.metadata.course_run.get("model_configuration")
@@ -111,13 +118,21 @@ def export_reading(nb, path, root, output_dir, notebook_id, commit, *, relative_
                 end = match.end(1) - match.start(0)
                 return match.group(0)[:start] + link + match.group(0)[end:]
             cell.source = LINK.sub(resolve, cell.source)
-    for extension, exporter in (("html", HTMLExporter()), ("md", MarkdownExporter())):
+    markdown = MarkdownExporter()
+    markdown.register_filter("indent", _markdown_indent)
+    for extension, exporter in (("html", HTMLExporter()), ("md", markdown)):
         body, resources = exporter.from_notebook_node(reading, resources={"unique_key": notebook_id})
-        (output_dir / f"{notebook_id}.{extension}").write_text(body, encoding="utf-8")
+        (output_dir / f"{notebook_id}.{extension}").write_text(body, encoding="utf-8", newline="\n")
         for filename, data in resources.get("outputs", {}).items():
             asset = output_dir / filename
             asset.parent.mkdir(parents=True, exist_ok=True)
             asset.write_bytes(data)
+
+
+def _reading_bytes(path):
+    data = path.read_bytes()
+    # Git may check text out with CRLF. Images and other assets stay byte-exact.
+    return data.replace(b"\r\n", b"\n") if path.suffix in {".html", ".md"} else data
 
 
 def validate_reading(root, entries):
@@ -134,7 +149,7 @@ def validate_reading(root, entries):
             for generated in expected.rglob("*"):
                 if generated.is_file():
                     saved = path.parent / generated.relative_to(expected)
-                    if not saved.is_file() or saved.read_bytes() != generated.read_bytes():
+                    if not saved.is_file() or _reading_bytes(saved) != _reading_bytes(generated):
                         raise ValueError(f"Missing or stale reading copy: {saved}; rerun with --write-back")
 
 
