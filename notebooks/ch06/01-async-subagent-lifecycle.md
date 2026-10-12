@@ -1,4 +1,4 @@
-> 本次执行模式：**offline**。源码指纹：`566d3146ac96`。
+> 本次执行模式：**offline**。源码指纹：`b51486189f75`。
 
 # 第 6 章｜异步子 Agent 的完整生命周期
 
@@ -52,7 +52,7 @@ show_runtime()
 ```
 
     运行模式： offline （脚本模型）
-    Python： 3.12.11 平台： Darwin arm64
+    Python： 3.12.3 平台： Linux x86_64
     deepagents==0.7.22
     langchain==1.4.3
     langchain-core==1.6.6
@@ -516,6 +516,8 @@ async def observe_cancellation(server):
 
 `async with LocalAgentServer(...)` 是异步上下文管理器：进入时启动服务并创建主会话，正常结束或抛出 Python 异常时退出并清理资源。不要把三个阶段挪到 `async with` 外面执行，退出后服务已关闭。进程和会话管理细节见 [local_server.py](local_server.py)。
 
+清理时先取消未完成的任务并删除会话，再等待服务退出，最后删除临时状态。Windows 的命令行启动器会再启动 Python 子进程，必须等这些子进程也退出，才能释放日志和工作目录；正常结束删除本次日志，异常退出保留日志供排查。
+
 预期最后有清理提示和三行汇总：完成 → success、更新 → success、取消 → interrupted（服务也可能返回 cancelled）。中间还应看到 task ID、run 状态和实际结果，不能只凭这三行文字判断成功。服务只绑定本机地址，临时服务状态不会写入仓库。
 
 
@@ -538,27 +540,27 @@ for observation in observations:
 
     
     start_async_task
-    Launched async subagent. task_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4
+    Launched async subagent. task_id: 01a12f55-d43c-78d1-8776-777dd9a01d8c
     主 Agent 已返回，后台 run 仍为： pending
 
 
     
     list_async_tasks
     1 tracked task(s):
-    - task_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4  agent: researcher  status:
+    - task_id: 01a12f55-d43c-78d1-8776-777dd9a01d8c  agent: researcher  status:
       running
 
 
     
     check_async_task
     status: running
-    thread_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4
+    thread_id: 01a12f55-d43c-78d1-8776-777dd9a01d8c
 
 
     
     check_async_task
     status: success
-    thread_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4
+    thread_id: 01a12f55-d43c-78d1-8776-777dd9a01d8c
     result: Research completed: 总结异步任务的状态变化
     
     阶段二：更新 → 新 run → 读取新结果
@@ -566,24 +568,24 @@ for observation in observations:
 
     
     start_async_task
-    Launched async subagent. task_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
+    Launched async subagent. task_id: 01a12f55-fe01-7493-980b-0b44071f0391
 
 
     
     update_async_task
-    Updated async subagent. task_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
+    Updated async subagent. task_id: 01a12f55-fe01-7493-980b-0b44071f0391
 
 
     
     check_async_task
     status: running
-    thread_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
+    thread_id: 01a12f55-fe01-7493-980b-0b44071f0391
 
 
     
     check_async_task
     status: success
-    thread_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4
+    thread_id: 01a12f55-fe01-7493-980b-0b44071f0391
     result: Research completed: 追加要求：使用三条要点
     已验证：task ID 不变、run ID 更新、追加指令传递成功。
     
@@ -592,23 +594,25 @@ for observation in observations:
 
     
     start_async_task
-    Launched async subagent. task_id: 01a111c7-69ea-7153-8e6f-d78f43ab1735
+    Launched async subagent. task_id: 01a12f56-3c05-7573-8aca-c7863648d6bc
 
 
     
     cancel_async_task
-    Cancelled async subagent task: 01a111c7-69ea-7153-8e6f-d78f43ab1735
+    Cancelled async subagent task: 01a12f56-3c05-7573-8aca-c7863648d6bc
 
 
     
     list_async_tasks
     3 tracked task(s):
-    - task_id: 01a111c7-13ca-7021-b058-7a6a31c3c6e4  agent: researcher  status:
+    - task_id: 01a12f55-d43c-78d1-8776-777dd9a01d8c  agent: researcher  status:
       success
-    - task_id: 01a111c7-3edc-7c32-b58f-c2ad33122aa4  agent: researcher  status:
+    - task_id: 01a12f55-fe01-7493-980b-0b44071f0391  agent: researcher  status:
       success
-    - task_id: 01a111c7-69ea-7153-8e6f-d78f43ab1735  agent: researcher  status:
+    - task_id: 01a12f56-3c05-7573-8aca-c7863648d6bc  agent: researcher  status:
       cancelled
+
+
     本次创建的任务、thread、服务进程与临时状态已清理。
     
     生命周期验证结果：

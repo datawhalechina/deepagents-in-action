@@ -348,6 +348,7 @@ server = [
     { name = "langgraph-cli", extra = ["inmem"] },
     { name = "langgraph-runtime-inmem" },
     { name = "langgraph-sdk" },
+    { name = "psutil" },
 ]
 
 [package.dev-dependencies]
@@ -370,6 +371,7 @@ requires-dist = [
     { name = "nbclient", specifier = ">=0.11,<0.12" },
     { name = "nbconvert", specifier = "==7.17.1" },
     { name = "nbformat", specifier = ">=5.11.1,<6" },
+    { name = "psutil", marker = "extra == 'server'", specifier = ">=7.2.2,<8" },
     { name = "python-dotenv", specifier = ">=1.2.4,<2" },
     { name = "tavily-python", marker = "extra == 'search'", specifier = "==0.8.4" },
 ]

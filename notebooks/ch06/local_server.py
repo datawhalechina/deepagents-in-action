@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 
+import psutil
 from langgraph_sdk import get_client
 
 from course_notebooks.model_config import selected_mode
@@ -102,6 +103,28 @@ class LocalAgentServer:
         except Exception as error:
             errors.append(f"主 thread: {type(error).__name__}")
 
+    def _stop_windows_process_tree(self):
+        """Wait for the CLI launchers and their service interpreter to exit."""
+        try:
+            launcher = psutil.Process(self.process.pid)
+            processes = [*reversed(launcher.children(recursive=True)), launcher]
+        except psutil.NoSuchProcess:
+            return
+        for process in processes:
+            try:
+                process.terminate()
+            except psutil.NoSuchProcess:
+                pass
+        _, alive = psutil.wait_procs(processes, timeout=10)
+        for process in alive:
+            try:
+                process.kill()
+            except psutil.NoSuchProcess:
+                pass
+        _, alive = psutil.wait_procs(alive, timeout=5)
+        if alive:
+            raise TimeoutError("Agent Server 进程树未完全退出")
+
     async def _close(self, *, successful):
         errors = []
         try:
@@ -113,7 +136,10 @@ class LocalAgentServer:
         finally:
             try:
                 if self.process is not None and self.process.poll() is None:
-                    self.process.terminate()
+                    if os.name == "nt":
+                        await asyncio.to_thread(self._stop_windows_process_tree)
+                    else:
+                        self.process.terminate()
                     try:
                         await asyncio.to_thread(self.process.wait, timeout=10)
                     except subprocess.TimeoutExpired:

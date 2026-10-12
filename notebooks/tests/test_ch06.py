@@ -5,6 +5,7 @@ import socket
 from types import SimpleNamespace
 
 import nbformat
+import psutil
 import pytest
 
 
@@ -14,6 +15,55 @@ def server_class():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.LocalAgentServer, chapter
+
+
+def test_successful_exit_closes_real_server_and_removes_log(monkeypatch):
+    monkeypatch.setenv("COURSE_MODE", "offline")
+    cls, chapter = server_class()
+    server = cls(chapter, chapter.parents[1])
+    processes = []
+
+    async def start_and_exit():
+        async with server:
+            assert server.parent_id
+            launcher = psutil.Process(server.process.pid)
+            processes.extend([launcher, *launcher.children(recursive=True)])
+
+    asyncio.run(start_and_exit())
+    assert all(not process.is_running() for process in processes)
+    assert server.process.poll() is not None
+    assert not server.workdir.exists()
+    with socket.socket() as sock:
+        sock.settimeout(1)
+        assert sock.connect_ex(("127.0.0.1", server.port)) != 0
+    assert not server.log_path.exists()
+
+
+def test_failure_after_service_starts_closes_real_server(monkeypatch):
+    monkeypatch.setenv("COURSE_MODE", "offline")
+    cls, chapter = server_class()
+    wait_ready = cls._wait_ready
+
+    async def fail_after_ready(self):
+        await wait_ready(self)
+        raise RuntimeError("injected startup failure")
+
+    monkeypatch.setattr(cls, "_wait_ready", fail_after_ready)
+    server = cls(chapter, chapter.parents[1])
+
+    async def start():
+        async with server:
+            pytest.fail("startup failure must prevent entry")
+
+    with pytest.raises(RuntimeError, match="injected startup failure"):
+        asyncio.run(start())
+    assert server.process.poll() is not None
+    assert not server.workdir.exists()
+    with socket.socket() as sock:
+        sock.settimeout(1)
+        assert sock.connect_ex(("127.0.0.1", server.port)) != 0
+    assert server.log_path.exists()
+    server.log_path.unlink()
 
 
 def test_pending_task_failure_closes_real_server(monkeypatch):
