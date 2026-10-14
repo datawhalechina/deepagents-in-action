@@ -132,6 +132,7 @@ ls .agents/skills/langsmith-trace/SKILL.md
 
 - 上一章已经启用 `LANGSMITH_TRACING=true`
 - `.env` 中已经设置 `LANGSMITH_API_KEY` 和 `LANGSMITH_PROJECT=deepagents-course`
+- EU / APAC 组织已经设置对应的 `LANGSMITH_ENDPOINT`，区域对照见[第 2 章](../ch02-quickstart/#按组织所在区域选择-endpointuseuapac)
 - `deepagents-course` 或 `default` 中至少有一条已完成的 `research` Trace
 - 当前项目已经安装 `langsmith-trace`
 
@@ -174,7 +175,7 @@ irm https://cli.langsmith.com/install.ps1 | iex
 
 PyPI 的 `langsmith` 包是 Python SDK，不提供这里使用的 CLI 可执行文件；不要使用 `uv tool install langsmith` 安装 LangSmith CLI。
 
-LangSmith CLI 从环境变量读取凭证。请在项目根目录加载 `.env`。
+LangSmith CLI 从环境变量读取凭证和 Endpoint。查询 Trace 时，应使用与上传 Trace 相同的区域配置；请在项目根目录加载 `.env`。
 
 macOS / Linux / WSL2：
 

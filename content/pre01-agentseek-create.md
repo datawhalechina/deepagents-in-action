@@ -258,9 +258,12 @@ agentseek dev --dry-run
 LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=<your-langsmith-api-key>
 LANGSMITH_PROJECT=deepagents-course
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
 ```
 
-`<your-langsmith-api-key>` 是占位符。请在 [LangSmith](https://smith.langchain.com/settings) 创建自己的 Key，并只把真实值写入不会提交到 Git 的 `.env`。
+上面的 Endpoint 对应默认的 GCP US。EU 组织改为 `https://eu.api.smith.langchain.com`，APAC 组织改为 `https://apac.api.smith.langchain.com`；使用同一区域创建的 API Key，并从相应区域的控制台查看 Trace。完整对照表见[第 2 章：按组织所在区域选择 Endpoint](../ch02-quickstart/#按组织所在区域选择-endpointuseuapac)。
+
+`<your-langsmith-api-key>` 是占位符。请在自己区域的 LangSmith 控制台 Settings 中创建 Key，并只把真实值写入不会提交到 Git 的 `.env`。
 
 LangChain 和 LangGraph 会自动记录 Trace，不需要修改应用代码。`LANGSMITH_PROJECT` 用于把本章的运行集中到 `deepagents-course` 项目；如果省略，Trace 通常会进入 `default` 项目。
 

@@ -421,12 +421,46 @@ agent = create_deep_agent(model="openai:gpt-4.1")
 
 ### 快速配置
 
-```bash
-export LANGSMITH_TRACING=true
-export LANGSMITH_API_KEY="your-langsmith-key"
+追踪是可选项。启用时，在项目的 `.env` 中配置以下变量；`your-langsmith-key` 是占位符，请替换为自己组织的 API Key：
+
+```dotenv
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=your-langsmith-key
+LANGSMITH_PROJECT=deepagents-course
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
 ```
 
-设置好环境变量后，无需修改任何代码，你的 Agent 运行记录就会自动上传到 LangSmith。
+### 按组织所在区域选择 Endpoint：US、EU、APAC
+
+**没有显式设置 Endpoint 时，SDK 默认连接 GCP US。** 如果你在 EU 或 APAC 创建了 LangSmith 组织，需要将 `LANGSMITH_ENDPOINT` 改为对应区域的 API 地址。区域按组织实际所在的数据区域选择，可以从登录后的控制台域名确认：
+
+| LangSmith 数据区域 | 浏览器控制台 | `LANGSMITH_ENDPOINT` |
+|---|---|---|
+| GCP US（默认） | [smith.langchain.com](https://smith.langchain.com/) | `https://api.smith.langchain.com` |
+| GCP EU | [eu.smith.langchain.com](https://eu.smith.langchain.com/) | `https://eu.api.smith.langchain.com` |
+| GCP APAC | [apac.smith.langchain.com](https://apac.smith.langchain.com/) | `https://apac.api.smith.langchain.com` |
+
+例如，EU 读者把 `.env` 中的 Endpoint 一行替换为 `LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com`；APAC 读者替换为 `LANGSMITH_ENDPOINT=https://apac.api.smith.langchain.com`。只保留一个生效的 Endpoint，URL 末尾不要加 `/`。其他云区域或自托管实例的地址，以组织设置和[官方追踪配置](https://docs.langchain.com/langsmith/trace-with-langchain#1-configure-your-environment)为准。
+
+`LANGSMITH_ENDPOINT` 配置的是追踪 API 地址；表格中的浏览器控制台用于查看 Trace，不能直接用作 API Endpoint。模型服务的 `base_url` 则用于调用模型，三者需要分别配置。切换 Endpoint 不会迁移组织或已有 Trace；API Key、Endpoint 和查看 Trace 的控制台应对应同一区域。区域确认方式见[官方 Regions FAQ](https://docs.langchain.com/langsmith/regions-faq)。
+
+### 让运行进程读到配置
+
+`.env` 文件需要由启动工具或代码加载，直接运行 Python 脚本不会自动读取它。macOS / Linux / WSL2 用户可以在项目根目录、运行本章脚本之前，将变量加载到当前终端：
+
+```bash
+set -a
+source .env
+set +a
+```
+
+原生 Windows PowerShell 的加载方法见[准备篇的 CLI 和认证配置](../pre02-agentseek-skills/#51-检查-cli-和认证)。修改 `.env` 后，先重新加载环境变量，再从更新后的终端启动应用；已经运行的应用进程需要重启。
+
+本课程 Notebook 的 `.env` 加载器保留进程中已有的变量。如果内核里仍有旧的 Endpoint，可以从更新环境后的终端重新启动 VS Code / Jupyter，或在当前内核显式更新 `os.environ["LANGSMITH_ENDPOINT"]`，随后重新创建 Agent / Client。仅重启内核，仍可能从父进程继承旧值。
+
+配置生效后，LangChain / LangGraph 会自动记录运行，无需额外编写追踪逻辑；进入相应区域的 `deepagents-course` 项目查看 Trace。省略 `LANGSMITH_PROJECT` 时，通常写入 `default` 项目。
+
+如果 Agent 正常回答，但 Trace 没出现，或上传时出现 401 / 403，先核对区域、API Key 和进程是否加载了新的环境变量，再检查项目名与 Key 权限。API Key 可以访问多个 Workspace 时，还需要按官方说明设置 `LANGSMITH_WORKSPACE_ID`，指定目标工作区。
 
 ### 你能看到什么
 
@@ -513,6 +547,6 @@ print(result["messages"][-1].content)
 3. **核心 API**：`create_deep_agent(model, tools, system_prompt)` 创建 Agent，`agent.invoke()` 运行
 4. **自定义工具**：Python 函数 + 类型标注 + docstring = 一个工具，Agent 自动理解
 5. **自动化能力**：你只传入一个工具，Agent 自动获得文件系统、任务规划、子 Agent 等完整能力
-6. **调试追踪**：设置 `LANGSMITH_TRACING=true` 即可看到 Agent 的完整决策链路
+6. **调试追踪**：启用 `LANGSMITH_TRACING`，配置 API Key 和对应区域的 Endpoint，在 LangSmith 项目中查看运行过程
 
 下一章，我们将深入 Deep Agents 最核心的创新——虚拟文件系统，理解它如何通过 Context Engineering 解决上下文管理的难题。
