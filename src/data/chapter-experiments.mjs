@@ -73,4 +73,8 @@ export const chapterExperiments = {
     'deepagents/subagents-dynamic',
     '运行六种 Dynamic Subagents 编排模式。',
   ),
+  'ch17-decision-harness': experiment(
+    'langchain/jev-harness',
+    '运行 Jev Harness，观察模型路由与工具授权检查。',
+  ),
 };

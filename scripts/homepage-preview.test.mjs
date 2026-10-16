@@ -24,11 +24,12 @@ const streamingChapterSource = await readFile(
 );
 const readmeSource = await readFile(new URL('../README.md', import.meta.url), 'utf8');
 
-test('Chapters 13 through 16 share the preview-feature row', () => {
+test('Chapters 13 through 17 share the preview-feature row', () => {
   assert.equal(manifest['ch13-grading-rubrics'].section, '前沿预览');
   assert.equal(manifest['ch14-streaming'].section, '前沿预览');
   assert.equal(manifest['ch15-interpreters'].section, '前沿预览');
   assert.equal(manifest['ch16-dynamic-subagents'].section, '前沿预览');
+  assert.equal(manifest['ch17-decision-harness'].section, '前沿预览');
   assert.equal(
     manifest['ch14-streaming'].order,
     manifest['ch13-grading-rubrics'].order + 1,
@@ -41,9 +42,13 @@ test('Chapters 13 through 16 share the preview-feature row', () => {
     manifest['ch16-dynamic-subagents'].order,
     manifest['ch15-interpreters'].order + 1,
   );
+  assert.equal(
+    manifest['ch17-decision-harness'].order,
+    manifest['ch16-dynamic-subagents'].order + 1,
+  );
 });
 
-test('README places Chapters 13 through 16 together in the preview section', () => {
+test('README places Chapters 13 through 17 together in the preview section', () => {
   let currentSection = '';
   const chapters = [];
 
@@ -59,11 +64,12 @@ test('README places Chapters 13 through 16 together in the preview section', () 
 
   assert.deepEqual(
     chapters.filter(({ section }) => section === '前沿预览').map(({ chapter }) => chapter),
-    [13, 14, 15, 16],
+    [13, 14, 15, 16, 17],
   );
   assert.equal(chapters.filter(({ chapter }) => chapter === 14).length, 1);
   assert.equal(chapters.filter(({ chapter }) => chapter === 15).length, 1);
   assert.equal(chapters.filter(({ chapter }) => chapter === 16).length, 1);
+  assert.equal(chapters.filter(({ chapter }) => chapter === 17).length, 1);
 });
 
 test('Chapter 13 publishes its video resource links', () => {
