@@ -169,10 +169,12 @@ agent = create_deep_agent(
 
 ### 4.1 注意 Todo 的继承范围
 
-v0.7 的实现有意区分两类子 Agent：
+v0.7 默认配置下，主 Agent 启用 Todo 不会自动为子 Agent 启用：
 
-- 默认的 `general-purpose` 子 Agent 会继承主 Agent 显式传入的 Todo 实例。
-- 声明式 `subagents=[...]` 拥有独立 Middleware 栈，不会自动继承主 Agent 的 Todo，需要在自己的 spec 中启用。
+- 默认的 `general-purpose` 只继承主 Agent 对其默认中间件的同名覆盖；默认栈中没有 `TodoListMiddleware`，所以不会继承主 Agent 显式传入的 Todo 实例。
+- 声明式 `subagents=[...]` 也不会继承主 Agent 的 Todo，需要在自己的 `middleware` 字段中启用。要为默认 `general-purpose` 启用，需用[同名 spec 覆盖](../ch05-subagents/#为-general-purpose-启用-todo)。
+
+在默认的隔离模式下，各子 Agent 的 `todos` 独立维护，不会自动读取或写回主 Agent 的清单。下面为专业子 Agent 单独启用 Todo：
 
 ```python
 from langchain.agents.middleware import TodoListMiddleware

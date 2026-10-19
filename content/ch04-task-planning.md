@@ -138,8 +138,8 @@ Agent 调用 write_todos 更新列表：
 - 同一次运行中，后续步骤可以继续访问这份清单；默认的对话总结不会删除 `todos` 字段
 - 多次 `invoke()` 之间要自动接续清单，需要配置 Checkpointer，并复用同一个 `thread_id`；只添加 `TodoListMiddleware` 不会自动接续上次运行的状态
 - `InMemorySaver` 只在当前进程中保存检查点；进程重启后还要恢复，需要使用数据库等持久化 Checkpointer。部署到 Agent Server 时，由平台提供相应的持久化能力
-- 默认 `general-purpose` 子 Agent 会继承主 Agent 显式传入的 Todo 配置，但仍在自己的状态中维护清单
-- `subagents=[...]` 声明的子 Agent 有独立 Middleware 栈，需要规划能力时必须在自己的 spec 中启用 Todo；它也不会读取主 Agent 的清单
+- 默认配置下，`general-purpose` 子 Agent 和 `subagents=[...]` 声明的子 Agent 都不会继承主 Agent 的 `TodoListMiddleware`。需要规划能力时，应在子 Agent 自己的 `middleware` 字段中启用；默认 `general-purpose` 需用[同名 spec 覆盖](../ch05-subagents/#为-general-purpose-启用-todo)
+- 在默认的隔离模式下，子 Agent 的清单保存在自己的 `todos` 状态中，不会自动读取主 Agent 的清单，也不会将清单写回主 Agent
 
 Checkpointer 的配置方式见[第 8 章：短期记忆的基础](../ch08-long-term-memory/#checkpointer短期记忆的基础)。
 

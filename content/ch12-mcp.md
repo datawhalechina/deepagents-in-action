@@ -628,7 +628,7 @@ agent = create_deep_agent(
 
 默认 general-purpose 子 Agent 会继承父 Agent 的额外工具，自定义声明式子 Agent 在省略 `tools` 时也会继承。显式提供 `tools` 后，会整体替换这组继承的额外工具，而不是追加；但 Deep Agents Harness 安装的文件工具，以及 Backend 支持时可能出现的 `execute`，不会因此自动移除。
 
-规划能力另有一条 v0.7 规则：主 Agent 显式传入的 `TodoListMiddleware` 会交给默认 general-purpose 子 Agent；声明式子 Agent 有独立 Middleware 栈。如果它也需要 `write_todos`，应在自己的 `middleware` 字段中启用，不能从工具继承规则推断它会自动获得 Todo。
+工具继承规则不包含主 Agent 中间件注入的全部工具。v0.7 默认配置下，主 Agent 显式传入的 `TodoListMiddleware` 不会传给默认 general-purpose 或声明式子 Agent。子 Agent 需要 `write_todos` 时，应在自己的 `middleware` 字段中启用；默认 general-purpose 需用[同名 spec 覆盖](../ch05-subagents/#为-general-purpose-启用-todo)。
 
 下面是**示意片段**。`read_only_mcp_tools` 是应用筛选后的 LangChain Tool 列表；`model` 与 `all_mcp_tools` 沿用父 Agent 已有定义。示例同时拒绝子 Agent 使用内置文件工具写入：
 

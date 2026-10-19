@@ -93,11 +93,13 @@ agent = create_deep_agent(
 
 `permissions` 同样需要特别小心：省略时继承父规则，显式提供后则整体替换而非叠加。如何为只读审计子 Agent 写出闭合的权限集，见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
 
-v0.7 对 Todo 有一个容易混淆的边界：默认 `general-purpose` 子 Agent 会继承主 Agent 显式传入的 `TodoListMiddleware`；`subagents=[...]` 声明的专业子 Agent 不会继承，需要在各自的 `middleware` 字段中启用。继承的是规划能力与配置，不是主 Agent 已经生成的任务清单；每个 Agent 仍维护自己的状态。
+v0.7 的默认配置中，**默认 `general-purpose` 和声明式子 Agent 都不会继承主 Agent 的 `TodoListMiddleware`**。需要规划能力时，应在子 Agent 自己的 `middleware` 字段中添加 `TodoListMiddleware()`；默认 `general-purpose` 需用同名 spec 覆盖，见下文示例。
 
 ## General-purpose 子 Agent：默认的"万能助手"
 
-即使你不定义任何子 Agent，Deep Agents 也自带一个 **general-purpose 子 Agent**。它是唯一的例外——**继承主 Agent 的 system_prompt、tools、model 和 skills**；主 Agent 显式启用 Todo 时，它也会继承同一个 Todo Middleware 配置。
+即使你不定义任何子 Agent，Deep Agents 也自带一个 **general-purpose 子 Agent**。它**继承主 Agent 的 system_prompt、显式传入的 tools、model 和 skills**。
+
+中间件的继承范围更窄：它只继承主 Agent 对其默认中间件的**同名覆盖**，按 `.name` 匹配，不会带上仅为主 Agent 新增的中间件。默认栈中没有 `TodoListMiddleware`，因此主 Agent 的 Todo 配置不会传给它。规则见[官方自定义文档](https://docs.langchain.com/oss/python/deepagents/customization#override-a-default-middleware-instance)。
 
 > **示意片段**：`model` 和 `internet_search` 沿用应用已有定义，这里只演示不传 `subagents` 时的继承行为。
 
@@ -113,7 +115,7 @@ agent = create_deep_agent(
 # task(subagent_type="general-purpose", description="搜索量子计算的最新进展")
 ```
 
-General-purpose 子 Agent 的作用是**纯粹的上下文隔离**——它和主 Agent 有相同的能力，但在独立的上下文中工作。主 Agent 不需要承受子任务中 10 次搜索带来的上下文膨胀，只需要收到一份精炼的摘要。
+General-purpose 子 Agent 的作用是**上下文隔离**——它复用主 Agent 的提示词、模型和显式工具，在独立的上下文中处理委派任务。主 Agent 不需要承受子任务中 10 次搜索带来的上下文膨胀，只需要收到一份精炼的摘要。
 
 ### 禁用 general-purpose 子 Agent
 
@@ -167,6 +169,32 @@ agent = create_deep_agent(
     ],
 )
 ```
+
+### 为 general-purpose 启用 Todo
+
+需要让默认子 Agent 也使用 `write_todos` 时，用同名 spec 显式配置它的中间件：
+
+> **示意片段**：`model` 是应用已配置的 LangChain 模型对象，这里只展示主、子 Agent 分别启用 Todo 的方式。
+
+```python
+from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
+
+agent = create_deep_agent(
+    model=model,
+    middleware=[TodoListMiddleware()],  # 主 Agent 的规划能力
+    subagents=[
+        {
+            "name": "general-purpose",  # 覆盖自动添加的默认子 Agent
+            "description": "处理需要规划的委派任务",
+            "system_prompt": "为委派任务制定计划，执行后返回结果。",
+            "middleware": [TodoListMiddleware()],  # 子 Agent 单独启用
+        },
+    ],
+)
+```
+
+两处 Todo 配置相互独立：主 Agent 设置的 `tool_description` 等参数不会自动应用到子 Agent，子 Agent 需要单独配置。在默认的隔离模式下，子 Agent 不会自动读取或写回主 Agent 的 `todos`；双方各自维护任务清单。其他声明式子 Agent 也使用同样的配置方式。
 
 ## CompiledSubAgent：集成 LangGraph 工作流
 
@@ -474,7 +502,7 @@ subagents = [
 
 1. **核心动机**：Context Quarantine（上下文隔离）——子 Agent 在独立上下文中工作，只返回精炼结果给主 Agent
 2. **字典方式定义**：必填字段 `name` + `description` + `system_prompt`（3 个）；`tools` 默认继承主 Agent，显式指定后完全替换；另有 `model`/`middleware`/`interrupt_on`/`skills`/`response_format`/`permissions` 可选字段
-3. **General-purpose 子 Agent**：默认可用，继承主 Agent 的全部能力（包括 skills）；可通过 `GeneralPurposeSubagentProfile(enabled=False)` 禁用
+3. **General-purpose 子 Agent**：默认可用，继承主 Agent 的提示词、显式工具、模型与 skills；Todo 等额外中间件需单独配置，可通过 `GeneralPurposeSubagentProfile(enabled=False)` 禁用
 4. **CompiledSubAgent**：用预构建的 LangGraph 图作为子 Agent，适合复杂多步骤工作流
 5. **结构化输出**：通过 `response_format` 让子 Agent 返回 JSON，方便主 Agent 程序化处理（需 deepagents>=0.5.3）
 6. **最佳实践**：描述要具体、提示词要详细、工具集要精简、模型按需选择、返回结果要精炼
