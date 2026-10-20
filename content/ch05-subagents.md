@@ -97,7 +97,9 @@ v0.7 的默认配置中，**默认 `general-purpose` 和声明式子 Agent 都�
 
 ## General-purpose 子 Agent：默认的"万能助手"
 
-即使你不定义任何子 Agent，Deep Agents 也自带一个 **general-purpose 子 Agent**。它**继承主 Agent 的 system_prompt、显式传入的 tools、model 和 skills**。
+即使你不定义任何子 Agent，Deep Agents 也自带一个 **general-purpose 子 Agent**。它**继承主 Agent 显式传入的 `tools`、`model` 和 `skills`**。
+
+它使用自己的默认系统提示词（`DEFAULT_SUBAGENT_PROMPT`），并应用当前模型的 Harness Profile 提示词配置，**不会继承主 Agent 传入的 `system_prompt`**。需要自定义时，可在同名 spec 中设置 `system_prompt`，见下文[覆盖 general-purpose 子 Agent](#覆盖-general-purpose-子-agent)。提示词规则见[官方子 Agent 文档](https://docs.langchain.com/oss/python/deepagents/subagents#the-general-purpose-subagent)。
 
 中间件的继承范围更窄：它只继承主 Agent 对其默认中间件的**同名覆盖**，按 `.name` 匹配，不会带上仅为主 Agent 新增的中间件。默认栈中没有 `TodoListMiddleware`，因此主 Agent 的 Todo 配置不会传给它。规则见[官方自定义文档](https://docs.langchain.com/oss/python/deepagents/customization#override-a-default-middleware-instance)。
 
@@ -108,14 +110,14 @@ v0.7 的默认配置中，**默认 `general-purpose` 和声明式子 Agent 都�
 agent = create_deep_agent(
     model=model,
     tools=[internet_search],
-    system_prompt="你是一位研究助手。",
+    system_prompt="你是一位研究助手。",  # 只配置主 Agent，不会传给默认子 Agent
 )
 
 # 主 Agent 可以这样委派：
 # task(subagent_type="general-purpose", description="搜索量子计算的最新进展")
 ```
 
-General-purpose 子 Agent 的作用是**上下文隔离**——它复用主 Agent 的提示词、模型和显式工具，在独立的上下文中处理委派任务。主 Agent 不需要承受子任务中 10 次搜索带来的上下文膨胀，只需要收到一份精炼的摘要。
+General-purpose 子 Agent 的作用是**上下文隔离**——它复用主 Agent 的模型和显式工具，使用自己的系统提示词，在独立的上下文中处理委派任务。主 Agent 不需要承受子任务中 10 次搜索带来的上下文膨胀，只需要收到一份精炼的摘要。
 
 ### 禁用 general-purpose 子 Agent
 
@@ -146,7 +148,7 @@ agent = create_deep_agent(
 
 ### 覆盖 general-purpose 子 Agent
 
-如果你想给默认子 Agent 配置不同的模型或工具，可以用 `name="general-purpose"` 来覆盖：
+如果你想给默认子 Agent 配置不同的系统提示词、模型或工具，可以用 `name="general-purpose"` 来覆盖：
 
 > **示意片段**：`model`、`internet_search`、`ChatOpenAI` 和 `os` 沿用应用已有定义，这里只展示覆盖字段。
 
@@ -158,7 +160,7 @@ agent = create_deep_agent(
         {
             "name": "general-purpose",  # 覆盖默认
             "description": "通用助手，处理各种委派任务",
-            "system_prompt": "你是一个通用助手。",
+            "system_prompt": "你是一个通用助手。",  # 单独配置子 Agent 的提示词
             "tools": [internet_search],
             "model": ChatOpenAI(  # 子 Agent 用更强的模型
                 model="zai-org/GLM-5.2",
@@ -502,7 +504,7 @@ subagents = [
 
 1. **核心动机**：Context Quarantine（上下文隔离）——子 Agent 在独立上下文中工作，只返回精炼结果给主 Agent
 2. **字典方式定义**：必填字段 `name` + `description` + `system_prompt`（3 个）；`tools` 默认继承主 Agent，显式指定后完全替换；另有 `model`/`middleware`/`interrupt_on`/`skills`/`response_format`/`permissions` 可选字段
-3. **General-purpose 子 Agent**：默认可用，继承主 Agent 的提示词、显式工具、模型与 skills；Todo 等额外中间件需单独配置，可通过 `GeneralPurposeSubagentProfile(enabled=False)` 禁用
+3. **General-purpose 子 Agent**：默认可用，继承主 Agent 的显式工具、模型与 skills；使用自己的默认系统提示词并应用 Harness Profile 配置，不继承主 Agent 的 `system_prompt`；Todo 等额外中间件需单独配置，可通过 `GeneralPurposeSubagentProfile(enabled=False)` 禁用
 4. **CompiledSubAgent**：用预构建的 LangGraph 图作为子 Agent，适合复杂多步骤工作流
 5. **结构化输出**：通过 `response_format` 让子 Agent 返回 JSON，方便主 Agent 程序化处理（需 deepagents>=0.5.3）
 6. **最佳实践**：描述要具体、提示词要详细、工具集要精简、模型按需选择、返回结果要精炼
