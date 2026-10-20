@@ -606,18 +606,24 @@ def current_user_id(runtime: ToolRuntime) -> str:
 
 @tool
 async def search_recent_conversations(query: str, runtime: ToolRuntime) -> str:
-    """搜索过去 6 小时内该用户的对话。"""
+    """读取该用户最近更新的至多 20 个线程中，过去 6 小时更新过的对话。"""
     user_id = current_user_id(runtime)
     since = datetime.now(timezone.utc) - timedelta(hours=6)
     threads = await sdk_client.threads.search(
         metadata={"user_id": user_id},
-        updated_after=since.isoformat(),
         limit=20,
+        sort_by="updated_at",
+        sort_order="desc",
     )
     conversations = []
     for thread in threads:
-        history = await sdk_client.threads.get_history(thread_id=thread["thread_id"])
-        conversations.append(history["values"]["messages"])
+        updated_at = datetime.fromisoformat(thread["updated_at"].replace("Z", "+00:00"))
+        if updated_at < since:
+            continue
+        state = await sdk_client.threads.get_state(thread_id=thread["thread_id"])
+        messages = state["values"].get("messages", [])
+        if messages:
+            conversations.append(messages)
     return str(conversations)
 
 consolidation_agent = create_deep_agent(
@@ -626,6 +632,8 @@ consolidation_agent = create_deep_agent(
     tools=[search_recent_conversations],
 )
 ```
+
+这里按线程的 `updated_at` 在客户端筛选时间窗口，`threads.search()` 不接受 `updated_after` 参数。`get_state()` 返回线程的当前状态；`get_history()` 返回的是检查点列表，不能直接用 `["values"]` 访问。没有消息的线程会被跳过。工具读取的是选中线程当前的完整消息，并未按每条消息的时间裁剪；若要覆盖超过 20 个线程，还需分页查询。
 
 用 Cron Job 定时触发：
 
