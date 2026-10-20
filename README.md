@@ -16,6 +16,11 @@
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/内容协议-CC%20BY--NC--SA%204.0-lightgrey)](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
+<p>
+  <a href="https://trendshift.io/repositories/57851?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-57851" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/57851/daily?language=Astro" alt="datawhalechina%2Fdeepagents-in-action | Trendshift" width="250" height="55"/></a>
+  <a href="https://trendshift.io/developers/10200?utm_source=developer-badge&amp;utm_medium=badge&amp;utm_campaign=badge-developer-10200" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/developers/10200" alt="webup | Trendshift" width="250" height="55"/></a>
+</p>
+
 作者：**[沧海九粟](https://space.bilibili.com/28357052)** · LangChain 官方认证大使 · [LCAE 认证](https://certs.langchain.com/93ab2ac4-e237-4415-bcc8-46b27741f75a)
 
 </div>
@@ -188,8 +193,6 @@ agentseek dev
 **[沧海九粟](https://space.bilibili.com/28357052)** · LangChain 官方认证大使 · 《LangChain 实战》《LangGraph 实战》作者 · B 站万粉 UP 主。
 
 **专业认证：** [LangChain Certified Agent Engineer（LCAE）](https://certs.langchain.com/93ab2ac4-e237-4415-bcc8-46b27741f75a)
-
-<a href="https://trendshift.io/developers/10200?utm_source=developer-badge&utm_medium=badge&utm_campaign=badge-developer-10200" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/developers/10200" alt="webup | Trendshift" width="250" height="55"/></a>
 
 ---
 
