@@ -101,6 +101,8 @@ v0.7 的默认配置中，**默认 `general-purpose` 和声明式子 Agent 都�
 
 它使用自己的默认系统提示词（`DEFAULT_SUBAGENT_PROMPT`），并应用当前模型的 Harness Profile 提示词配置，**不会继承主 Agent 传入的 `system_prompt`**。需要自定义时，可在同名 spec 中设置 `system_prompt`，见下文[覆盖 general-purpose 子 Agent](#覆盖-general-purpose-子-agent)。提示词规则见[官方子 Agent 文档](https://docs.langchain.com/oss/python/deepagents/subagents#the-general-purpose-subagent)。
 
+> **版本说明**：不继承主 Agent 自定义提示词的行为始于 [0.0.6 正式版](https://pypi.org/project/deepagents/0.0.6/)（2025-09-24；预发布版从 0.0.6rc3 起），不是 v0.7 新增。0.0.5 仍会把主 Agent 的 `instructions`（当时的提示词参数名）传给默认子 Agent；改动见[上游 PR #117](https://github.com/langchain-ai/deepagents/pull/117)。
+
 中间件的继承范围更窄：它只继承主 Agent 对其默认中间件的**同名覆盖**，按 `.name` 匹配，不会带上仅为主 Agent 新增的中间件。默认栈中没有 `TodoListMiddleware`，因此主 Agent 的 Todo 配置不会传给它。规则见[官方自定义文档](https://docs.langchain.com/oss/python/deepagents/customization#override-a-default-middleware-instance)。
 
 > **示意片段**：`model` 和 `internet_search` 沿用应用已有定义，这里只演示不传 `subagents` 时的继承行为。
