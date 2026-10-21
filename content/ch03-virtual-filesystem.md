@@ -394,6 +394,36 @@ class S3Backend(BackendProtocol):
 
 对于需要拦截策略（速率限制、审计日志、内容检查）的场景，可以通过继承或包装后端实现：
 
+下面两个**示意片段**共用一组目录检查函数，请先运行这一代码块，再选择其中一种后端写法。这里约定后端使用 POSIX 虚拟路径，相对路径从虚拟根目录解析；`deny_prefixes` 表示要保护的目录及其全部后代。`FilesystemBackend` 应使用 `virtual_mode=True`。示例按虚拟路径判断，不解析符号链接等存储别名。
+
+```python
+from pathlib import PurePosixPath
+
+
+def policy_path(path: str) -> PurePosixPath:
+    """统一虚拟路径的起始斜杠、重复斜杠、`.` 和末尾斜杠。"""
+    normalized = PurePosixPath("/" + path.lstrip("/"))
+    if ".." in normalized.parts:
+        raise ValueError("策略路径不能包含 '..'")
+    return normalized
+
+
+def denied_by_directory(
+    path: str, protected_dirs: list[PurePosixPath], *, deleting: bool = False
+) -> bool:
+    try:
+        target = policy_path(path)
+    except ValueError:
+        return True
+    return any(
+        target.is_relative_to(directory)
+        or (deleting and directory.is_relative_to(target))
+        for directory in protected_dirs
+    )
+```
+
+`is_relative_to()` 按目录层级比较，并包含路径相等的情况。因此 `/policies` 和 `/policies/rules.txt` 都受保护，`/policies-copy` 不会被误拦。删除目录会递归影响后代，所以还要反向检查：若待删除目录是受保护目录的祖先，应在调用底层删除前拒绝整次操作，例如保护 `/workspace/policies` 时也要拒绝删除 `/workspace`。
+
 **方式一：继承现有后端**
 
 ```python
@@ -403,26 +433,26 @@ from deepagents.backends.protocol import WriteResult, EditResult, DeleteResult
 class GuardedBackend(FilesystemBackend):
     def __init__(self, *, deny_prefixes: list[str], **kwargs):
         super().__init__(**kwargs)
-        self.deny_prefixes = [p if p.endswith("/") else p + "/" for p in deny_prefixes]
+        self.protected_dirs = [policy_path(p) for p in deny_prefixes]
 
     def write(self, file_path: str, content: str) -> WriteResult:
-        if any(file_path.startswith(p) for p in self.deny_prefixes):
+        if denied_by_directory(file_path, self.protected_dirs):
             return WriteResult(error=f"写入被拒绝：{file_path}")
         return super().write(file_path, content)
 
     def edit(self, file_path: str, old_string: str, new_string: str,
              replace_all: bool = False) -> EditResult:
-        if any(file_path.startswith(p) for p in self.deny_prefixes):
+        if denied_by_directory(file_path, self.protected_dirs):
             return EditResult(error=f"编辑被拒绝：{file_path}")
         return super().edit(file_path, old_string, new_string, replace_all)
 
     def delete(self, file_path: str) -> DeleteResult:
-        if any(file_path.startswith(p) for p in self.deny_prefixes):
+        if denied_by_directory(file_path, self.protected_dirs, deleting=True):
             return DeleteResult(error=f"删除被拒绝：{file_path}")
         return super().delete(file_path)
 ```
 
-**方式二：通用包装器**（适用于任何后端）
+**方式二：通用包装器**（用于遵循上述虚拟路径约定的后端）
 
 ```python
 from deepagents.backends.protocol import BackendProtocol, WriteResult, EditResult, DeleteResult
@@ -430,10 +460,10 @@ from deepagents.backends.protocol import BackendProtocol, WriteResult, EditResul
 class PolicyWrapper(BackendProtocol):
     def __init__(self, inner: BackendProtocol, deny_prefixes: list[str]):
         self.inner = inner
-        self.deny_prefixes = [p if p.endswith("/") else p + "/" for p in deny_prefixes]
+        self.protected_dirs = [policy_path(p) for p in deny_prefixes]
 
-    def _deny(self, path: str) -> bool:
-        return any(path.startswith(p) for p in self.deny_prefixes)
+    def _deny(self, path: str, *, deleting: bool = False) -> bool:
+        return denied_by_directory(path, self.protected_dirs, deleting=deleting)
 
     def ls(self, path): return self.inner.ls(path)
     def read(self, file_path, offset=0, limit=2000): return self.inner.read(file_path, offset=offset, limit=limit)
@@ -452,7 +482,7 @@ class PolicyWrapper(BackendProtocol):
         return self.inner.edit(file_path, old_string, new_string, replace_all)
 
     def delete(self, file_path: str) -> DeleteResult:
-        if self._deny(file_path):
+        if self._deny(file_path, deleting=True):
             return DeleteResult(error=f"删除被拒绝：{file_path}")
         return self.inner.delete(file_path)
 ```
