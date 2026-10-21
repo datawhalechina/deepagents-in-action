@@ -506,11 +506,14 @@ agent = create_deep_agent(
 
 实际部署中，最常见的模式是两层结构：团队共享的只读 Skill 库 + 用户个人的可写 Skill 空间。
 
+下面以本地 Python 运行演示，显式创建 `InMemoryStore` 并传给 Agent。运行前需准备本章依赖及示例模型所需的 `ANTHROPIC_API_KEY`，也可以将 `model` 替换为已配置的模型。
+
 ```python
 from dataclasses import dataclass
 
 from deepagents import FilesystemPermission, create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from langgraph.store.memory import InMemoryStore
 
 
 @dataclass(frozen=True)
@@ -530,6 +533,8 @@ def personal_skill_namespace(rt):
     user_id = getattr(rt.context, "user_id", "local-user")
     return ("user-skills", user_id)
 
+
+store = InMemoryStore()
 
 agent = create_deep_agent(
     model="anthropic:claude-sonnet-4-6",
@@ -553,8 +558,25 @@ agent = create_deep_agent(
             mode="deny",
         ),
     ],
+    store=store,
 )
 ```
+
+沿用上面的 `agent` 和 `TenantContext`，本地调用时传入组织和用户身份：
+
+```python
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "列出可用 Skills"}]},
+    context=TenantContext(org_id="org-acme", user_id="alice"),
+)
+```
+
+`StoreBackend` 不会自动创建存储；这里的两个路由通过不同的命名空间访问同一个 `store`。本地运行时必须接入实际的 Store，否则 Agent 启动加载 Skills 时会因没有可用的 Store 而报错。新建的 `InMemoryStore` 是空的，首次运行没有可用 Skills 属于正常情况；可参照前面的只读 Skill 示例，通过 Store API 预填对应命名空间，并使用路由相对路径作为 key。
+
+需要区分运行环境：
+
+- **本地 Python 运行**：保留上面的 `store=store`。`InMemoryStore` 仅用于演示，进程退出后数据不会保留；需要持久化时应接入持久化 Store。
+- **LangSmith Deployment 托管部署**：平台会自动提供 Store，应省略 `store=store`，也不再需要创建本地的 `InMemoryStore`。这依赖平台提供的存储能力，不能仅因代码部署到了服务器就省略 Store 配置。详见 [官方后端文档](https://docs.langchain.com/oss/python/deepagents/backends)。
 
 这个配置实现了：
 
