@@ -4,7 +4,7 @@
 
 前几章介绍了规划、工具、子 Agent 和上下文管理。本章关注这些能力之间的判断：**这个任务交给哪个模型，这次工具提案是否可以执行？** 将判断放进 Harness，应用就能为任务分配不同的工作模型，并在工具执行前检查授权。
 
-我们沿着这个运维场景理解决策模型，再看 LangChain 的 Model Router 与 Auto Mode 怎样接入 Deep Agents。本章示例使用 `deepagents==0.7.23`、`langchain==1.4.3` 和 `langchain-typesafe[experimental]==0.0.1a3`；TypeSafe 分类器和这组实验中间件的接口仍可能变化。
+我们沿着这个运维场景理解决策模型，再看 LangChain 的 Model Router 与 Auto Mode 怎样接入 Deep Agents。Jev 是本章默认示例，遵循相同决策接口的其他后端也可以承担判断职责。本章示例使用 `deepagents==0.7.23`、`langchain==1.4.3` 和 `langchain-typesafe[experimental]==0.0.1a3`；TypeSafe 分类器和这组实验中间件的接口仍可能变化。
 
 ## 1. 从固定模型、依赖提示词，到明确的决策点
 
@@ -20,7 +20,7 @@
 | 分析发布后超时 | 同一个模型完成多步分析 | 按能力要求选择适合根因分析的候选模型 |
 | 诊断中提出重启 | 工作模型自行遵守授权说明 | 执行前核对动作、环境与用户授权 |
 
-![同一个 Agent 循环的两处决策点：Model Router 根据任务与候选条件向 Jev 询问 Choice，选择负责分析与生成的工作模型；Auto Mode 在工具执行前向 Jev 询问 Noul，根据提案与授权上下文放行或拦截，工具结果返回工作模型继续分析](../public/imgs/56-framework-decision-harness.png)
+![同一个 Agent 循环的两处决策点：Model Router 根据任务与候选条件询问 Choice，选择工作模型；Auto Mode 在工具执行前通过 Noul 检查提案与授权；决策分类器可以连接 Jev 或兼容后端，工具结果返回工作模型继续分析](../public/imgs/56-framework-decision-harness.png)
 
 工作模型继续负责业务任务，Harness 根据判断结果选择执行路径。模型路由的目标是**在任务质量达标的前提下减少不必要的模型开销**；工具检查的目标是**在具体动作发生前识别风险与授权问题**。这些收益需要通过实际任务验证，增加中间件本身并不能证明效果。
 
@@ -32,7 +32,7 @@
 
 例如，工作模型可以写出一份恢复计划；决策模型则回答“这份任务应该交给哪个候选模型”或“拟执行的重启是否缺少授权”。把后者变成结构化接口后，程序不必从一段聊天回复中猜测“到底同意了没有”。
 
-本章使用 Jev。TypeSafe 将它称为 **System One 模型**：它返回类型化判断与概率，不生成聊天文本。LangChain 通过 `TypeSafeClassifier` 调用它，使这些判断可以与原有工作模型配合。背景见 [Building a Harness with Jev](https://www.langchain.com/blog/building-a-harness-with-jev)。
+**决策模型是一种职责分类，Jev 是其中一种实现。** TypeSafe 将 Jev 称为 **System One 模型**：它返回类型化判断与概率，不生成聊天文本。本章以它作为默认示例，通过 LangChain 的 `TypeSafeClassifier` 获取判断，再交给程序选择执行路径。Jev-compatible 服务也可以提供相同的决策接口，后面会展示如何更换后端。背景见 [Building a Harness with Jev](https://www.langchain.com/blog/building-a-harness-with-jev)。
 
 ### 2.2 上下文、问题与结果各是什么
 
@@ -42,7 +42,7 @@
 - `questions` 定义要问什么；问题中的 `instructions` 与 `criteria` 描述判断目标和条件。
 - 返回对象给出对应问题的类型化答案，由应用决定如何使用。
 
-Jev 支持三类问题：
+本章使用的 TypeSafe / System One 接口支持三类问题：
 
 | 类型 | 回答什么 | 在本章中的位置 |
 | --- | --- | --- |
@@ -71,6 +71,35 @@ print(answer.nouls["is_risky"].noul)
 
 开发者需要定义问题和提供足够的上下文。结构化输出让判断更容易接入程序，但不会自动补齐缺失的授权信息，也不意味着判断总是正确。接口说明见 [TypeSafe 集成文档](https://docs.langchain.com/oss/python/integrations/providers/typesafe)。
 
+### 2.3 Jev-compatible：保持接口，更换决策后端
+
+这里的兼容指 **`POST /v1/systemone` 的请求与响应契约**：向服务发送 `model`、`state`、`questions`，再读取对应问题的类型化答案。它与聊天模型的 OpenAI-compatible 接口不同，不能仅凭服务支持 `/chat/completions` 就认为它能接替这一层。
+
+例如，[硅基流动的 System One 接口](https://docs.siliconflow.cn/docs/api/systemone-post)支持 `Kev-4b`、`SemIf`。它们可以作为 Jev 的替代决策后端，复用 `Choice`、`Noul`、`Score` 这组问题契约：
+
+| 服务 | 决策模型标识 | 客户端根地址 |
+| --- | --- | --- |
+| TypeSafe | `jev-latest` | `https://api.typesafe.ai` |
+| 硅基流动 | `Kev-4b` | `https://api.siliconflow.cn` |
+| 硅基流动 | `SemIf` | `https://api.siliconflow.cn` |
+
+下面只初始化兼容分类器。复用上一节的 `state` 与 `questions`，通过 `compatible_classifier.invoke(...)` 就能向所选后端提出同一个问题：
+
+```python
+import os
+from langchain_typesafe import TypeSafeClassifier
+
+compatible_classifier = TypeSafeClassifier(
+    base_url="https://api.siliconflow.cn",
+    api_key=os.environ["SILICONFLOW_API_KEY"],
+    model="Kev-4b",  # 也可选择 SemIf
+)
+```
+
+`base_url` 填服务根地址，分类器会追加 `/v1/systemone`；API Key 使用对应服务的凭据。**更换决策后端**与 Router **选择工作模型**是两个独立的配置维度：前者决定谁回答 `Choice` 或 `Noul`，后者决定哪个聊天模型完成业务任务。
+
+接口兼容使调用方式可以复用，判断质量与概率校准仍要单独评估。同一个授权样本，Jev、Kev-4b、SemIf 可能给出不同的答案；应比较误放行、误拦截、成本和延迟，再确定是否适合替换。下文 `0.5` 是本章内置中间件的固定执行阈值，不能据此认定所有后端都已校准到同样效果。
+
 ## 3. Model Router：让任务选择合适的工作模型
 
 ### 3.1 为什么路由条件要从场景出发
@@ -93,7 +122,7 @@ router = ModelRouterMiddleware(
 )
 ```
 
-`fast` 与 `powerful` 是开发者定义的标签，可以换成其他名字，也可以增加候选或使用不同服务商。`ModelChoice` 把工作模型和适用条件绑定；Router 将这些条件交给 Jev 做 `Choice` 判断。它不会自动测量候选模型的价格与能力，条件应来自你的模型评估。
+`fast` 与 `powerful` 是开发者定义的标签，可以换成其他名字，也可以增加候选或使用不同服务商。`ModelChoice` 把工作模型和适用条件绑定；Router 将这些条件交给决策分类器做 `Choice` 判断，本章内置示例默认调用 Jev。这里调整的是候选工作模型，更换决策后端还需要单独配置。Router 不会自动测量候选模型的价格与能力，条件应来自你的模型评估。
 
 ### 3.2 一次判断，怎样影响后续模型调用
 
@@ -175,7 +204,11 @@ agent = create_deep_agent(
 )
 ```
 
-`model=` 仍然提供初始的**工作模型**，Router 会在运行时替换它。Jev 由分类器调用，不作为聊天模型传给这个参数。工具既要注册到 Agent 的 `tools=`，也要列入 Auto Mode 的检查名单；两处配置各有用途。
+`model=` 仍然提供初始的**工作模型**，Router 会在运行时替换它。Jev 或兼容决策后端由分类器调用，不作为聊天模型传给这个参数。工具既要注册到 Agent 的 `tools=`，也要列入 Auto Mode 的检查名单；两处配置各有用途。
+
+还要区分分类器的接口兼容与中间件的配置能力。本章核对的 `0.0.1a3` 中，两个内置中间件都会在构造时创建默认的 `TypeSafeClassifier()`，**没有 `classifier=` 注入参数**。因此，上文初始化 `compatible_classifier` 不会自动改变这两个中间件的后端，仅修改服务地址也不会把默认模型标识 `jev-latest` 变成 `Kev-4b`。
+
+接入兼容后端时，可以编写接收该分类器的自定义中间件：在 `before_agent` 中调用 `Choice` 并保存选择，在 `wrap_model_call` 中切换工作模型，在 `wrap_tool_call` 中调用 `Noul` 做执行前检查，再通过 `middleware=` 接入 Agent。适配时需要保留相应的状态与拦截逻辑。官方 [TypeSafe 自定义中间件示例](https://docs.langchain.com/oss/python/integrations/providers/typesafe)展示了分类器与生命周期钩子的组合方式。
 
 已有普通 LangChain Agent 的应用，可以将上面的构造函数换成 `langchain.agents.create_agent`，同样通过 `middleware=[router, auto_mode]` 配置这两个组件。它们提供的判断能力相同；Deep Agents 还提供任务规划、文件系统与子 Agent 等默认能力。
 
@@ -212,16 +245,19 @@ print(result["model_route"].choice)
 
 LangChain 的 [Open SWE 路由实验](https://www.langchain.com/blog/how-to-build-a-model-router-in-the-harness)在 973 个线程的 A/B 对照中，报告每线程成本中位数下降 64%，所用质量指标未见显著变化。这说明路由值得验证；它的任务分布、候选模型与验收指标不能直接当作本章运维场景的收益。
 
-本章代码已通过模拟分类响应与脚本化工作模型核验接口和控制流，未执行真实模型调用。这验证了“选择如何改变调用、拦截如何阻止执行”，没有验证 Jev 在真实业务中的判断质量。
+本章代码已通过模拟分类响应与脚本化工作模型核验接口和控制流；兼容分类器的请求序列化与响应解析也经过了 mock HTTP 核验，未执行真实模型调用。这验证了“选择如何改变调用、拦截如何阻止执行”，没有验证 Jev 或兼容后端在真实业务中的判断质量。
 
 ## 本章小结
 
-Decision Model Harness 在 Agent 循环中增加可被程序消费的判断。Model Router 将任务需求映射到工作模型；Auto Mode 将工具提案、用户授权与策略转成执行前检查。LangChain 提供这些判断的分类接口和中间件，Deep Agents 则让它们与已有 Harness 能力一起使用。是否采用，应由任务效果、总体开销与实际执行边界共同决定。
+Decision Model Harness 在 Agent 循环中增加可被程序消费的判断。Model Router 将任务需求映射到工作模型；Auto Mode 将工具提案、用户授权与策略转成执行前检查。Jev 是决策实现之一，Kev-4b、SemIf 等兼容后端也能通过相同的 System One 契约承担这类职责；具体中间件仍需匹配其配置接口。LangChain 提供分类接口和中间件扩展点，Deep Agents 让它们与已有 Harness 能力一起使用。是否采用，应由任务效果、总体开销与实际执行边界共同决定。
 
 ## 参考资料
 
 - [Building a Harness with Jev](https://www.langchain.com/blog/building-a-harness-with-jev)：决策模型与 Harness 决策点。
 - [How to Build a Model Router in the Harness](https://www.langchain.com/blog/how-to-build-a-model-router-in-the-harness)：场景分析、路由条件与结果评估。
 - [LangChain TypeSafe 集成](https://docs.langchain.com/oss/python/integrations/providers/typesafe)：分类器与实验中间件接口。
+- [硅基流动 System One 接口](https://docs.siliconflow.cn/docs/api/systemone-post)：兼容请求契约，以及 `Kev-4b`、`SemIf` 的服务配置。
+- [Kev-4b 模型卡](https://github.com/jaredpalmer/kev/blob/main/docs/model-cards/kev-4b.md)与 [SemIf 开源项目](https://github.com/TheoLeeCJ/SemIf-OpenJev)：独立于 Jev 的开放决策实现。
+- [TypeSafeClassifier 源码](https://github.com/langchain-ai/langchain/blob/4af7ab8fcb98c2dc211d9e34cddedffa23eba4d9/libs/partners/typesafe/langchain_typesafe/classifier.py)：`base_url`、`api_key`、`model` 与 System One 请求的关系。
 - [Model Router 源码](https://github.com/langchain-ai/langchain/blob/4af7ab8fcb98c2dc211d9e34cddedffa23eba4d9/libs/partners/typesafe/langchain_typesafe/experimental/middleware/model_router.py)与 [Auto Mode 源码](https://github.com/langchain-ai/langchain/blob/4af7ab8fcb98c2dc211d9e34cddedffa23eba4d9/libs/partners/typesafe/langchain_typesafe/experimental/middleware/auto_mode.py)：本章验证版本的运行粒度与执行行为。
 - [Deep Agents 自定义](https://docs.langchain.com/oss/python/deepagents/customization)：工作模型、工具和中间件的配置位置。
