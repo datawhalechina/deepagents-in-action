@@ -6,8 +6,6 @@
 
 我们沿着这个运维场景理解决策模型，再看 LangChain 的 Model Router 与 Auto Mode 怎样接入 Deep Agents。Jev 是本章默认示例，遵循相同决策接口的其他后端也可以承担判断职责。本章示例使用 `deepagents==0.7.23`、`langchain==1.4.3` 和 `langchain-typesafe[experimental]==0.0.1a3`；TypeSafe 分类器和这组实验中间件的接口仍可能变化。
 
-> 配套实验：[AgentSeek · langchain/jev-harness](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/langchain/jev-harness)，可对照本章体验模型路由与 Auto Mode 工具检查。
-
 ## 1. 从固定模型、依赖提示词，到明确的决策点
 
 一个常见的起点是：所有请求使用同一个聊天模型，通过提示词要求它“谨慎操作”。这容易上手，但两类问题会随着任务增多而出现。
