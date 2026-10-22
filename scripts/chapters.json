@@ -231,7 +231,7 @@
     "order": 19,
     "description": "从运维场景的改造前后理解决策模型的价值与基础原理，用轻量示例说明 LangChain / Deep Agents 如何支持模型路由、工具检查和执行控制。",
     "slides": [
-      { "id": "ch17", "title": "Lec 21: Decision Model Harness — 用模型路由与 Auto Mode 控制 Agent" }
+      { "id": "ch17", "title": "Lec 21: Decision Model Harness — 用模型路由与 Auto Mode 控制 Agent", "bilibili": "https://www.bilibili.com/video/BV1ZBn66cERY/", "xhs": "https://xhslink.cn/o/4QI2N3uwnAJ" }
     ],
     "published": true,
     "pubDate": "2026-10-08"
