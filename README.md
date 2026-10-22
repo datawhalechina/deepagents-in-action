@@ -182,7 +182,7 @@ agentseek dev
 
 #### 第 17 章：[Decision Model Harness — 用模型路由与 Auto Mode 控制 Agent](https://datawhalechina.github.io/deepagents-in-action/chapters/ch17-decision-harness/)
 
-从运维查询、故障分析与重启授权场景出发，理解决策模型的价值与基础原理，用轻量示例说明 LangChain / Deep Agents 的模型路由与工具检查。
+从运维查询、故障分析与重启授权场景出发，理解决策模型的价值与基础原理，用轻量示例说明 LangChain / Deep Agents 的模型路由与工具检查。配套实验：[`langchain/jev-harness`](https://github.com/agentseek-ai/agentseek-templates/tree/main/templates/langchain/jev-harness)
 
 后续课程内容将根据 Deep Agents 的官方能力演进持续更新。
 
