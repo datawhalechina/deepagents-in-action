@@ -560,18 +560,31 @@ def current_user_id(runtime: ToolRuntime) -> str:
 
 @tool
 async def search_past_conversations(query: str, runtime: ToolRuntime) -> str:
-    """搜索过去的对话以获取相关上下文。"""
+    """在该用户过去的对话中查找包含关键词 query 的消息。按字面匹配，找不到时换用同义词、英文或更短的关键词再搜。"""
+    keyword = query.strip().lower()
+    if not keyword:
+        return "query 不能为空，请传入要查找的关键词后重新调用。"
     user_id = current_user_id(runtime)
+    current_thread = runtime.config.get("configurable", {}).get("thread_id")
     threads = await client.threads.search(
         metadata={"user_id": user_id},
         limit=5,
+        sort_by="updated_at",
+        sort_order="desc",
     )
-    results = []
+    hits = []
     for thread in threads:
-        history = await client.threads.get_history(thread_id=thread["thread_id"])
-        results.append(history)
-    return str(results)
+        if thread["thread_id"] == current_thread:
+            continue  # 跳过正在进行的对话
+        state = await client.threads.get_state(thread_id=thread["thread_id"])
+        for message in state["values"].get("messages", []):
+            content = str(message.get("content", ""))
+            if keyword in content.lower():
+                hits.append(f"[{thread['thread_id']}] {message.get('type')}: {content[:300]}")
+    return "\n".join(hits[:10]) or f"没有找到包含“{query}”的过去对话。"
 ```
+
+`threads.search()` 只能按元数据、状态等条件筛选线程，不接受文本查询，所以这里在客户端按关键词匹配消息正文。结果只保留前 10 条，每条截取 300 个字符，避免把大量历史放进上下文。本示例只实现了关键词匹配。
 
 这对执行复杂多步任务的 Agent 尤为有用——比如代码 Agent 可以回溯上次调试过程，直接跳到可能的根因。
 
@@ -605,7 +618,7 @@ def current_user_id(runtime: ToolRuntime) -> str:
 
 
 @tool
-async def search_recent_conversations(query: str, runtime: ToolRuntime) -> str:
+async def search_recent_conversations(runtime: ToolRuntime) -> str:
     """读取该用户最近更新的至多 20 个线程中，过去 6 小时更新过的对话。"""
     user_id = current_user_id(runtime)
     since = datetime.now(timezone.utc) - timedelta(hours=6)
