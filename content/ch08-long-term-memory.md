@@ -543,6 +543,7 @@ await client.store.put_item(
 Deep Agents 的 Checkpointer 天然支持情景记忆——每次对话都被完整持久化。要让过去的对话变得可搜索，可以包装一个搜索工具：
 
 ```python
+from langchain_core.messages import convert_to_messages
 from langgraph_sdk import get_client
 from langchain.tools import tool, ToolRuntime
 
@@ -577,14 +578,17 @@ async def search_past_conversations(query: str, runtime: ToolRuntime) -> str:
         if thread["thread_id"] == current_thread:
             continue  # 跳过正在进行的对话
         state = await client.threads.get_state(thread_id=thread["thread_id"])
-        for message in state["values"].get("messages", []):
-            content = str(message.get("content", ""))
-            if keyword in content.lower():
-                hits.append(f"[{thread['thread_id']}] {message.get('type')}: {content[:300]}")
+        for message in convert_to_messages(state["values"].get("messages", [])):
+            text = message.text  # 只取文本块的正文，跳过图片、reasoning 等内容块
+            pos = text.lower().find(keyword)
+            if pos >= 0:
+                # 关键词前后各取约 150 个字符，想多保留前后文可以调整这个偏移量
+                start = max(pos - 150, 0)
+                hits.append(f"[{thread['thread_id']}] {message.type}: {text[start:start + 300]}")
     return "\n".join(hits[:10]) or f"没有找到包含“{query}”的过去对话。"
 ```
 
-`threads.search()` 只能按元数据、状态等条件筛选线程，不接受文本查询，所以这里在客户端按关键词匹配消息正文。结果只保留前 10 条，每条截取 300 个字符，避免把大量历史放进上下文。本示例只实现了关键词匹配。
+`threads.search()` 只能按元数据、状态等条件筛选线程，不接受文本查询，所以这里在客户端按关键词匹配消息正文。结果只保留前 10 条，每条以关键词为中心截取 300 个字符，避免把大量历史放进上下文。本示例只实现了关键词匹配。
 
 这对执行复杂多步任务的 Agent 尤为有用——比如代码 Agent 可以回溯上次调试过程，直接跳到可能的根因。
 
