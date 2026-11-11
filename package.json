@@ -9,7 +9,7 @@
     "assets:check": "node scripts/validate-assets.mjs",
     "assets:test": "node --test scripts/content-images.test.mjs scripts/optimize-assets.test.mjs",
     "ci:test": "node --test scripts/cross-platform-ci.test.mjs scripts/version-updates.test.mjs",
-    "docs:test": "node --test scripts/windows-docs.test.mjs",
+    "docs:test": "node --test --test-concurrency=1 scripts/windows-docs.test.mjs scripts/faq-chapter.test.mjs scripts/homepage-landing.test.mjs",
     "assets:optimize": "bash scripts/optimize-assets.sh",
     "predev": "node scripts/prep-content.mjs",
     "dev": "astro dev",
