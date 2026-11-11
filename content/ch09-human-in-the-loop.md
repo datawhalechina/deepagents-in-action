@@ -2,7 +2,7 @@
 
 > Agent 越自主，就越需要安全边界。当 Agent 准备删除文件、发送邮件或调用付费 API 时，你是否希望它先"问一声"？本章学习 Human-in-the-Loop（人机协作），为敏感操作添加人工审批。
 
-配套实验：[工具审批与中断恢复 Notebook](../notebooks/ch09/01-tool-approval-and-resume.ipynb)（[Markdown 阅读版](../notebooks/ch09/01-tool-approval-and-resume.md) · [HTML 阅读版](../notebooks/ch09/01-tool-approval-and-resume.html)）。从第一格独立运行，观察四种决策、实际执行记录与 Checkpoint；默认无需模型 Key，不发送真实邮件，也不需要 Agent Server。
+配套实验：[工具审批与中断恢复 Notebook](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch09/01-tool-approval-and-resume.ipynb)（[Markdown 阅读版](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch09/01-tool-approval-and-resume.md) · [HTML 阅读版](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch09/01-tool-approval-and-resume.html)）。从第一格独立运行，观察四种决策、实际执行记录与 Checkpoint；默认无需模型 Key，不发送真实邮件，也不需要 Agent Server。
 
 ## 为什么需要 Human-in-the-Loop？
 
@@ -19,11 +19,15 @@ Agent 的自主性是一把双刃剑：
 
 这就是 Human-in-the-Loop（HITL）——Agent 在执行特定操作前**暂停**，等待人类**审批、修改、拒绝或直接响应**，然后再继续执行。
 
+本章代码以 `deepagents==0.7.15`、`langchain==1.4.3` 与 `langgraph==1.2.13` 核对。除首个模型配置外，后续代码均为示意片段，复用前文的模型、工具、Checkpointer 或应用定义；各节创建的 `agent` 用于独立演示，不应把不同审批配置的恢复代码混用。
+
 ## `interrupt_on` 配置
 
 Deep Agents 通过 `interrupt_on` 参数配置哪些工具需要人工审批。设置后，Deep Agents 会在默认中间件栈中加入 `HumanInTheLoopMiddleware`；如果运行在工具返回前被中断或取消，同一栈里的 `PatchToolCallsMiddleware` 会自动修复消息历史。
 
 `interrupt_on` 是“工具调用审批”的便捷入口，不是 HITL 的能力边界。当暂停点不对应某个工具——例如发布最终答复前审稿、进入下一阶段前确认，或跨多个工具统一执行策略——可以在自定义 LangChain Middleware 中直接调用底层 `interrupt()`。Deep Agents 的 `middleware=[...]` 参数允许把这类能力注入现有 Harness。
+
+下面三个工具只返回演示文本，不会真实删除、读取文件或发送邮件；自定义读取工具命名为 `read_demo_file`，避免与 Harness 的内置 `read_file` 冲突。运行模型调用前需安装 `langchain-openai` 并配置 `SILICONFLOW_API_KEY`。
 
 ```python
 import os
@@ -44,7 +48,7 @@ def delete_file(path: str) -> str:
     return f"已删除 {path}"
 
 @tool
-def read_file(path: str) -> str:
+def read_demo_file(path: str) -> str:
     """读取文件内容。"""
     return f"{path} 的内容..."
 
@@ -58,10 +62,10 @@ checkpointer = MemorySaver()
 
 agent = create_deep_agent(
     model=model,
-    tools=[delete_file, read_file, send_email],
+    tools=[delete_file, read_demo_file, send_email],
     interrupt_on={
         "delete_file": {"allowed_decisions": ["approve", "edit", "reject"]},
-        "read_file": False,    # 无需中断
+        "read_demo_file": False,    # 无需中断
         "send_email": {"allowed_decisions": ["approve", "reject"]},  # 只能审批或拒绝，不能修改
     },
     checkpointer=checkpointer,  # 必须配置！
@@ -100,6 +104,8 @@ agent = create_deep_agent(
 > 条件中断需要 `langchain>=1.3.3`。
 
 ```python
+import posixpath
+
 from deepagents import create_deep_agent
 from langchain.agents.middleware import ToolCallRequest
 from langgraph.checkpoint.memory import MemorySaver
@@ -108,7 +114,10 @@ from langgraph.checkpoint.memory import MemorySaver
 def writes_outside_workspace(request: ToolCallRequest) -> bool:
     """只有写入工作区外的路径时才暂停。"""
     path = request.tool_call["args"].get("file_path", "")
-    return not path.startswith("/workspace/")
+    if not isinstance(path, str) or not path.startswith("/"):
+        return True
+    normalized = posixpath.normpath(path)
+    return not normalized.startswith("/workspace/")
 
 
 agent = create_deep_agent(
@@ -123,7 +132,7 @@ agent = create_deep_agent(
 )
 ```
 
-当 `when` 返回 `False` 时，这次工具调用不会加入中断批次；审批界面只需要展示真正需要人工决策的动作。
+当 `when` 返回 `False` 时，这次工具调用不会加入中断批次；审批界面只需要展示真正需要人工决策的动作。示例先规范化 POSIX 虚拟路径，避免 `/workspace/../secrets/token` 被简单前缀检查放行；这仍不是宿主文件系统的符号链接或竞态防护，真实路径边界应由 Backend、文件权限与隔离环境共同执行。
 
 ## 中断与恢复：完整流程
 
@@ -238,7 +247,7 @@ decisions = [{
 
 ## 编辑工具参数
 
-当决策类型包含 `edit` 时，用户可以修改工具的参数再执行：
+当决策类型包含 `edit` 时，用户可以修改工具的参数再执行。下面是示意片段，假设另一次邮件调用已暂停，且该 Agent 为 `send_email` 配置了 `allowed_decisions=["approve", "edit", "reject"]`。前面首个示例仅允许批准和拒绝，不能直接向它提交 `edit`：
 
 ```python
 if result.interrupts:
@@ -312,19 +321,19 @@ if result.interrupts:
 ```python
 agent = create_deep_agent(
     model=model,
-    tools=[delete_file, read_file],
+    tools=[delete_file, read_demo_file],
     interrupt_on={
         "delete_file": True,
-        "read_file": False,    # 主 Agent 读文件不需要审批
+        "read_demo_file": False,    # 主 Agent 读文件不需要审批
     },
     subagents=[{
         "name": "file-manager",
         "description": "管理文件操作",
         "system_prompt": "你是文件管理助手。",
-        "tools": [delete_file, read_file],
+        "tools": [delete_file, read_demo_file],
         "interrupt_on": {
             "delete_file": True,
-            "read_file": True,  # 子 Agent 读文件也需要审批！
+            "read_demo_file": True,  # 子 Agent 读文件也需要审批！
         }
     }],
     checkpointer=checkpointer,
@@ -352,7 +361,7 @@ interrupt_on = {
     "call_external_api": {"allowed_decisions": ["approve", "reject"]},
 
     # === 低风险：无需中断 ===
-    "read_file": False,
+    "read_demo_file": False,
     "ls": False,
     "grep": False,
     "glob": False,
@@ -368,7 +377,7 @@ interrupt_on = {
 |---|---|---|---|
 | 高风险 | 删除、覆盖写入、发送、部署 | `approve/edit/reject` | 操作不可逆或影响外部系统，避免 `respond` 被误当成成功结果 |
 | 中风险 | 写入、外部调用 | `approve/reject` | 可审批但不需要修改参数 |
-| 低风险 | 读取、搜索、列表 | `False` | 只读操作，安全无副作用 |
+| 低风险 | 读取、搜索、列表 | `False` | 通常无写入副作用；敏感读取和外传仍需审查 |
 | 人工输入型 | 询问偏好、补充缺失信息 | `respond` | 工具本来就是让人回答，人的 `message` 会成为成功工具结果 |
 
 ## 文件系统权限中断
@@ -566,7 +575,7 @@ graph.invoke(Command(resume=resume_map), config=config)
 - `values`：当前图状态
 - `next`：下一步待执行节点
 - `interrupts`：当前 step 中待解决的 `Interrupt` 对象
-- `checkpoint`：当前 checkpoint 标识
+- `config`：包含当前 checkpoint 标识的运行配置（本地 `StateSnapshot` 字段）
 
 在本地 `CompiledStateGraph` 里，可以用同一个 config 查询：
 
@@ -637,7 +646,7 @@ def node(state):
 def node(state):
     approved = interrupt("请审批")
     if approved:
-        db.create_log("操作已审批")  # 只在审批后执行一次
+        db.create_log("操作已审批")  # 本次中断获批后才执行；仍需防范其他重试
     return {"approved": approved}
 ```
 
@@ -679,7 +688,7 @@ graph.invoke(Command(resume=resume), config=config)
 
 这条和规则 2 类似，但更偏底层执行机制：恢复不是从 `interrupt()` 的下一行继续执行，而是加载 checkpoint 后重放当前节点。`interrupt()` 会用已有恢复值直接返回，不再暂停。
 
-因此，节点代码要能承受"中断前逻辑被再次执行"。凡是不能重复执行的动作，都应该放在 `interrupt()` 之后，或者做成幂等操作。
+因此，节点代码要能承受"中断前逻辑被再次执行"。把动作放在 `interrupt()` 之后，只能避免当前审批暂停导致的提前执行，并不提供 exactly-once 保证：后续中断、失败重试或进程恢复仍可能重放。不能重复执行的动作还应使用幂等键、事务或单独的可持久化任务。
 
 ### 更多模式：输入验证
 
@@ -774,3 +783,9 @@ Deep Agents 的 `interrupt_on` 已经覆盖了大多数“工具调用前审批�
 10. **扩展模式**：输入验证（单次 interrupt + 条件边回到节点）、静态中断（调试用 interrupt_before/after）
 
 下一章，我们将学习沙箱执行——让 Agent 在受控环境中安全地运行代码。
+
+## 官方参考
+
+- [Deep Agents Human-in-the-Loop](https://docs.langchain.com/oss/python/deepagents/human-in-the-loop)
+- [LangGraph Interrupts：恢复与副作用规则](https://docs.langchain.com/oss/python/langgraph/interrupts)
+- [LangChain 1.4.3 HITL 实现](https://github.com/langchain-ai/langchain/blob/be854a130153e51346d83d3b06f959b80f6cbca6/libs/langchain_v1/langchain/agents/middleware/human_in_the_loop.py)

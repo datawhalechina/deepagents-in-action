@@ -2,7 +2,7 @@
 
 > 前几章我们学习了 Deep Agents 的核心能力：虚拟文件系统、任务规划、子 Agent、Skills。Checkpointer 可以保存同一线程的状态；要让新线程也能访问用户偏好或积累的知识，还需要共享存储。本章学习如何让 Agent 拥有跨对话的记忆。
 
-配套实验：[第 8 章 Notebook：跨线程记忆与文件隔离](../notebooks/ch08/01-long-term-memory.ipynb)（也可直接阅读 [Markdown](../notebooks/ch08/01-long-term-memory.md)）。实验会检查实际文件工具结果、Store 内容与模型请求，而不只看最终回复。
+配套实验：[第 8 章 Notebook：跨线程记忆与文件隔离](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch08/01-long-term-memory.ipynb)（也可直接阅读 [Markdown](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch08/01-long-term-memory.md)）。实验会检查实际文件工具结果、Store 内容与模型请求，而不只看最终回复。
 
 ## Memory 的工作原理
 
@@ -91,7 +91,7 @@ Checkpointer 的工作原理：
 
 v0.7 允许通过同名 `SummarizationMiddleware` 原位置换默认实例。这里的“替换”是整实例替换，不会只覆盖 `trigger` 或摘要模型；自定义时要把 Backend、保留消息数、触发条件和摘要提示词作为一组完整配置重新检查。长期记忆文件也要区分写入方式：`write_file` 会完整覆盖已有内容，追加或局部修订应使用 `edit_file`。
 
-如果你需要自定义裁剪逻辑，可以用 LangChain 的 `@before_model` 中间件：
+如果你需要自定义裁剪逻辑，可以用 LangChain 的 `@before_model` 中间件。下面是**仅适用于无工具调用历史的示意片段**，`model` 和 `create_deep_agent` 沿用应用已有定义；实际 Deep Agent 的工具调用与对应 ToolMessage 必须成组保留，不能机械地只取最后三条（见[官方短期记忆文档](https://docs.langchain.com/oss/python/langchain/short-term-memory#delete-messages)的消息有效性提醒）：
 
 ```python
 from langchain.messages import RemoveMessage
@@ -107,7 +107,7 @@ def trim_messages(state: AgentState, runtime: Runtime) -> dict | None:
     if len(messages) <= 3:
         return None  # 不需要裁剪
 
-    first_msg = messages[0]  # 保留第一条（通常是系统消息）
+    first_msg = messages[0]  # 保留第一条历史消息，通常是用户消息；system_prompt 单独传入
     recent = messages[-3:]   # 保留最近 3 条
     return {
         "messages": [
@@ -175,7 +175,7 @@ def update_preferences(new_theme: str, runtime: ToolRuntime):
     from langgraph.types import Command
     from langchain.messages import ToolMessage
 
-    current_prefs = runtime.state.get("preferences", {})
+    current_prefs = dict(runtime.state.get("preferences", {}))  # 复制后更新，避免原地修改 state
     current_prefs["theme"] = new_theme
     # 通过 Command 写回 Agent State
     return Command(update={
@@ -233,6 +233,8 @@ agent.invoke(
     config={"configurable": {"thread_id": "1"}},
 )
 ```
+
+以下配置片段复用上面的 namespace 函数，默认展示 Agent Server 自动提供 Store 的部署形式。本地 Python 运行时，必须像“跨对话访问”示例那样创建 Store 并传入 `store=store`；仅配置 `StoreBackend` 不会创建存储。身份应由可信的认证层提供，不能信任用户随意提交的 `user_id` / `org_id`，生产环境也不应把缺失身份的用户统一落到默认 namespace。
 
 ### Agent 级记忆（Agent-scoped）
 
@@ -540,7 +542,7 @@ await client.store.put_item(
 
 情景记忆存储过去的**完整经历**——发生了什么、按什么顺序、结果如何。与语义记忆（事实和偏好）不同，情景记忆保留对话全貌，让 Agent 能回忆"如何解决问题"而不仅是"学到了什么"。
 
-Deep Agents 的 Checkpointer 天然支持情景记忆——每次对话都被完整持久化。要让过去的对话变得可搜索，可以包装一个搜索工具：
+配置 Checkpointer 后，LangGraph 会保存线程状态检查点，可用于构建情景记忆；是否跨重启保留取决于 Checkpointer，是否保留完整历史还取决于裁剪和保留策略。要让过去的对话变得可搜索，可以包装一个搜索工具：
 
 ```python
 from langchain_core.messages import convert_to_messages
@@ -588,20 +590,20 @@ async def search_past_conversations(query: str, runtime: ToolRuntime) -> str:
     return "\n".join(hits[:10]) or f"没有找到包含“{query}”的过去对话。"
 ```
 
-`threads.search()` 只能按元数据、状态等条件筛选线程，不接受文本查询，所以这里在客户端按关键词匹配消息正文。结果只保留前 10 条，每条以关键词为中心截取 300 个字符，避免把大量历史放进上下文。本示例只实现了关键词匹配。
+`threads.search()` 只能按元数据、状态等条件筛选线程，不接受文本查询，所以这里在客户端按关键词匹配消息正文。结果只保留前 10 条，每条以关键词为中心截取 300 个字符，避免把大量历史放进上下文。本示例只实现了最近至多 5 个线程的关键词匹配，并不是完整历史搜索。创建线程时须写入对应的 `user_id` 元数据；元数据筛选不是授权边界，服务端仍需配置访问控制。
 
 这对执行复杂多步任务的 Agent 尤为有用——比如代码 Agent 可以回溯上次调试过程，直接跳到可能的根因。
 
 ### 后台记忆整合（Background Consolidation）
 
-默认情况下 Agent 在对话中实时写入记忆（热路径）。另一种模式是在**对话间**后台处理——部署一个独立的"整合 Agent"来审查最近对话、提取关键事实、合并到记忆存储中：
+如果应用已经配置了记忆存储、写入工具和更新指令，Agent 可以在对话中写入记忆（热路径）；单独设置 `memory=` 不会自动安排写入。另一种模式是在**对话间**后台处理——部署一个独立的"整合 Agent"来审查最近对话、提取关键事实、合并到记忆存储中：
 
 | 方式 | 优点 | 缺点 |
 |---|---|---|
 | **热路径**（对话中写入） | 即时可用，对用户透明 | 增加延迟，Agent 需同时处理多任务 |
 | **后台整合**（对话间写入） | 无用户感知延迟，可跨多次对话综合 | 下次对话才可用，需额外 Agent |
 
-整合 Agent 示例：
+整合 Agent **示意片段**：下面只展示读取工具和调度入口。实际部署还需为整合 Agent 配置与主 Agent 一致的持久化 Backend、`memory=` 路径和可信用户上下文，并在 `langgraph.json` 注册；否则默认 StateBackend 的文件不会更新共享长期记忆。
 
 ```python
 from datetime import datetime, timedelta, timezone
@@ -666,7 +668,7 @@ cron_job = await client.crons.create(
 )
 ```
 
-> 注意：Cron 间隔必须与整合 Agent 的回溯窗口匹配。上例每 6 小时运行，Agent 也回溯 6 小时——两者必须同步。
+> 注意：上例省略了具体用户身份；必须给每个整合任务传入可信的 `user_id` 上下文或配置服务身份映射，否则读取工具会报缺少身份。回溯窗口至少覆盖调度间隔；生产环境应预留重试/延迟余量或保存上次处理游标，并去重，避免恰好 6 小时的窗口漏掉边界数据。
 
 ### 读写权限控制
 

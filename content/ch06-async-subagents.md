@@ -21,7 +21,8 @@
 
 ```python
 # 主 Agent 调用同步子 Agent
-result = task(name="researcher", task="深入调研 LangGraph 生态")
+# 模型发出的工具调用示意，不是直接可运行的 Python 函数
+# task(subagent_type="researcher", description="深入调研 LangGraph 生态")
 # 此时主 Agent 在等待——可能要等 60 秒、120 秒，甚至更久
 # 用户只能盯着对话框转圈
 ```
@@ -41,8 +42,8 @@ result = task(name="researcher", task="深入调研 LangGraph 生态")
 |---|---|---|
 | **执行模型** | 阻塞——主 Agent 等到完成才能继续 | 非阻塞——立即返回任务 ID |
 | **并发性** | 可并行触发，但主 Agent 仍被整批阻塞 | 完全并行，主 Agent 全程不阻塞 |
-| **中途追加指令** | ❌ 不支持 | ✅ `update_async_task` 注入新指令 |
-| **取消** | ❌ 不支持 | ✅ `cancel_async_task` 请求取消任务 |
+| **中途追加指令** | `task` 没有专用更新工具 | ✅ `update_async_task` 注入新指令 |
+| **取消** | `task` 没有专用取消工具；宿主仍可取消整次运行 | ✅ `cancel_async_task` 请求取消任务 |
 | **状态性** | 无状态——每次调用相互独立 | 有状态——子 Agent 拥有自己的会话（thread），会话历史持续累积 |
 | **典型场景** | 一问一答、毫秒级到秒级的快速委派 | 几分钟以上的研究、编码、迁移等长程任务，需要在对话中互动管理 |
 
@@ -140,7 +141,7 @@ agent = create_deep_agent(
 用户：刚才那个调研有进展吗？
 主 Agent → check_async_task("abc-123")
            ← status: running
-主 Agent ← 「还在跑，已经搜了 4 个关键词，预计还要几分钟。」
+主 Agent ← 「任务仍在运行，当前查询没有返回具体步骤或预计完成时间。」
 
 用户：补一下：重点关注 supervisor / network / hierarchical 这三种拓扑。
 主 Agent → update_async_task("abc-123", "重点关注三种拓扑：supervisor / network / hierarchical")
@@ -157,6 +158,8 @@ agent = create_deep_agent(
 
 ![异步子 Agent 时序图：用户向主 Agent 发起调研请求；主 Agent 调用 Agent Protocol 服务 launch 拿到 task_id 后立刻把控制权返还用户；后台 researcher 跑任务；用户后续询问进度，主 Agent 通过 check 拿到结果再回给用户](../public/imgs/17-sequence-async-protocol.png)
 
+以下行为按 [Deep Agents 0.7.10 异步中间件源码](https://github.com/langchain-ai/deepagents/blob/deepagents%3D%3D0.7.10/libs/deepagents/deepagents/middleware/async_subagents.py)核对。`check_async_task` 在运行中只返回状态和线程 ID，不提供步骤级进展或 ETA；若产品需要这些信息，应额外设计进度状态与读取接口。
+
 ### 5 个工具底层做了什么
 
 理解每个工具的实际行为，能帮你写出更合理的提示词：
@@ -165,7 +168,7 @@ agent = create_deep_agent(
 - **`check_async_task`（check）**：读取 run 的当前状态。若已完成，再读 thread state 拿到子 Agent 的最终输出；若仍在跑，直接告诉用户"运行中"。
 - **`update_async_task`（update）**：在**同一 thread** 上以 `interrupt` 多任务策略发起一次新 run——前一次 run 被打断，子 Agent 带着完整对话历史 + 新指令重新启动。任务 ID 保持不变。
 - **`cancel_async_task`（cancel）**：调用 `runs.cancel()` 终止远程 run，并把本地任务标记为 `"cancelled"`。
-- **`list_async_tasks`（list）**：遍历所有跟踪中的任务。已结束（success / error / cancelled）的从缓存返回；未结束的并发地向服务端拉取实时状态。
+- **`list_async_tasks`（list）**：遍历所有跟踪中的任务。已结束（success / error / cancelled / timeout / interrupted）的从缓存返回；未结束的向服务端拉取实时状态（异步实现会并发查询）。查询失败时会回退到缓存状态。
 
 ## 任务元数据为何要单开一个 channel？
 
@@ -173,7 +176,7 @@ agent = create_deep_agent(
 
 为什么不直接放在工具消息里？因为 Deep Agents 的上下文一旦逼近上限会**自动压缩对话历史**（参见第 3 章的上下文工程）。如果任务 ID 只活在某条 ToolMessage 里，压缩后就丢了——主 Agent 会瞬间"忘了"自己派出去的所有任务，再也无法 check 或 cancel。
 
-把元数据搬到独立 channel 之后：消息历史可以放心被压缩、被裁剪，主 Agent 永远能通过 `list_async_tasks` 找回**自己派过的所有任务**。
+把元数据搬到独立 channel 之后：消息历史可以放心被压缩、被裁剪，在主线程的状态仍可恢复时，主 Agent 能通过 `list_async_tasks` 找回该线程记录的任务；它不是跨所有线程的全局任务目录。
 
 > 这是 Deep Agents 一贯的设计哲学：**会被截断的放消息历史，必须长存的进 state channel**——和虚拟文件系统、TodoList 是同一套思路。
 
@@ -208,7 +211,7 @@ ASGI 优势：
 
 ### 本地最小验证方案（单部署 + ASGI，可直接复制运行）
 
-如果你只是想先确认异步子 Agent 真的能派活后立刻返回，**不需要先上远程部署**。下面这套最小示例可以直接复制到一个空目录里跑起来：
+如果你只是想先确认异步子 Agent 真的能派活后立刻返回，**不需要先上远程部署**。下面这套最小示例按 `deepagents==0.7.10` 核对，可以复制到一个空目录里运行；0.5.0 是特性引入版本，不表示后续所有预览 API 完全一致：
 
 ```text
 async-subagent-demo/
@@ -235,7 +238,7 @@ uv pip install -r requirements.txt
 `requirements.txt`：
 
 ```txt
-deepagents>=0.5.0
+deepagents==0.7.10
 langgraph
 langgraph-sdk
 langchain-openai
@@ -507,7 +510,7 @@ python run_demo.py
 3. `third response` 不会要求你重开任务，而是会尝试更新已有后台任务。
 4. 过几秒后再次问进度时，状态会从 `running` 变成 `success`，并带上 `researcher` 的最终结果。
 
-这个示例的目标不是做真实研究，而是**稳定验证异步机制本身**。一旦这套最小示例跑通，你再把 `researcher` 替换成真正的深度智能体、搜索工具或远程 HTTP 子智能体，排障成本会低很多。
+这个示例用于观察异步机制，不是确定性的自动化测试：Supervisor 的模型延迟可能超过 8 秒，首次返回时子任务也可能已完成。固定研究图只回显最新输入，不会真的把输出改成 3 条 bullet；它验证的是新指令进入子线程，真实格式遵循需换成模型驱动的子 Agent。一旦这套最小示例跑通，你再把 `researcher` 替换成真正的深度智能体、搜索工具或远程 HTTP 子智能体，排障成本会低很多。
 
 ### HTTP 传输（远程，按需切换）
 
@@ -641,7 +644,7 @@ agent = create_deep_agent(
 | 远程 HTTP 子 Agent 调用失败 | `url`、`headers`、`LANGSMITH_API_KEY` / `LANGGRAPH_API_KEY` | LangSmith 部署优先依赖环境变量；自托管服务则把鉴权头显式放进 `headers` |
 | 本地同部署能跑，远程拆分后失败 | 子 Agent 服务是否兼容 Agent Protocol | 先用 SDK 直接访问远程服务创建 thread / run，再接回 `AsyncSubAgent` |
 | 任务一直 `running` | worker 数、外部工具超时、子 Agent 是否卡在长工具调用 | 提高 `--n-jobs-per-worker`，给外部 API / 搜索 / 代码执行设置超时，避免后台 run 永久占住 worker |
-| `cancel_async_task` 后状态不立刻变化 | 服务端取消是异步生效 | cancel 后再调用一次 `check_async_task` 或 `list_async_tasks` 确认最终状态，不要只依赖本地旧消息 |
+| `cancel_async_task` 后状态不立刻变化 | 服务端取消是异步生效 | 用 `check_async_task` 再查服务端 run；`list_async_tasks` 会直接复用本地 `cancelled` 缓存，不能用它证明服务端已停止。取消也不会撤销已经发生的外部副作用 |
 | 主 Agent 查不到之前的任务 | thread / checkpoint 是否持久化 | 确保主 Agent 配置 checkpointer；任务元数据依赖 `async_tasks` channel，进程重启后需要可恢复状态 |
 | LangSmith 中 trace 对不上 | task ID、thread ID、run ID 是否记录完整 | 保留完整 task ID；用 thread ID 串联主 Agent 的 launch 工具调用和子 Agent 的实际 run |
 
@@ -655,7 +658,7 @@ LangChain 官方提供了一个完整可跑的示例仓库：[async-deep-agents]
 
 1. **核心动机**：突破同步子 Agent 的两个瓶颈——**主 Agent 不再被阻塞**，**任务可以中途追加指令或取消**。
 2. **5 把遥控器**：`start` / `check` / `update` / `cancel` / `list`，主 Agent 像调普通工具一样用它们操控后台子任务。
-3. **状态独立通道**：任务元数据存在 `async_tasks` channel 中，与消息历史解耦——即便上下文被压缩，任务 ID 永不丢失。
+3. **状态独立通道**：任务元数据存在 `async_tasks` channel 中，与消息历史解耦——消息压缩不会删除任务元数据；跨调用和重启恢复仍依赖主线程的持久化。
 4. **两种传输**：默认 ASGI（同部署、零延迟），按需切换 HTTP（远程、可独立扩缩容）。
 5. **三种拓扑**：单部署 / 拆分部署 / 混合，**起手用单部署**，按工程需要再拆。
 6. **避坑要点**：worker pool 要足够、描述要具体、永远基于实时 `check` 而非对话历史报告状态。

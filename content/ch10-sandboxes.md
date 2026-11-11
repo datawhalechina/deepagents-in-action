@@ -2,7 +2,7 @@
 
 > 能写文件、运行 Shell、安装依赖的 Agent，已经不只是“回答问题”的模型，而是能改变运行环境的执行者。本章把这份能力放进隔离沙箱：既让 Agent 可以编程、分析数据和运行测试，也让宿主机的文件、进程和凭证留在边界之外。
 
-配套实验：[沙箱执行与文件传输 Notebook](../notebooks/ch10/01-sandbox-execution-and-files.ipynb)（[Markdown 阅读版](../notebooks/ch10/01-sandbox-execution-and-files.md) · [HTML 阅读版](../notebooks/ch10/01-sandbox-execution-and-files.html)）。默认无需模型 Key，但需要 Docker Engine；通过真实本地容器观察执行、输入上传、产物下载、失败退出码与资源回收。它演示 Backend 接口，不验证远程托管 Provider。
+配套实验：[沙箱执行与文件传输 Notebook](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch10/01-sandbox-execution-and-files.ipynb)（[Markdown 阅读版](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch10/01-sandbox-execution-and-files.md) · [HTML 阅读版](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch10/01-sandbox-execution-and-files.html)）。默认无需模型 Key，但需要 Docker Engine；通过真实本地容器观察执行、输入上传、产物下载、失败退出码与资源回收。它演示 Backend 接口，不验证远程托管 Provider。
 
 本章覆盖三层不同的能力，先分清再组合：
 
@@ -23,7 +23,9 @@
 | 环境 | Backend 指向的存储 | 与宿主机隔离的远程执行环境 |
 | 典型任务 | 计划、笔记、资料读写 | 编码、测试、数据分析、产物生成 |
 
-传入沙箱 Backend 后，Deep Agents 会在每次模型调用前检查它是否实现了 `SandboxBackendProtocol`；只有满足该协议，模型才会看到 `execute` 工具。沙箱基类会把其他文件操作构造成沙箱中的脚本执行，因此提供商接入的核心通常就是可靠地实现 `execute()`。
+传入沙箱 Backend 后，Deep Agents 会在每次模型调用前检查它是否实现了 `SandboxBackendProtocol`；只有满足该协议，模型才会看到 `execute` 工具。`BaseSandbox` 通过命令或脚本实现列表、读取、搜索和删除等操作，写入则使用 `upload_files()`。在 `deepagents==0.7.15` 中，自定义子类需要实现 `execute()`、`upload_files()`、`download_files()` 和 `id`，不能只实现命令执行。
+
+`SandboxBackendProtocol` 表示命令执行能力，不保证远程运行或安全隔离；例如 `LocalShellBackend` 也实现该协议，却直接在本机执行命令。本章所说的隔离沙箱特指提供商真正实施隔离的环境。
 
 不要把 `FilesystemPermission` 当作沙箱内的命令隔离：它约束内置文件工具，但不约束 `execute`。两层能力如何组合，以及 CompositeBackend 使用沙箱默认路由时为什么只能保护已知路由，见[第 11 章：文件系统权限](../ch11-filesystem-permissions/)。
 
@@ -69,7 +71,7 @@ finally:
 | 上下文注入 | 攻击者若能影响输入，仍可诱导 Agent 在沙箱内执行命令 | 不把秘密放进沙箱；审查高风险工具；使用 HITL |
 | 网络外传 | 未限制网络时，Agent 可通过 HTTP 或 DNS 把沙箱内数据发出 | 不需要网络时阻断；最小化可访问数据；监控出站流量 |
 
-例如 Modal 支持网络阻断配置（`blockNetwork: true`）；其他提供商也应优先检查自己的网络控制能力。安全目标不是“沙箱内绝不会出错”，而是让错误、恶意输入和不可信产物不能越过宿主边界。
+例如 Modal 支持网络阻断配置（Python SDK 的 `block_network=True`）；其他提供商也应优先检查自己的网络控制能力。安全目标不是“沙箱内绝不会出错”，而是让错误、恶意输入和不可信产物不能越过宿主边界。
 
 ## 3. 快速上手：LangSmithSandbox
 
@@ -178,7 +180,7 @@ RUN pip install deepagents-code
 | 调用方 | API | 作用 |
 |---|---|---|
 | LLM / Agent | `read_file`、`write_file`、`edit_file`、`delete`、`ls`、`glob`、`grep`、`execute` | 只在沙箱内部完成任务 |
-| 宿主应用 | `upload_files()`、`download_files()` | 用 Provider 原生文件传输跨越宿主机与沙箱边界 |
+| 宿主应用 | `upload_files()`、`download_files()` | 通过 Backend 文件传输接口跨越宿主机与沙箱边界 |
 
 ![文件的两个平面：宿主应用通过 upload_files 在运行前传入输入，并在运行后通过 download_files 取回产物；Agent 工具始终运行在代码执行沙箱内](../public/imgs/31-framework-sandbox-file-planes.png)
 
@@ -209,7 +211,7 @@ for result in results:
         print(f"Failed to download {result.path}: {result.error}")
 ```
 
-传输 API 由应用控制、走 Provider 的原生传输通道，不是 Agent 运行的一条 Shell 命令。这也是输入与产物审查的天然边界。
+上传与下载 API 的调用由应用控制，具体传输方式由 Backend 实现决定，协议并不保证所有自定义 Backend 都使用 Provider 原生通道。它们是输入与产物审查的天然边界；同时，内置 `write_file` 也可能在内部使用 `upload_files()`，不能把“底层使用上传 API”等同于“不是模型触发的写入”。
 
 ## 7. 生命周期与作用域
 
@@ -219,8 +221,10 @@ for result in results:
 
 | 作用域 | 行为 | 适用情况 | 风险控制 |
 |---|---|---|---|
-| Thread-scoped（默认） | 每个对话线程一个沙箱；同一 `thread_id` 的后续轮次复用 | 每个用户任务独立 | 用 `idle_ttl_seconds` 自动回收空闲环境 |
+| Thread-scoped（推荐默认） | 每个对话线程一个沙箱；同一 `thread_id` 的后续轮次复用 | 每个用户任务独立 | 用 `idle_ttl_seconds` 自动回收空闲环境 |
 | Assistant-scoped | 同一 Assistant 的所有线程共用一个沙箱 | 需要跨对话保留仓库、依赖或缓存 | 配置 TTL，使用快照重置，或执行周期性清理 |
+
+这里的作用域由应用的创建、查找和回收逻辑实现；传入一个 `backend` 实例或设置 `thread_id` 本身不会自动创建隔离沙箱。以下是部署图工厂示意片段，假设平台提供对应配置字段、已安装模型集成并配置凭据；同步 SandboxClient 调用在高并发异步服务中还需避免阻塞事件循环。并发首次创建同名沙箱时，应处理名称冲突并重新获取已有实例。
 
 ### Thread-scoped：按对话复用
 
@@ -481,3 +485,5 @@ LangSmith traces 可以展示 Agent 在沙箱中运行了哪些 Shell 命令、�
 - [Deep Agents Backends](https://docs.langchain.com/oss/python/deepagents/backends)
 - [Deep Agents Code — Use remote sandboxes](https://docs.langchain.com/oss/deepagents/code/remote-sandboxes)
 - [LangSmith Sandboxes](https://docs.langchain.com/langsmith/sandboxes)
+- [Deep Agents 0.7.15 BaseSandbox 实现与必需方法](https://github.com/langchain-ai/deepagents/blob/0f5a2b57fa5dbb3a7d8f16dc280cb5b1506ea8c0/libs/deepagents/deepagents/backends/sandbox.py#L1411-L1430)
+- [Modal Python 网络限制](https://modal.com/docs/guide/sandbox-networking)

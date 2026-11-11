@@ -357,12 +357,11 @@ agent = create_agent(
 
 ## 代码实战：让 Agent 规划并执行研究任务
 
-让我们来看一个完整的例子——让 Agent 自主规划并执行一个多步骤研究任务：
+让我们来看一个完整的例子——让 Agent 自主规划并执行一个多步骤研究任务。运行前安装 `deepagents`（本章按 0.7 系列）、`langchain-openai` 和 `tavily-python`，并设置 `SILICONFLOW_API_KEY`、`TAVILY_API_KEY`；示例模型需在所用服务上可用：
 
 ```python
 import os
 from langchain_openai import ChatOpenAI
-from typing import Literal
 from tavily import TavilyClient
 from deepagents import create_deep_agent
 from langchain.agents.middleware import TodoListMiddleware

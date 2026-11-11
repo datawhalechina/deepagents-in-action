@@ -172,42 +172,44 @@ Deep Agents 的解决方案是引入一个**虚拟文件系统**，让 Agent 像
 
 ## Deep Agents vs 竞品对比
 
-市场上有三个主要的 Agent Harness：Deep Agents、Claude Agent SDK、Codex SDK。我们来看看它们的异同。
+下面选取三个常见的 Agent Harness / SDK：Deep Agents、Claude Agent SDK、Codex SDK。比较的是 SDK 的集成方式，不代表市场上只有这三种选择。
 
 ### 定位差异
 
 | 维度 | Deep Agents | Claude Agent SDK | Codex SDK |
 |---|---|---|---|
-| **用途** | 通用 Agent（含编程） | 自定义 AI 编程 Agent | 预构建的编程 Agent |
+| **用途** | 通用 Agent（含编程） | 将 Claude Code 的 Agent 循环嵌入自定义应用 | 将 Codex 编程 Agent 嵌入自定义应用 |
 | **模型支持** | 模型无关（Anthropic、OpenAI、Google、开源等 100+） | 绑定 Claude 系列 | 绑定 OpenAI 系列 |
 | **SDK 语言** | Python + TypeScript | Python + TypeScript | TypeScript |
-| **执行环境** | 本地 + 远程沙箱 + 虚拟文件系统 | 本地 | 本地运行 Codex CLI；托管云端运行由 Agents API 提供 |
+| **执行环境** | 本地 + 远程沙箱 + 虚拟文件系统 | 在应用管理的进程中运行，可部署到容器或云端主机 | TypeScript SDK 启动并封装 Codex CLI 进程 |
 | **开源协议** | MIT | MIT（底层 Claude Code 专有） | Apache-2.0 |
 
 ### 核心能力对比
 
-三者在核心工具层面非常接近——文件读写、Shell 执行、搜索、规划、子 Agent、MCP、人机协作、Skills——都有覆盖。
+三者都围绕模型循环、文件操作与工具执行提供集成能力，但规划、子 Agent、MCP、Skills 和审批的接口、默认配置及 SDK 暴露范围并不完全相同，不能把 CLI 的所有能力都视为对应 SDK 的同名 API。
 
 真正的差异在架构层面：
 
-**Deep Agents 的独有优势：**
+**Deep Agents 的主要特点：**
 
 - **模型灵活性**：随时切换模型提供商，不锁定任何厂商。这对企业级应用至关重要
-- **长期记忆（Long-term Memory）**：通过 Memory Store 实现跨会话、跨线程的持久化记忆。Claude Agent SDK 和 Codex SDK 都不支持这一特性
+- **长期记忆（Long-term Memory）**：通过 LangGraph Store 与可插拔 Backend 实现跨线程存储，并用 `memory=` 加载指定记忆文件。这是 Deep Agents 的集成方式；其他 SDK 也能结合文件、会话或自定义工具保存信息，不能笼统说它们“不支持记忆”
 - **虚拟文件系统 + 可插拔后端**：将文件操作抽象为统一接口，后端可以是内存、磁盘、数据库或沙箱
 - **沙箱作为执行后端**：Agent 的调度循环与执行环境可以分离，将文件或代码操作交给远程沙箱；Deep Agents 通过 Backend 接入这类架构
-- **生产部署**：通过 LangGraph Platform 部署，配合 LangSmith 实现完整的可观测性
+- **生产部署**：可通过 LangSmith Deployment（原 LangGraph Platform）部署，并结合 LangSmith 追踪运行
 
-**Claude Agent SDK 的独有优势：**
+**Claude Agent SDK 的主要特点：**
 
 - 与 Claude 模型的深度集成
 - Hooks 系统，便于拦截和控制 Agent 行为
-- 支持自定义 HTTP/WebSocket 层和容器化部署
+- 可在自己的服务中封装 HTTP/WebSocket 接口，并部署到容器；这些是应用部署选择，不是 SDK 独有的内置服务端能力
 
-**Codex SDK 的独有优势：**
+**Codex SDK / CLI 的主要特点：**
 
 - OS 级别的沙箱模式（`read-only`、`workspace-write`、`danger-full-access`）
-- 内置 MCP Server 模式
+- Codex CLI 可作为 MCP Server；这与 TypeScript SDK 封装 CLI 的接口是两种集成方式
+
+比较入口见 [Claude Agent SDK 官方概览](https://platform.claude.com/docs/en/agent-sdk/overview) 和 [Codex TypeScript SDK 官方说明](https://github.com/openai/codex/tree/main/sdk/typescript)。SDK 与 CLI 的能力会继续演进，应按选用版本核对接口。
 
 ![三大 Agent Harness 对比：Deep Agents（模型无关、虚拟文件系统、长期记忆）、Claude Agent SDK（Claude 深度集成、Hooks 系统）、Codex SDK（OS 级沙箱、MCP Server 模式），共同能力包括文件读写、Shell 执行、规划、子 Agent 等](../public/imgs/03-comparison-harness-competitors.png)
 
@@ -255,7 +257,7 @@ Deep Agents 的解决方案是引入一个**虚拟文件系统**，让 Agent 像
 记忆也需要分清两件事：`memory=` 指定启动时加载哪些记忆文件，文件能否跨线程保存则取决于存储后端；Checkpointer 保存的是线程执行状态。完整配置见[第 8 章](../ch08-long-term-memory/)。
 
 > [!NOTE]
-> **v0.7 能力与默认值**：图中展示的是整体能力及装配关系。标准配置会装配文件系统、子 Agent 和摘要等核心能力；任务规划需要显式传入 `TodoListMiddleware`，Skills、记忆加载与人工审批需要相应配置，`execute` 需要支持执行的沙箱后端，Interpreter 也需要单独启用。实际可执行的操作还会受 Backend 能力、权限与 Harness profile 影响；支持某项能力不代表每个任务都会调用它。默认基础提示词为空，业务提示词由应用定义。版本变化见 [v0.7 更新章](../release-v0-7/)，能力分类参考 [官方 Overview](https://docs.langchain.com/oss/python/deepagents/overview#core-capabilities)。
+> **v0.7 能力与默认值**：图中展示的是整体能力及装配关系。标准配置会装配文件系统、子 Agent 和摘要等核心能力；任务规划需要显式传入 `TodoListMiddleware`，Skills、记忆加载与人工审批需要相应配置，`execute` 需要支持执行的 Backend（包括没有沙箱隔离的 `LocalShellBackend`），Interpreter 也需要单独启用。实际可执行的操作还会受 Backend 能力、权限与 Harness profile 影响；支持某项能力不代表每个任务都会调用它。默认基础提示词为空，业务提示词由应用定义。版本变化见 [v0.7 更新章](../release-v0-7/)，能力分类参考 [官方 Overview](https://docs.langchain.com/oss/python/deepagents/overview#core-capabilities)。
 
 ## 小结
 

@@ -54,7 +54,7 @@ v0.7 还调整了读取与搜索结果的边界：`read_file` 会返回分页信
 # 默认最多读取前 100 行
 read_file("/workspace/report.md")
 
-# 从第 100 行开始，读取 50 行
+# offset 从 0 开始：跳过前 100 行，从第 101 行读取 50 行
 read_file("/workspace/report.md", offset=100, limit=50)
 ```
 
@@ -69,7 +69,7 @@ read_file("/workspace/report.md", offset=100, limit=50)
 | 音频 | `.wav` `.mp3` `.aiff` `.aac` `.ogg` `.flac` |
 | 文档 | `.pdf` `.ppt` `.pptx` |
 
-这意味着 Agent 可以直接处理截图、录音、演示文稿——不再局限于纯文本工作流。
+这里的“支持”指文件工具能够构造多模态内容块，不保证每个模型供应商都接受每一种格式。还需要 Backend 能提供相应二进制内容，并选择支持该输入模态的模型；不支持的格式应先转换。v0.7 的视频抽帧还需要安装 `deepagents[video]` 可选依赖，此时 `offset` / `limit` 表示秒数，而不是文本行数。
 
 ### `grep`：三种输出模式
 
@@ -93,10 +93,10 @@ grep("def create_agent", output_mode="content")
 
 ### 大结果自动卸载
 
-当工具调用的输入或输出超过 20,000 tokens 时（可通过 `tool_token_limit_before_evict` 配置），Deep Agents 会自动：
+当适用的工具**返回结果**超过约 20,000 tokens 时（按字符数估算，可通过 `FilesystemMiddleware(tool_token_limit_before_evict=...)` 配置），Deep Agents 会尝试自动卸载。该阈值不针对工具调用参数；`read_file`、`ls`、`glob`、`grep` 等内置文件工具不走这条通用卸载路径。Backend 写入成功时：
 
 1. 将完整内容**写入虚拟文件系统**
-2. 在对话历史中**替换为文件路径引用** + 前 10 行预览
+2. 在对话历史中**替换为文件路径引用** + 开头 5 行和末尾 5 行预览
 3. Agent 需要时可以**按需读回**
 
 比如 Agent 调用搜索工具返回了大量结果：
@@ -106,14 +106,14 @@ grep("def create_agent", output_mode="content")
 
 自动卸载后：
 "结果已保存到 /workspace/search_results_001.md，
- 前 10 行预览：
+ 首尾预览（示意，不是固定返回格式）：
    1  # Search Results for 'LangGraph'
    2
    3  ## Result 1: Official Documentation
    4  ..."
 ```
 
-这个机制是**完全自动的**——Agent 不需要手动管理，但可以随时通过 `read_file` 或 `grep` 重新访问完整内容。
+这个机制不需要 Agent 手动发起写文件；能否读回取决于 Backend 写入是否成功和文件是否仍可用。超长用户消息另有 `human_message_token_limit_before_evict` 配置，默认约 50,000 tokens，不能与工具结果的 20,000 阈值混为一谈。实现见 [v0.7.0 文件系统中间件](https://github.com/langchain-ai/deepagents/blob/deepagents%3D%3D0.7.0/libs/deepagents/deepagents/middleware/filesystem.py) 和[首尾预览实现](https://github.com/langchain-ai/deepagents/blob/deepagents%3D%3D0.7.0/libs/deepagents/deepagents/middleware/_message_eviction.py)。
 
 ### 对话历史总结
 
@@ -133,6 +133,8 @@ grep("def create_agent", output_mode="content")
 
 Deep Agents 的后端是**可插拔的**——你可以根据场景选择不同的存储策略。
 
+以下 Backend 配置均为**示意片段**，复用第 2 章已初始化的 `model` 与 `create_deep_agent`；跨片段使用的后端类型也需先导入。`sandbox` 代表应用自行创建的沙箱实例。
+
 ### StateBackend（默认）：临时存储
 
 ```python
@@ -144,8 +146,8 @@ agent = create_deep_agent(model=model)
 
 文件存在 LangGraph 的 Agent State 中。特点：
 
-- 同一个对话线程内**持久化**（多轮对话不丢失）
-- 对话结束后**丢失**（换一个 thread 就没了）
+- 文件属于线程 State；本地多次 `invoke()` 要接入 Checkpointer 并复用同一 `thread_id`，或显式传回状态，才能延续文件
+- 新线程不会自动继承旧线程文件；旧文件是否还能恢复取决于 Checkpointer 的保存与清理策略，并非“结束对话”就立即删除
 - 主 Agent 和子 Agent **共享**文件
 
 适合场景：大多数情况下的默认选择，Agent 的"草稿纸"。
@@ -164,12 +166,12 @@ agent = create_deep_agent(
 文件直接读写**本地文件系统**。特点：
 
 - `root_dir` 指定 Agent 可访问的根目录；相对路径会被解析为绝对路径（`Path(root_dir).resolve()`），`"."` 即当前工作目录
-- `virtual_mode=True` 启用路径沙箱（阻止 `..`、`~` 及越界的绝对路径），**强烈建议开启**；若为默认的 `virtual_mode=False`，即使设了 `root_dir` 也不提供任何越界保护
-- 文件修改是**永久的、不可逆的**
+- v0.7 的 `virtual_mode` 默认是 `True`：按虚拟根目录解析路径，并检查路径越界；这不是进程隔离或安全沙箱。显式设为 `False` 时，绝对路径可绕过 `root_dir`，仅适合可信的本地开发
+- 修改直接落到磁盘，不会随线程自动回滚；恢复依赖 Git、备份或应用另行实现的机制
 
 适合场景：本地开发 CLI（编程助手）、CI/CD 流水线。
 
-> 💡 `virtual_mode` 从 0.5.0 起不显式声明会有弃用警告，0.6.0 起变为必填。建议直接写 `virtual_mode=True` 开启路径沙箱。
+> 💡 以 [v0.7.0 的构造函数与安全说明](https://github.com/langchain-ai/deepagents/blob/deepagents%3D%3D0.7.0/libs/deepagents/deepagents/backends/filesystem.py#L125-L170) 为准，`virtual_mode` 不是必填参数。示例仍显式写出 `True`，便于看清路径语义与边界。
 
 > ⚠️ 安全提示：Agent 可以读取 `root_dir` 下所有文件，包括 `.env`、密钥等敏感文件。Web 服务或 API 场景中切勿使用此后端，应改用沙箱后端。建议配合 Human-in-the-Loop 使用。
 
@@ -198,7 +200,7 @@ agent = create_deep_agent(
 如果确实要在个人开发机中临时使用，至少做几层防护：
 
 - 将 `root_dir` 指向一个专门的临时工作区，而不是用户主目录或整个仓库上级目录
-- 显式设置 `virtual_mode=True`，并用最小化的 `env` / `PATH` 降低命令可见范围
+- 显式设置 `virtual_mode=True` 统一文件工具的路径语义，并用最小化的 `env` / `PATH` 减少环境变量暴露；这些设置都不能限制 Shell 对宿主机文件和可执行程序的访问
 - 不把 `.env`、私钥、云凭证、生产配置文件放进 Agent 可访问目录
 - 对 `rm`、`mv`、安装依赖、修改配置、访问网络等高风险操作增加 Human-in-the-Loop 审批
 - 需要运行不可信代码、处理用户上传文件或对外提供服务时，直接换用沙箱后端，不要用 `LocalShellBackend`
@@ -222,7 +224,7 @@ agent = create_deep_agent(
 
 - **跨线程持久化**——不同对话都能访问同一份文件
 - `namespace` 参数控制数据隔离：`lambda rt: (rt.server_info.user.identity,)` 按用户隔离，防止数据混用
-- 开发用 `InMemoryStore`，部署到 LangSmith 时省略 `store` 参数（平台自动配置）
+- 开发用 `InMemoryStore`，可在同一 Store 实例存活期间跨线程共享，但进程重启后数据会丢失；生产应使用持久化 Store。部署到 LangSmith Deployment 时可省略 `store` 参数，由平台配置
 
 适合场景：长期记忆、跨会话的用户偏好、累积的知识库。
 
@@ -267,7 +269,7 @@ agent = create_deep_agent(
 
 - Agent 写入 `/workspace/plan.md` → StateBackend（临时）
 - Agent 写入 `/memories/preferences.txt` → StoreBackend（持久化，按用户隔离）
-- `ls`、`glob`、`grep` 自动聚合所有后端的结果，路径前缀保留
+- 路径命中路由时，操作交给对应后端；根目录 `ls` 列出默认后端内容及挂载目录，跨路由的 `glob` / `grep` 按查询范围合并结果，并恢复路径前缀
 
 这种设计让 Agent 既有快速的"草稿纸"（State），又有持久的"记忆库"（Store），通过路径前缀自然隔离。
 
@@ -292,7 +294,7 @@ agent = create_deep_agent(
 
 | 场景 | 推荐后端 | 理由 |
 |---|---|---|
-| 学习和实验 | StateBackend（默认） | 零配置，自动清理 |
+| 学习和实验 | StateBackend（默认） | 零配置，文件随线程状态管理 |
 | 本地编程助手 | FilesystemBackend | 直接操作项目文件 |
 | 需要跨会话记忆 | CompositeBackend | 混合临时 + 持久化 |
 | 需要执行代码 | 沙箱后端 | 安全隔离 |

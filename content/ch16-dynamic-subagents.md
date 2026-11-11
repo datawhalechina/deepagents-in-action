@@ -6,11 +6,11 @@
 
 本章先说明如何准备子 Agent 并触发 `workflow`，再用工单分流、代码审查和死代码排查三个例子展示主 LLM 可能生成的编排代码。除了分清 `task()` 和普通 `task` Tool，还要知道怎样定义可用角色、描述处理流程，并检查输入范围、调度约束和停止条件。
 
-Dynamic Subagents 依赖的 Interpreter Runtime 仍处于 Beta 阶段，接口和生命周期可能继续变化。运行环境需要 Python 3.11+ 与 `langchain-quickjs>=0.2.0`；本章在 `deepagents==0.7.8`、`langchain-quickjs==0.3.5` 中核对接口和运行时限制。
+Dynamic Subagents 依赖的 Interpreter Runtime 仍处于 Beta 阶段，接口和生命周期可能继续变化。运行环境需要 Python 3.11+；请使用下文核对的 `langchain-quickjs==0.3.5`，不要把更早的 Beta 版本视为相同实现；本章在 `deepagents==0.7.8`、`langchain-quickjs==0.3.5` 中核对接口和运行时限制。
 
 ## 1. 从单次委派到动态编排
 
-Deep Agents 已经可以通过普通 `task` Tool 把工作交给子 Agent。主 Agent 每次决定一个 `description` 和一个 `subagent_type`，等待该子 Agent 完成，再继续自己的推理循环。
+Deep Agents 已经可以通过普通 `task` Tool 把工作交给子 Agent。主 Agent 为每次调用决定 `description` 和 `subagent_type`，也可以在同一轮发出多个普通 `task` 调用；拿到结果后，再继续自己的推理循环。
 
 这种方式没有问题，只是控制粒度不同：
 
@@ -147,9 +147,12 @@ subagents = [
 ]
 ```
 
-把角色表和 Interpreter 中间件一起交给主 Agent：
+把角色表和 Interpreter 中间件一起交给主 Agent。下面是示意片段，`model` 为已初始化的聊天模型；代码审查还需配置能读取目标仓库的 Backend，默认 StateBackend 并不会自动看到本机仓库。
 
 ```python
+from deepagents import create_deep_agent
+from langchain_quickjs import CodeInterpreterMiddleware
+
 agent = create_deep_agent(
     model=model,
     subagents=subagents,
@@ -309,7 +312,8 @@ for (let round = 0; round < 5; round += 1) {
     subagentType: "analyzer",
     responseSchema: itemsSchema,
   });
-  const fresh = items.filter((item) => !seen.has(item.id)).slice(0, 20);
+  const uniqueItems = [...new Map(items.map((item) => [item.id, item])).values()];
+  const fresh = uniqueItems.filter((item) => !seen.has(item.id)).slice(0, 20);
   if (fresh.length === 0) {
     stopReason = "本轮没有新增项";
     break;
@@ -348,7 +352,7 @@ middleware = CodeInterpreterMiddleware(
 | 参数 | 默认值 | 对 Dynamic Subagents 的影响 |
 |---|---|---|
 | `memory_limit` | 64 MB | 限制每个 Interpreter thread 的 QuickJS 堆内存；文件列表、候选结果和汇总变量都在这里占用空间 |
-| `timeout` | 5 秒 | 限制每次 `eval`；动态调度、等待结果和合并逻辑都发生在这次调用里 |
+| `timeout` | 5 秒 | 限制 JavaScript 执行预算；等待异步 `task()` / PTC 宿主调用的时间不计入，不是整个工作流的截止时间 |
 | `tool_name` | `"eval"` | 决定主 LLM 看到的 Interpreter Tool 名称；修改后，提示词和审批配置也要使用新名称 |
 | `capture_console` | `True` | 决定是否把 `console.log`、`warn`、`error` 返回给主 LLM；调试调度代码时很有用 |
 | `max_result_chars` | 4000 | 截断返回给主 LLM 的结果、错误和控制台文本；汇总过长时会直接影响后续判断 |
@@ -359,6 +363,10 @@ middleware = CodeInterpreterMiddleware(
 | `max_snapshot_bytes` | `None` | 限制快照大小；未设置时使用 `memory_limit`，超限快照不会继续保留 |
 
 这里最容易混淆的是 `max_ptc_calls`。它限制 `tools.glob(...)`、`tools.webSearch(...)` 这类 PTC 调用，不限制 `task()` 数量。当前配置表里没有单独的 `max_task_calls` 参数；动态调度数量需要通过输入批次、循环上限、Prompt 约束和业务预算控制。
+
+还要单独处理审批边界：`task()` 在已经进入的 `eval` 内直接调度子 Agent，**不会逐次触发父 Agent 的 `interrupt_on["task"]` 审批**。需要审批整段编排时，对 `eval` 设置审批；子 Agent 内的敏感工具应在其自身配置审批。若业务要求父级逐次批准委派，应设置 `CodeInterpreterMiddleware(subagents=False)`，保留普通 `task` Tool 路径。这个开关不等于禁用 Agent 的普通委派工具。
+
+异步宿主调用的等待时间不计入 QuickJS `timeout`，所以还应为子 Agent 的模型、网络工具与整次运行分别设置超时或取消策略。仅把示例改成 `timeout=30.0`，并不能保证 30 秒内结束所有审查。
 
 `responseSchema` 也不是中间件参数，它属于每次 `task()` 的调用契约。Schema 只保证返回形状可组合，不保证结论正确。汇总时仍要保留来源文件、行号、证据、复核状态和稳定 ID，方便去重与回查。
 
@@ -380,3 +388,6 @@ middleware = CodeInterpreterMiddleware(
 - [Deep Agents Subagents](https://docs.langchain.com/oss/python/deepagents/subagents)
 - [Deep Agents Human-in-the-Loop](https://docs.langchain.com/oss/python/deepagents/human-in-the-loop)
 - [Deep Agents Event Streaming](https://docs.langchain.com/oss/python/deepagents/event-streaming)
+
+- [`langchain-quickjs==0.3.5` 的调度与审批边界](https://github.com/langchain-ai/deepagents/blob/a559f720d94eb8e7d14f96dbdad816dc9f7e3636/libs/partners/quickjs/langchain_quickjs/middleware.py#L152-L161)
+- [`quickjs-rs v0.2.5` 的异步超时语义](https://github.com/langchain-ai/quickjs-rs/blob/v0.2.5/quickjs_rs/context.py#L520-L521)

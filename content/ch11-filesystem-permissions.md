@@ -2,12 +2,14 @@
 
 > 文件系统让 Agent 能把上下文写进文件，也把真实的副作用带进运行时。权限配置要明确三件事：可以执行的操作、可以访问的路径，以及必须由人确认的动作。本章使用 `FilesystemPermission` 把这些边界写成可审查的声明式规则。
 
-配套实验：[文件系统权限 Notebook](../notebooks/ch11/01-filesystem-permissions.ipynb)（[Markdown 阅读版](../notebooks/ch11/01-filesystem-permissions.md) · [HTML 阅读版](../notebooks/ch11/01-filesystem-permissions.html)）。在自动清理的教学临时目录中，对照规则顺序、默认允许、拒绝后的实际文件与审批前后写入；默认无需模型 Key 或外部服务。
+配套实验：[文件系统权限 Notebook](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch11/01-filesystem-permissions.ipynb)（[Markdown 阅读版](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch11/01-filesystem-permissions.md) · [HTML 阅读版](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch11/01-filesystem-permissions.html)）。在自动清理的教学临时目录中，对照规则顺序、默认允许、拒绝后的实际文件与审批前后写入；默认无需模型 Key 或外部服务。
 
 本章基于当前 Deep Agents 官方 Permissions 文档，涉及两个最低版本：
 
 - `allow` / `deny` 基础权限需要 `deepagents>=0.5.2`
 - `interrupt` 人工审批模式需要 `deepagents>=0.6.8`
+
+后续配置代码为示意片段，`model`、`backend`、`sandbox`、`memories_backend` 等由应用提供；涉及 `rt.server_info` 或 `rt.context.org_id` 时，还需要运行平台提供身份信息、应用定义 Context，并配置 Store。本章以 `deepagents==0.7.15` 核对权限行为。
 
 如果还不熟悉 Backend 与虚拟路径，先阅读[第 3 章：虚拟文件系统](../ch03-virtual-filesystem/)；如果需要完整的暂停与恢复流程，配合[第 9 章：Human-in-the-Loop](../ch09-human-in-the-loop/)阅读。
 
@@ -465,7 +467,7 @@ backend = GuardedBackend(
 
 `PolicyWrapper` 是 Policy Hook 的一种通用实现。它是官方示例中的自定义类，需要由应用自行实现，并不是可以直接从 Deep Agents 导入的内置 Backend。它自己不存储文件，而是实现与内部 Backend 相同的 `BackendProtocol`，并通过 `inner` 字段持有真正负责存储的 Backend。
 
-下面的示例为一组目录前缀增加只读保护：读取类操作直接交给内部 Backend，写入和编辑则先经过 Policy Hook。
+下面是部分协议实现的示意片段，只演示 `write` / `edit` 策略和读取转发，不是完整的只读安全边界；删除、上传、路径规范化与符号链接检查均未实现。需要生产级只读保护时，优先使用前面的 `FilesystemPermission`，并分别控制直接 Backend 调用和其他入口。
 
 ```python
 from deepagents.backends.protocol import (
@@ -555,7 +557,7 @@ PolicyWrapper.write(...)
 
 > **CompositeBackend 路由内的路径语义**：如果把包装器放在 `routes={"/skills/": PolicyWrapper(...)}` 内部，`CompositeBackend` 会先剥离 `/skills/`，因此包装器看到的是 `/test-skill/SKILL.md`，而不是 `/skills/test-skill/SKILL.md`。此时 `deny_prefixes=["/skills/"]` 不会命中。若目标只是让整条 `/skills/**` 路由只读，优先在 Agent 层使用 `FilesystemPermission(paths=["/skills/**"], operations=["write"], mode="deny")`；确实需要内部动态策略时，可用 `deny_prefixes=["/"]` 覆盖该路由 Backend 的全部写入。
 
-这段代码尚未实现 `delete()`。如果所用 Backend 和工具集支持删除，应按同一模式增加 `delete()` 与 `DeleteResult`，否则删除操作可能绕过这项策略。
+这两个示例的删除行为不同：`GuardedBackend` 继承真实 Backend 的 `delete()`，因此未额外拦截时删除会绕过示例策略；`PolicyWrapper` 则继承 `BackendProtocol.delete()` 的默认 `NotImplementedError`，不会自动转发给 `inner`。若要支持删除，应显式实现 `delete()` 并返回 `DeleteResult`，且必须检查目录内受保护的后代，不能只检查目标前缀。需要上传、下载能力时也须显式实现对应方法；直接上传同样可能产生写入。
 
 | 需求 | 推荐机制 |
 |---|---|
@@ -632,3 +634,4 @@ PolicyWrapper.write(...)
 - [Deep Agents Memory](https://docs.langchain.com/oss/python/deepagents/memory)
 - [Deep Agents Sandboxes](https://docs.langchain.com/oss/python/deepagents/sandboxes)
 - [FilesystemPermission API Reference](https://reference.langchain.com/python/deepagents/middleware/permissions/FilesystemPermission)
+- [Deep Agents 0.7.15 BackendProtocol：默认删除与文件传输方法](https://github.com/langchain-ai/deepagents/blob/0f5a2b57fa5dbb3a7d8f16dc280cb5b1506ea8c0/libs/deepagents/deepagents/backends/protocol.py#L722-L785)

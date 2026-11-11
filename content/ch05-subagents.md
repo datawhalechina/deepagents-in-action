@@ -81,7 +81,7 @@ agent = create_deep_agent(
 | `name` | ✅ | — | 唯一标识符，主 Agent 通过它指定委派给谁；同时作为流式输出和追踪中的 `lc_agent_name` 元数据 |
 | `description` | ✅ | — | 描述子 Agent 的能力，主 Agent 靠它决策路由 |
 | `system_prompt` | ✅ | ❌ 不继承 | 子 Agent 自己的指令，需要独立定义 |
-| `tools` | 可选 | ✅ 默认继承，指定后完全替换 | 子 Agent 工具集；不指定则继承主 Agent 的所有工具，指定后完全替换（不合并） |
+| `tools` | 可选 | ✅ 默认继承，指定后完全替换 | 子 Agent 工具集；不指定则继承主 Agent 显式传入的 `tools`，指定后替换这一部分；默认中间件注入的文件工具不因此移除 |
 | `model` | 可选 | ✅ 默认继承 | 可指定不同模型，支持 LangChain 对象或 `"provider:model"` 字符串（如 `"openai:gpt-5.4"`） |
 | `middleware` | 可选 | ❌ 不继承 | 子 Agent 自己的中间件 |
 | `interrupt_on` | 可选 | ✅ 默认继承 | 子 Agent 的人工审批配置，可覆盖主 Agent |
@@ -123,7 +123,9 @@ General-purpose 子 Agent 的作用是**上下文隔离**——它复用主 Agen
 
 ### 禁用 general-purpose 子 Agent
 
-如果你不想让 Agent 拥有 `task` 工具，可以完全禁用子 Agent 机制：
+如果你不想让 Agent 拥有 `task` 工具，可以禁用默认通用子 Agent，并且不注册其他同步子 Agent。
+
+**示意片段**：`model` 沿用应用已初始化的模型，下面的 profile key 必须与它匹配：
 
 ```python
 from deepagents import create_deep_agent
@@ -147,6 +149,8 @@ agent = create_deep_agent(
 ```
 
 > ⚠️ 不要用 `excluded_middleware` 来排除 `SubAgentMiddleware`——这会直接抛出 `ValueError`。正确做法是通过 `GeneralPurposeSubagentProfile(enabled=False)` 关闭。
+
+这里的 `model` 必须是与已注册 profile key 匹配的模型，例如前文的 `ChatOpenAI(model="zai-org/GLM-5.2", ...)`；不能把该 key 原样用于其他模型。
 
 ### 覆盖 general-purpose 子 Agent
 
@@ -307,7 +311,7 @@ agent = create_deep_agent(
 
 ## 结构化输出：让子 Agent 返回 JSON
 
-默认情况下，主 Agent 收到的是子 Agent 最后一条消息的自由文本。通过 `response_format` 字段，可以让子 Agent 返回符合 Pydantic schema 的 JSON，方便主 Agent 程序化处理：
+默认情况下，主 Agent 收到子 Agent 的文本结果；0.7.10 会从后向前寻找最后一条含非空文本的 AI 消息。通过 `response_format` 字段，可以让子 Agent 返回符合 Pydantic schema 的 JSON，方便主 Agent 程序化处理：
 
 > **示意片段**：`model` 和 `internet_search` 沿用应用已有定义，这里只展示 `response_format` 的配置方式。
 
@@ -333,7 +337,7 @@ agent = create_deep_agent(model=model, subagents=[research_subagent])
 # '{"summary": "...", "confidence": 0.87, "sources": ["https://..."]}'
 ```
 
-不设置 `response_format` 时主 Agent 收到自由文本；设置后主 Agent 始终收到符合 schema 的有效 JSON。
+子 Agent 成功生成 `structured_response` 时，中间件会将它序列化为 JSON 返回（见 [0.7.10 返回逻辑](https://github.com/langchain-ai/deepagents/blob/deepagents%3D%3D0.7.10/libs/deepagents/deepagents/middleware/subagents.py#L474-L512)）。模型或工具仍可能失败，设置 schema 不代表每次委派必定成功；应用应保留错误处理和结果校验。
 
 ## 子 Agent 最佳实践
 
