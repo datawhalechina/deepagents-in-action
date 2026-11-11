@@ -58,7 +58,7 @@ test('beginner route offers the published FAQ when setup or learning order is un
   const route = homepage.match(/<aside\b[^>]*class="learning-route"[^>]*>([\s\S]*?)<\/aside>/)?.[1];
   assert.ok(route);
   assert.match(route, /href="\/deepagents-in-action\/chapters\/pre03-task1-faq\/"/);
-  assert.match(route, /叶静的 FAQ/);
+  assert.match(route, /叶静的学习笔记/);
   assert.equal(manifest['pre03-task1-faq']?.published, true);
 });
 

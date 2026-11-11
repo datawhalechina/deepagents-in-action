@@ -16,7 +16,7 @@ before(() => {
 test('FAQ is published as an unnumbered preparation chapter', () => {
   assert.equal(existsSync(faqPath), true, 'The FAQ route must be generated');
   const page = readFileSync(faqPath, 'utf8');
-  assert.match(page, /<h1[^>]*>\s*叶静的常见问题与排障（FAQ）\s*<\/h1>/);
+  assert.match(page, /<h1[^>]*>\s*叶静的学习笔记\s*<\/h1>/);
   assert.doesNotMatch(page, /EP\.00|第 0 章|\/pdfs\/pre03-task1-faq/);
 });
 
@@ -52,18 +52,18 @@ test('every FAQ contents link and authored fragment resolves to a unique heading
 
 test('FAQ is named for Ye Jing throughout page metadata, directory cards and adjacent navigation', () => {
   const manifest = JSON.parse(readFileSync(new URL('./chapters.json', import.meta.url), 'utf8'));
-  assert.equal(manifest['pre03-task1-faq'].title, '叶静的常见问题与排障（FAQ）');
+  assert.equal(manifest['pre03-task1-faq'].title, '叶静的学习笔记');
   const faq = readFileSync(faqPath, 'utf8');
-  assert.match(faq, /<title>叶静的常见问题与排障（FAQ） — Deep Agents 实战<\/title>/);
+  assert.match(faq, /<title>叶静的学习笔记 — Deep Agents 实战<\/title>/);
   for (const path of ['index.html', 'chapters/pre01-agentseek-create/index.html', 'chapters/pre02-agentseek-skills/index.html', 'chapters/ch07-skills/index.html']) {
     const page = readBuilt(path);
-    assert.ok(page.includes('叶静的常见问题与排障（FAQ）'), `${path} shows the course-wide title`);
+    assert.ok(page.includes('叶静的学习笔记'), `${path} shows the course-wide title`);
     assert.ok(!page.includes('Task1 常见问题与排障'), `${path} must not scope the FAQ title to Task1`);
   }
   const source = readFileSync(new URL('../content/pre03-task1-faq.md', import.meta.url), 'utf8');
-  assert.match(source, /^# 叶静的常见问题与排障（FAQ）/);
+  assert.match(source, /^# 叶静的学习笔记/);
   assert.match(source, /Q1：Task1 到底要完成什么/);
-  assert.match(readFileSync(new URL('../README.md', import.meta.url), 'utf8'), /\[叶静的常见问题与排障（FAQ）\]/);
+  assert.match(readFileSync(new URL('../README.md', import.meta.url), 'utf8'), /\[叶静的学习笔记\]/);
 });
 
 
