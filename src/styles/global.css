@@ -2,8 +2,8 @@
 @plugin "@tailwindcss/typography";
 
 @theme inline {
-  --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-  --font-serif: "LXGW WenKai", "Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, serif;
+  /* Clear Chinese text, with native fallbacks when webfonts are unavailable. */
+  --font-sans: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
 
   /* 浅色模式（默认） */
