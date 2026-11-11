@@ -40,5 +40,8 @@ jobs:
       - name: Test content image path handling
         run: npm run assets:test
 
+      - name: Test documentation and chapter navigation
+        run: npm run docs:test
+
       - name: Validate assets and content references
         run: npm run assets:check
