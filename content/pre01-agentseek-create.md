@@ -1,5 +1,7 @@
 # AgentSeek 准备篇（上）：用生命周期工作流启动 DeepAgents 模板
 
+> 首次运行或排障遇到问题？查看 [叶静的常见问题与排障（FAQ）](../pre03-task1-faq/)，按环境、网络、配置、追踪和成本定位。
+
 > 完成本章后，你会得到一个可运行的 DeepAgents 研究应用。AgentSeek 会负责检查环境、安装项目依赖并启动前后端。
 >
 > 本文命令于 2026-08-18 使用 AgentSeek `0.1.2` 验证。AgentSeek 和模板会继续更新；如果任务名称与本文不同，以 `agentseek task --list` 的输出为准。

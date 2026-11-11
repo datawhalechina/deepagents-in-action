@@ -1,5 +1,7 @@
 # AgentSeek 准备篇（下）：为 AI 编码助手安装开发技能
 
+> 首次运行或排障遇到问题？查看 [叶静的常见问题与排障（FAQ）](../pre03-task1-faq/)，按环境、网络、配置、追踪和成本定位。
+
 > 完成本章后，Codex、Claude Code 或其他兼容工具可以在当前项目中使用 `langchain-dev-guide` 和 `langsmith-trace`。
 >
 > 本文命令于 2026-07-15 验证。Skills CLI 会继续更新；请以 `npx skills --help` 的输出为准。
