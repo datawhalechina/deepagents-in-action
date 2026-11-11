@@ -8,17 +8,17 @@
 
 ### 安装 Deep Agents
 
-Deep Agents 以独立的 Python 包发布。本章示例通过 `ChatOpenAI` 接入模型，因此同时安装 `langchain-openai`。选择你习惯的包管理工具安装：
+Deep Agents 以独立的 Python 包发布。本章示例通过 `ChatOpenAI` 接入模型，因此同时安装 `langchain-openai`。本课程围绕 v0.7 系列讲解，先限制版本范围，避免安装到后续不兼容版本。选择你习惯的包管理工具安装：
 
 ```bash
 # pip
-pip install deepagents langchain-openai
+pip install "deepagents>=0.7,<0.8" langchain-openai
 
 # uv（推荐，速度更快）
-uv pip install deepagents langchain-openai
+uv pip install "deepagents>=0.7,<0.8" langchain-openai
 
 # poetry
-poetry add deepagents langchain-openai
+poetry add "deepagents>=0.7,<0.8" langchain-openai
 ```
 
 Python 版本要求 3.11+。
@@ -48,7 +48,7 @@ export MODEL_NAME="Qwen/Qwen2.5-7B-Instruct"   # 当前免费、支持 Tools，�
 
 ## Hello World：最简单的 Deep Agent
 
-让我们从最简单的例子开始——一个能回答天气问题的 Agent：
+让我们从最简单的例子开始——一个演示天气工具调用的 Agent（返回固定测试文本，不查询真实天气）：
 
 ```python
 import os
@@ -94,7 +94,7 @@ agent = create_deep_agent(
 
 | 参数 | 说明 | 默认值 |
 |---|---|---|
-| `model` | 模型实例（如 `ChatOpenAI`）或 `provider:model_name` 字符串 | `claude-sonnet-4-6`（可覆盖） |
+| `model` | 模型实例（如 `ChatOpenAI`）或 `provider:model_name` 字符串 | `claude-sonnet-4-6`（v0.7 仍保留此默认值，但依赖隐式模型已弃用，建议显式指定） |
 | `tools` | 自定义工具函数列表 | `[]` |
 | `system_prompt` | 系统提示词，定义 Agent 的角色和行为 | v0.7 默认基础提示词为空 |
 
@@ -120,32 +120,34 @@ Deep Agents 的工具定义非常简单——**一个普通的 Python 函数就�
 
 ### 工具定义的三要素
 
+> **示意片段**：这里只展示函数签名；`Literal` 需要从 `typing` 导入，`tavily_client` 的初始化见后面的研究助手示例。
+
 ```python
 def internet_search(
     query: str,                          # 1. 参数名 + 类型标注
-    max_results: int = 5,
+    max_results: int = 5,                   # 2. 可选参数默认值
     topic: Literal["general", "news", "finance"] = "general",
-) -> dict:                               # 2. 返回类型
+) -> dict:                               # 返回类型便于理解结果
     """Run a web search for the given query."""  # 3. Docstring
     # 实际的工具逻辑
     return tavily_client.search(query, max_results=max_results, topic=topic)
 ```
 
-三要素缺一不可：
+这三项分别描述输入类型、工具用途和参数可选性。默认值按需要设置，并非每个工具都必须有可选参数：
 
 | 要素 | 作用 | 对 Agent 的影响 |
 |---|---|---|
 | **参数类型标注** | 告诉 Agent 每个参数该传什么类型 | 没有类型标注，Agent 可能传入错误类型 |
-| **Docstring** | 告诉 Agent 这个工具的用途 | 没有 docstring，Agent 不知道何时该使用这个工具 |
+| **Docstring** | 告诉 Agent 这个工具的用途 | 默认从 docstring 生成描述；没有 docstring 时需显式提供工具 description |
 | **默认值** | 标记哪些参数是可选的 | Agent 只需要填必需参数，减少出错概率 |
 
 > 你可以把 docstring 想象成给 Agent 看的“使用说明书”——写得越清晰，Agent 用得越准确。
 
 ## 小试牛刀：写一个计算器 Agent
 
-在看真实的搜索工具之前，先用刚学的“三要素”自己写 1–2 个工具，加深理解。这个例子不引入任何外部 API 依赖，纯本地逻辑就能跑通——让你把注意力放在“如何设计工具”而不是“如何配置外部服务”上。
+在看真实的搜索工具之前，先用刚学的“三要素”自己写 1–2 个工具，加深理解。这两个工具的逻辑都在本地执行，不新增外部 API；Agent 本身仍需调用前面配置的模型服务——让你把注意力放在“如何设计工具”而不是“如何配置外部服务”上。
 
-复用前面的 `model`，我们定义两个小工具：一个做四则运算，一个换算单位。注意看每个工具是如何落实三要素的——**参数类型标注 + docstring + 默认值**：
+复用前面的 `model`，我们定义两个小工具：一个做四则运算，一个换算货币。注意看每个工具是如何落实三要素的——**参数类型标注 + docstring + 默认值**：
 
 ```python
 def calculate(expression: str) -> float:
@@ -154,8 +156,29 @@ def calculate(expression: str) -> float:
     Args:
         expression: A math expression, e.g. "1 + 2 * 3".
     """
-    # 仅做演示，实际项目应使用安全的解析库而非 eval
-    return eval(expression)
+    # 只解析数字、括号和四则运算，不执行模型生成的 Python 代码
+    import ast
+    import operator
+
+    if len(expression) > 200:
+        raise ValueError("表达式过长")
+    tree = ast.parse(expression, mode="eval")
+    if sum(1 for _ in ast.walk(tree)) > 64:
+        raise ValueError("表达式过于复杂")
+    operations = {ast.Add: operator.add, ast.Sub: operator.sub,
+                  ast.Mult: operator.mul, ast.Div: operator.truediv}
+
+    def evaluate(node):
+        if isinstance(node, ast.Constant) and type(node.value) in (int, float):
+            return float(node.value)
+        if isinstance(node, ast.BinOp) and type(node.op) in operations:
+            return operations[type(node.op)](evaluate(node.left), evaluate(node.right))
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+            value = evaluate(node.operand)
+            return value if isinstance(node.op, ast.UAdd) else -value
+        raise ValueError("只支持数字、括号和 + - * / 运算")
+
+    return evaluate(tree.body)
 
 def convert_currency(amount: float, from_currency: str, to_currency: str = "CNY") -> dict:
     """Convert an amount from one currency to another.
@@ -201,7 +224,7 @@ print(result["messages"][-1].content)
 我们使用 [Tavily](https://docs.tavily.com/documentation/api-credits) 作为搜索 API（当前免费计划每月包含 1,000 Credits），使用硅基流动作为模型提供商：
 
 ```bash
-pip install deepagents langchain-openai tavily-python
+pip install "deepagents>=0.7,<0.8" langchain-openai tavily-python
 ```
 
 配置 API Key：
@@ -408,12 +431,11 @@ agent = create_deep_agent(model="openai:gpt-4.1")
 |---|---|---|
 | `zai-org/GLM-5.2` | 753B | 面向长程 Agent 任务，支持工具调用和 1M 上下文 |
 | `moonshotai/Kimi-K2.7-Code` | 1T (MoE, 32B 激活) | 面向长程代码任务，支持多步工具调用、视觉输入和 256K 上下文 |
-| `deepseek-ai/DeepSeek-V4-Pro` | 1.6T (MoE, 49B 激活) | 支持工具调用、三种推理强度和 1M 上下文 |
-| `nex-agi/Nex-N2-Pro` | 397B | 已结束免费体验；当前输入 ¥1.75/M Tokens、输出 ¥7/M Tokens、缓存命中 ¥0.175/M Tokens |
+| `deepseek-ai/DeepSeek-V4-Pro` | 1.6T (MoE, 49B 激活) | 支持工具调用、可配置推理强度和 1M 上下文；具体档位以平台接口为准 |
 | `Qwen/Qwen3.6-35B-A3B` | 35B (MoE, 3B 激活) | 支持思考/非思考模式、工具调用、视觉输入和 256K 上下文 |
 | `deepseek-ai/DeepSeek-V4-Flash` | 284B (MoE, 13B 激活) | 支持工具调用和 1M 上下文，适合控制试跑成本 |
 
-> **状态更新（2026-07-22）**：`nex-agi/Nex-N2-Pro` 的免费体验已结束，平台自 2026-06-26 起按量收费。本系列仍用当前免费的 `Qwen/Qwen2.5-7B-Instruct` 降低入门门槛；任务规划、多 Agent 编排等复杂场景可改用 `zai-org/GLM-5.2`、`moonshotai/Kimi-K2.7-Code` 等能力更强的模型。价格和可用性可能继续变化，请以[价格页](https://siliconflow.cn/pricing)与[更新公告](https://api-docs.siliconflow.cn/docs/release-notes/overview)为准。
+> **状态更新（2026-11-11）**：根据平台 2026-09-03 的[更新公告](https://docs.siliconflow.cn/docs/release-notes/overview)，`nex-agi/Nex-N2-Pro` 已于 2026-09-11 下线，不再作为可用模型推荐；此前的免费体验与收费价格属于历史信息。本系列仍用当前免费的 `Qwen/Qwen2.5-7B-Instruct` 降低入门门槛；任务规划、多 Agent 编排等复杂场景可改用 `zai-org/GLM-5.2`、`moonshotai/Kimi-K2.7-Code` 等能力更强的模型。价格和可用性可能继续变化，请以[价格页](https://siliconflow.cn/pricing)与[更新公告](https://api-docs.siliconflow.cn/docs/release-notes/overview)为准。
 
 ## 调试与追踪：LangSmith
 
@@ -470,7 +492,7 @@ set +a
 - 工具调用的参数和返回值
 - 子 Agent 的执行过程
 - 每一步的 token 消耗和耗时
-- 虚拟文件系统中文件的变化
+- 文件工具调用及其结果；外部 Backend 的完整文件内容或文件差异需要另行读取，Trace 不是通用文件版本记录器
 
 这对于理解“Agent 为什么做了这个决定”至关重要，尤其是在调试复杂的多步骤任务时。
 
@@ -484,6 +506,7 @@ from typing import Literal
 from langchain_openai import ChatOpenAI
 from tavily import TavilyClient
 from deepagents import create_deep_agent
+from langchain.agents.middleware import TodoListMiddleware
 
 # 1. 配置模型（通过硅基流动接入，当前免费模型即可跑通）
 model = ChatOpenAI(
@@ -524,11 +547,12 @@ research_instructions = """你是一位专业的研究员。
 你可以使用 internet_search 工具搜索互联网获取信息。
 """
 
-# 5. 创建 Agent
+# 5. 创建 Agent，并显式启用任务规划
 agent = create_deep_agent(
     model=model,
     tools=[internet_search],
     system_prompt=research_instructions,
+    middleware=[TodoListMiddleware()],
 )
 
 # 6. 运行
@@ -542,11 +566,11 @@ print(result["messages"][-1].content)
 
 本章我们完成了从零到一的实践：
 
-1. **环境搭建**：`pip install deepagents langchain-openai` + 配置硅基流动 API Key
+1. **环境搭建**：`pip install "deepagents>=0.7,<0.8" langchain-openai` + 配置硅基流动 API Key
 2. **模型接入**：通过 `ChatOpenAI` + `base_url` 接入硅基流动，国内直连；平台当前提供免费模型
 3. **核心 API**：`create_deep_agent(model, tools, system_prompt)` 创建 Agent，`agent.invoke()` 运行
 4. **自定义工具**：Python 函数 + 类型标注 + docstring = 一个工具，Agent 自动理解
-5. **自动化能力**：你只传入一个工具，Agent 自动获得文件系统、任务规划、子 Agent 等完整能力
+5. **自动化能力**：注册搜索工具后，Agent 还拥有文件系统和子 Agent 等默认能力；任务规划由示例显式传入的 `TodoListMiddleware` 提供
 6. **调试追踪**：启用 `LANGSMITH_TRACING`，配置 API Key 和对应区域的 Endpoint，在 LangSmith 项目中查看运行过程
 
 下一章，我们将深入 Deep Agents 最核心的创新——虚拟文件系统，理解它如何通过 Context Engineering 解决上下文管理的难题。

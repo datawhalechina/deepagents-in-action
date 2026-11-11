@@ -210,7 +210,7 @@ agent = create_deep_agent(
 
 接入兼容后端时，可以编写接收该分类器的自定义中间件：在 `before_agent` 中调用 `Choice` 并保存选择，在 `wrap_model_call` 中切换工作模型，在 `wrap_tool_call` 中调用 `Noul` 做执行前检查，再通过 `middleware=` 接入 Agent。适配时需要保留相应的状态与拦截逻辑。官方 [TypeSafe 自定义中间件示例](https://docs.langchain.com/oss/python/integrations/providers/typesafe)展示了分类器与生命周期钩子的组合方式。
 
-已有普通 LangChain Agent 的应用，可以将上面的构造函数换成 `langchain.agents.create_agent`，同样通过 `middleware=[router, auto_mode]` 配置这两个组件。它们提供的判断能力相同；Deep Agents 还提供任务规划、文件系统与子 Agent 等默认能力。
+已有普通 LangChain Agent 的应用，可以将上面的构造函数换成 `langchain.agents.create_agent`，同样通过 `middleware=[router, auto_mode]` 配置这两个组件。它们提供的判断能力相同；Deep Agents 还提供文件系统、子 Agent 等默认能力，以及可显式启用的任务规划（v0.7 默认不安装 Todo）。
 
 下面是调用结果的示意片段，复用上面构建的 `agent`，提交任务并读取这次选择：
 

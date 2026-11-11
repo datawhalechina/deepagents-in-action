@@ -6,7 +6,7 @@
 
 你会给 Deep Agent 加入 `CodeInterpreterMiddleware`，先运行一段纯内存 JavaScript，再通过 Programmatic Tool Calling（PTC，程序化工具调用）批量读取订单。完成实验后，你应该能判断什么时候使用普通工具调用、Interpreter 或 Sandbox，并能为 PTC 配置最小权限边界。
 
-Interpreters 目前是 Beta API。示例要求 Python 3.11+ 和 `langchain-quickjs>=0.2.0`，接口与生命周期仍可能变化。本章在 Python 3.11.14、`deepagents==0.7.8` 和 `langchain-quickjs==0.3.5` 中核对；只讲解释器和 PTC，动态调度子 Agent 留到下一章。
+Interpreters 目前是 Beta API。示例要求 Python 3.11+，并使用下文锁定的 `langchain-quickjs==0.3.5`，接口与生命周期仍可能变化。本章在 Python 3.11.14、`deepagents==0.7.8` 和 `langchain-quickjs==0.3.5` 中核对；只讲解释器和 PTC，动态调度子 Agent 留到下一章。
 
 ## 1. 为什么需要 Interpreter
 
@@ -41,7 +41,7 @@ Interpreter 提供另一条路径：模型生成一段 JavaScript，由 QuickJS 
 | Shell、安装依赖、运行测试或操作完整文件系统 | Sandbox | 需要独立执行环境和操作系统能力 |
 | 大量独立任务需要不同 Agent 角色 | Dynamic Subagents | 每个角色都要运行完整的子 Agent 推理循环 |
 
-Interpreter 不是轻量版 Shell，也不是本地沙箱。它是 Agent 循环里的内存代码运行时。
+Interpreter 不是轻量版 Shell，也不是提供操作系统能力的 Sandbox Backend。它是 Agent 循环里、由 WebAssembly 隔离的内存代码运行时。
 
 ![普通 Tool Calling 需要模型逐轮调用 Tool 1、Tool 2、Tool 3，中间结果持续进入上下文；Interpreter 与 PTC 通过一次 eval 在 QuickJS 中使用 Promise.all 并行调用 tools.lookupOrder，最后只把汇总结果返回模型](../public/imgs/48-comparison-tool-calling-vs-interpreter.png)
 
@@ -50,7 +50,7 @@ Interpreter 不是轻量版 Shell，也不是本地沙箱。它是 Agent 循环�
 在已有 Python 项目中安装 Deep Agents、QuickJS 中间件和模型集成：
 
 ```bash
-uv add "deepagents[quickjs]" langchain-openai
+uv add "deepagents[quickjs]==0.7.8" "langchain-quickjs==0.3.5" langchain-openai
 ```
 
 如果项目已经声明了其中某个依赖，`uv` 会保留满足条件的现有版本。
@@ -62,7 +62,7 @@ uv run python -c "import sys, deepagents, langchain_quickjs; print(sys.version_i
 ```
 
 ```text title="关键输出"
-(3, 14)
+(3, 11)
 langchain_quickjs
 ```
 
@@ -139,7 +139,7 @@ const risky = orders
 | 对比项 | Interpreter | Sandbox |
 |---|---|---|
 | 主要目标 | 在 Agent 循环内编排工具、保存中间值、转换数据 | 在隔离环境中操作文件、进程和依赖 |
-| 运行时 | 进程内嵌的 QuickJS | 独立容器、虚拟机或远程执行环境 |
+| 运行时 | 进程内 Wasmtime 承载的 QuickJS WebAssembly 实例 | 独立容器、虚拟机或远程执行环境 |
 | 默认文件访问 | 无 | 取决于 Sandbox Backend |
 | 默认网络访问 | 无 | 取决于提供商与网络策略 |
 | 适合任务 | 批量查询、过滤、排序、重试和聚合 | 编译、测试、安装依赖和生成文件 |
@@ -153,10 +153,20 @@ const risky = orders
 
 纯内存示例的数据已经出现在 Prompt 中。真实应用通常只有订单号，数据要从数据库或服务读取。这时启用 PTC，把选定工具作为异步函数放进 JavaScript 的 `tools` 命名空间。
 
-假设应用已经准备好订单数据源，先把窄接口定义成 Tool：
+下面用本地数据固定实验输入，再把窄接口定义成 Tool。示意片段：后续 Agent 配置仍复用项目的 `model`。
 
 ```python
 from langchain.tools import tool
+
+
+ORDERS = {
+    "A-100": {"amount": 320, "refunds": 0},
+    "A-101": {"amount": 1800, "refunds": 0},
+    "A-102": {"amount": 760, "refunds": 3},
+    "A-103": {"amount": 400, "refunds": 0},
+    "A-104": {"amount": 2200, "refunds": 1},
+    "A-105": {"amount": 560, "refunds": 2},
+}
 
 
 @tool
@@ -169,7 +179,7 @@ def lookup_order(order_id: str) -> dict:
     }
 ```
 
-`ORDERS` 代表示例数据源；接入真实系统时，工具内部可以查询数据库或服务。然后只把这个工具开放给解释器：
+`ORDERS` 是本地示例数据源；接入真实系统时，工具内部可以查询数据库或服务。然后只把这个工具开放给解释器：
 
 ```python
 from langchain_quickjs import CodeInterpreterMiddleware
@@ -285,7 +295,7 @@ interpreter = CodeInterpreterMiddleware(
 
 `thread` 模式会在 Agent turn 开始时恢复最近的 Interpreter Snapshot（解释器快照），在 turn 结束时把新快照写进 Graph State。一个 turn 内的多次 `eval` 共用同一个活动上下文，不会在每次调用之间单独保存快照。
 
-Snapshot 只保留可序列化数据。字符串、数字、数组和普通对象适合跨轮保存；函数、类和其他不可序列化对象在恢复后不能继续使用。把计算结果保存下来，不要假设动态定义的函数会永远存在。
+在本章锁定版本中，Snapshot 保存的是 QuickJS guest 的整个 VM 内存，不是只保存 JSON 数据：变量、函数、闭包状态与对象引用关系可以一起恢复。不要把“返回给模型的结果需要转换”为“快照只能保存普通数据”。快照依赖兼容的 guest build，不能当作跨运行时版本的通用存档；升级后应单独测试恢复，并保护快照存储免受篡改。具体边界见 [`quickjs-rs v0.2.5` 的快照与安全说明](https://github.com/langchain-ai/quickjs-rs/blob/v0.2.5/README.md#snapshots)。
 
 ### Checkpointer 保存的是 Graph State
 
@@ -315,7 +325,7 @@ config = {"configurable": {"thread_id": "order-review-001"}}
 | 参数 | 默认值 | 作用 |
 |---|---:|---|
 | `memory_limit` | 64 MB | 限制每个线程的 QuickJS 堆内存 |
-| `timeout` | 5 秒 | 限制每次 `eval` 的执行时间 |
+| `timeout` | 5 秒 | 限制每次 `eval` 的 JavaScript 执行预算；不包含等待异步宿主调用的时间 |
 | `tool_name` | `"eval"` | 修改暴露给模型的工具名 |
 | `capture_console` | `True` | 是否返回 console 输出 |
 | `max_result_chars` | `4000` | 截断结果、错误和标准输出 |
@@ -326,6 +336,8 @@ config = {"configurable": {"thread_id": "order-review-001"}}
 | `max_snapshot_bytes` | `None` | 限制快照大小；默认跟随内存上限 |
 
 默认 `max_ptc_calls=256` 是运行时上限，不是建议每次都用满。订单实验只有七个输入，所以主动收紧到 16。真实应用应根据最大合法批次设置上限，并让工具自身继续执行鉴权、配额和参数校验。
+
+`timeout` 不是整个订单流程的端到端截止时间。[锁定运行时的异步执行实现](https://github.com/langchain-ai/quickjs-rs/blob/v0.2.5/quickjs_rs/context.py#L520-L521)不把等待异步宿主调用的时间计入预算；网络工具需要自己的超时，应用也应设置整次运行的截止时间。
 
 结果超过 `max_result_chars` 时会被截断。不要简单调大上限，把大批原始数据重新塞回模型上下文。先在 JavaScript 中筛选、计数或分组，再返回能支撑最终答案的最小结果。
 
@@ -341,7 +353,7 @@ config = {"configurable": {"thread_id": "order-review-001"}}
 | 工具输入校验失败 | 参数对象是否仍按 Python Tool Schema 命名 | 保留 `order_id`，不要改成 `orderId` |
 | 批处理运行到一半停止 | 是否触发 `timeout` 或 `max_ptc_calls` | 缩小批次，检查循环终止条件，再按合法上限调整预算 |
 | 最终结果缺少后半段 | 是否触发 `max_result_chars` | 在解释器内先聚合，不要直接返回全部原始记录 |
-| 跨轮读取函数时报恢复错误 | Snapshot 中是否包含不可序列化对象 | 跨轮只保存数据，下个 turn 重新定义函数 |
+| 跨轮状态丢失或恢复失败 | mode、thread_id、快照大小和 guest build 是否匹配 | 复用线程配置，核对快照上限与运行时版本；不要假定升级后仍可恢复旧快照 |
 | 恢复旧快照后外部数据没回滚 | 是否把 Snapshot 当成事务 | 为有副作用工具设计幂等键、补偿或真正的事务机制 |
 
 第 14 章的 Event Streaming 可以继续观察主 Agent 的消息和普通工具调用。PTC 中间步骤由 PTC runtime / tool proxy 执行，不要假设现有前端会自动把每个 `tools.*` 调用渲染成普通工具卡片。需要审计时，应同时记录 `eval` 输入、PTC 工具自身日志和最终结果摘要，并对敏感参数做脱敏。
@@ -359,9 +371,11 @@ QuickJS 默认没有文件、网络和 Shell 能力；一旦把工具接入 PTC�
 
 优先暴露窄工具，例如“按 ID 读取一个订单”，不要暴露“执行任意 SQL”或“向任意 URL 发请求”。工具内部仍要校验调用者、资源范围和输入参数；PTC 白名单不能替代业务鉴权。
 
-### QuickJS 不是宿主内存隔离边界
+### WebAssembly 隔离不等于完整的生产 Sandbox
 
-解释器代码运行在嵌入式 QuickJS Context 中，不是独立 VM 或进程。它能限制默认能力和运行资源，却不是完整的 Host-Memory Isolation（宿主内存隔离）方案。
+本章的 `langchain-quickjs==0.3.5` 依赖 `quickjs-rs>=0.2.5,<0.3`。这个运行时把 QuickJS 编译为 WebAssembly，由宿主进程内的 Wasmtime 执行；WebAssembly guest 的线性内存构成宿主内存隔离边界，不能把它描述成直接嵌入宿主的原生 QuickJS。每个 LangGraph thread 使用独立运行实例。
+
+隔离仍有边界：Wasmtime 自身的漏洞可能突破这层保护，PTC 暴露的宿主工具也会保留其真实权限。持续更新运行时，并对高风险多租户任务叠加进程或容器隔离，不能只依赖默认工具白名单。
 
 面对不可信或半可信代码时，把整个 Agent 放进隔离 Worker 或容器，并继续收紧 PTC 白名单。需要 Shell、包安装或系统级测试时，使用第 10 章的 Sandbox。需要人工确认高风险动作时，保留第 9 章的 HITL；文件工具的访问范围继续由第 11 章的权限规则控制。
 
@@ -411,10 +425,10 @@ Interpreter 很适合把确定性控制流留在代码里，但不是所有任�
 - PTC 用显式白名单把选定工具暴露为 `tools.*` 异步函数。
 - Python 的 snake_case 工具名会转成 camelCase，参数仍遵循原 Tool Schema。
 - PTC 中间结果留在解释器中，模型只接收最终整理结果。
-- `thread`、`turn` 和 `call` 控制状态保留范围，Snapshot 只可靠保存可序列化数据。
+- `thread`、`turn` 和 `call` 控制状态保留范围，本章版本的 Snapshot 可保存变量、函数和闭包，但依赖兼容的 guest build。
 - `timeout`、`memory_limit`、`max_ptc_calls` 和结果上限应按合法任务规模收紧。
 - PTC 调用不会逐次执行普通 `interrupt_on` 审批，白名单必须避开未经控制的高副作用能力。
-- QuickJS 是能力受限的进程内运行时，不是 Sandbox 或宿主内存隔离边界。
+- QuickJS 在进程内通过 WebAssembly 隔离 guest 内存，但不能替代完整 Sandbox Backend、工具鉴权和多租户隔离。
 
 ## 官方参考
 
@@ -423,4 +437,5 @@ Interpreter 很适合把确定性控制流留在代码里，但不是所有任�
 - [Deep Agents Sandboxes](https://docs.langchain.com/oss/python/deepagents/sandboxes)
 - [Deep Agents Subagents](https://docs.langchain.com/oss/python/deepagents/subagents)
 - [QuickJS](https://github.com/quickjs-ng/quickjs)
-- [`quickjs-rs` Security](https://github.com/langchain-ai/quickjs-rs#security)
+- [`quickjs-rs v0.2.5` Security 与 Snapshot](https://github.com/langchain-ai/quickjs-rs/blob/v0.2.5/README.md#security)
+- [`langchain-quickjs==0.3.5` 中间件实现](https://github.com/langchain-ai/deepagents/blob/a559f720d94eb8e7d14f96dbdad816dc9f7e3636/libs/partners/quickjs/langchain_quickjs/middleware.py)

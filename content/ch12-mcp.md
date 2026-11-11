@@ -12,6 +12,8 @@
 
 本章原始示例写于 Deep Agents 0.6 阶段，现已把课程运行基线更新为 Python 3.11+、`deepagents>=0.7,<0.8`、`langchain-mcp-adapters>=0.3,<0.4`、`mcp>=1.28,<2`。安装时会解析当前 0.7.x 补丁版本，项目应提交 lockfile 或保存环境快照。MCP 依赖继续保留原有兼容上界，避免在学习 Deep Agents 0.7 的同时切换另一套尚未验证的 MCP API。
 
+> 版本边界：本章保留 `langchain-mcp-adapters` 0.3.x 的 `MultiServerMCPClient` 路线，具体接口按 0.3.0 源码核对。当前官方文档另有 `langchain[mcp]>=1.4.0` 的 Beta `MCPAdapter` 接口，其会话与工具生命周期不同；不要混用两套示例。升级时另行阅读[官方迁移指南](https://docs.langchain.com/oss/python/migrate/langchain-mcp-adapters)。
+
 ## 1. MCP 在 Deep Agents 中的位置
 
 MCP 是一套开放协议，用统一方式描述 Agent 可以使用的工具与上下文。它不替代 Deep Agents，也不是一种 Backend。两者位于不同层次：
@@ -722,7 +724,7 @@ Server 函数
 - [Deep Agents Human-in-the-Loop](https://docs.langchain.com/oss/python/deepagents/human-in-the-loop)
 - [Deep Agents Permissions](https://docs.langchain.com/oss/python/deepagents/permissions)
 - [Deep Agents Subagents](https://docs.langchain.com/oss/python/deepagents/subagents)
-- [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters)
+- [`langchain-mcp-adapters` 0.3.0 源码](https://github.com/langchain-ai/langchain-mcp-adapters/tree/a61c783a7949719a8c3fbe4aeba961f45f3b7849)
 - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
 - [Model Context Protocol](https://modelcontextprotocol.io/introduction)
 - [MCP Security Best Practices](https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices)

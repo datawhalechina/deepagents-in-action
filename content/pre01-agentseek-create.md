@@ -247,8 +247,10 @@ agentseek dev --dry-run
 
 你应该看到两个进程：
 
-- LangGraph 后端，默认地址为 `http://127.0.0.1:2024`
+- 承载研究图的 API 后端，默认地址为 `http://127.0.0.1:2024`
 - React 前端，默认地址为 `http://127.0.0.1:5174`
+
+`main` 模板的后端启动器可能变化：复核时生命周期配置已经使用 `uv run agentseek-api dev`，不再是直接启动 LangGraph 开发服务器。请保留模板生成的 `.env.example` 中其他默认配置，按 `doctor` 提示检查持久化等新增变量，并以 `.agentseek/lifecycle.toml` 的实际进程命令为准。可对照[本次复核的模板快照](https://github.com/agentseek-ai/agentseek-templates/tree/7149bf2da837533cec9c738de64a09f90984f76a/templates/deepagents/research)。
 
 ## 7. 可选：为下一章开启 LangSmith Trace
 

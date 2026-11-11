@@ -2,7 +2,7 @@
 
 > 一个 Agent 可以返回完整代码、停止调用工具，甚至自信地解释“任务已经完成”，结果却仍在边界输入上失败。问题不在于它没有生成结果，而在于系统缺少一条独立、可取证、能把具体差距送回生成环节的验收链路。本章先从这种“看似完成”出发，再搭建一条失败后能够修订、只有明确通过才会放行的运行时闭环。
 
-> 配套实验：[Notebook](../notebooks/ch13/01-rubric-revision.ipynb) · [Markdown](../notebooks/ch13/01-rubric-revision.md) · [HTML](../notebooks/ch13/01-rubric-revision.html)。实验用 JSON 报告观察真实取证、反馈修订与评分预算，默认无需模型 Key；运行方式见 [Notebook README](../notebooks/README.md)。
+> 配套实验：[Notebook](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch13/01-rubric-revision.ipynb) · [Markdown](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch13/01-rubric-revision.md) · [HTML](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch13/01-rubric-revision.html)。实验用 JSON 报告观察真实取证、反馈修订与评分预算，默认无需模型 Key；运行方式见 [Notebook README](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/README.md)。
 
 ## 1. 为什么需要运行时验收
 
@@ -194,6 +194,8 @@ Rubric 不宜逐字复述任务，也不要把编码风格、性能、兼容性�
 ## 4. 构建并验证 Evidence Tool
 
 为了先看清 Middleware 的取证链路，下面使用一个教学版 `run_test_suite`。它接收候选源码，加载 `find_duplicates`，再运行四组行为测试；既检查返回值，也检查函数有没有修改输入。
+
+> 下例会在当前进程执行代码，只适用于本章已审阅的固定候选。不要直接用它执行未知模型生成的代码或用户提交的代码；接入真实生成模型前，应把执行部分替换为隔离沙箱中的测试服务。限制 `__builtins__` 不能构成安全边界。
 
 ```python
 from copy import deepcopy
@@ -668,8 +670,8 @@ Rubric 只能判断候选结果是否符合标准，不能替代第 9 章的 Hum
 ## 官方参考
 
 - [Deep Agents Grading Rubrics](https://docs.langchain.com/oss/python/deepagents/rubric)
-- [`RubricMiddleware` Source](https://github.com/langchain-ai/deepagents/blob/main/libs/deepagents/deepagents/middleware/rubric.py)
-- [`RubricMiddleware` Tests](https://github.com/langchain-ai/deepagents/blob/main/libs/deepagents/tests/unit_tests/middleware/test_rubric_middleware.py)
+- [`RubricMiddleware` Source](https://github.com/langchain-ai/deepagents/blob/0f5a2b57fa5dbb3a7d8f16dc280cb5b1506ea8c0/libs/deepagents/deepagents/middleware/rubric.py)
+- [`RubricMiddleware` Tests](https://github.com/langchain-ai/deepagents/blob/0f5a2b57fa5dbb3a7d8f16dc280cb5b1506ea8c0/libs/deepagents/tests/unit_tests/middleware/test_rubric_middleware.py)
 - [LangChain Event Streaming](https://docs.langchain.com/oss/python/langchain/event-streaming)
 - [LangGraph Checkpointers](https://docs.langchain.com/oss/python/langgraph/checkpointers)
 - [LangSmith Evaluation Concepts](https://docs.langchain.com/langsmith/evaluation-concepts)

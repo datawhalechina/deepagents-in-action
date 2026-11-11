@@ -6,7 +6,7 @@
 
 示例以 Deep Agents v0.6 引入的 Typed Projection API 为主线。新应用优先使用 `agent.stream_events(..., version="v3")`；`agent.stream(..., version="v2")` 放在后半章，专门解释 LangGraph 的协议格式、namespace 和 custom updates。两者解决的问题不同，代码也不要混在同一个循环里。
 
-> 配套实验：[Notebook](../notebooks/ch14/01-streaming-projections.ipynb) · [Markdown](../notebooks/ch14/01-streaming-projections.md) · [HTML](../notebooks/ch14/01-streaming-projections.html)。默认无需模型 Key，通过本地教学工具观察主、子 Agent、custom 进度和订阅时机；运行方式见 [Notebook README](../notebooks/README.md)。
+> 配套实验：[Notebook](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch14/01-streaming-projections.ipynb) · [Markdown](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch14/01-streaming-projections.md) · [HTML](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch14/01-streaming-projections.html)。默认无需模型 Key，通过本地教学工具观察主、子 Agent、custom 进度和订阅时机；运行方式见 [Notebook README](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/README.md)。
 
 ## 1. 一次“看起来卡住”的研究请求
 
@@ -78,7 +78,7 @@ request = {
 }
 ```
 
-运行到这里，我们已经有了一个可观察的树：顶层是 coordinator，下面是一次 `researcher` 委派，研究过程中还可能出现工具调用。模板中的搜索工具和模型必须支持 Tool Calling，否则后面只能看到 Agent 状态，看不到工具事件。
+运行到这里，我们已经有了一个可观察的树：顶层是 coordinator，下面是一次 `researcher` 委派，研究过程中还可能出现工具调用。这里尚未注册搜索工具，默认文件工具也不能代替联网搜索。模型需要支持 Tool Calling 才能调用 `task` 并产生委派；提示词只是要求委派，不能强制模型一定遵守。需要稳定复现时使用配套 Notebook 的脚本模型；需要真实研究时另行实现并注册搜索工具。
 
 ## 3. 第一个修复：先显示“研究助手已启动”
 
@@ -166,9 +166,9 @@ def belongs_to_subagent(namespace: list[str] | tuple[str, ...], path: tuple[str,
 
 ### 3.4 Projection 是按需打开的
 
-刚才我们只关心“启动、结束、失败”，所以没有订阅子 Agent 的全部消息。在本章配套实验锁定的版本（deepagents 0.7.15 / langgraph 1.2.11）中，`messages`、`tool_calls`、`subagents` 等图级通道按订阅消费：只有订阅后的事件才会进入该消费者的缓冲。仅访问 `subagent.messages` 或 `subagent.tool_calls` 属性，不等于已经订阅；同步代码通过 `iter(...)`、`for` 或 `interleave(...)` 订阅。
+刚才我们只关心“启动、结束、失败”，所以没有订阅子 Agent 的全部消息。在本章核对的版本（deepagents 0.7.15 / langgraph 1.2.11）中，`messages`、`tool_calls`、`subagents` 等图级通道按订阅消费：只有订阅后的事件才会进入该消费者的缓冲。仅访问 `subagent.messages` 或 `subagent.tool_calls` 属性，不等于已经订阅；同步代码通过 `iter(...)`、`for` 或 `interleave(...)` 订阅。
 
-这对生产页面很实用。只展示状态和耗时时，不需要消费每一条消息和工具增量；需要详细过程的界面，再打开相应 projection。没有必要为每个内部事件都建立一份 UI 状态。要观察的 projection 应在事件到达前订阅；先读取 `stream.output` 推动图到结束，再订阅 `stream.subagents`，可能已经收不到委派 handle。配套实验给出了这个反例。
+这对生产页面很实用。只展示状态和耗时时，不需要消费每一条消息和工具增量；需要详细过程的界面，再打开相应 projection。没有必要为每个内部事件都建立一份 UI 状态。要观察的 projection 应在事件到达前订阅；先读取 `stream.output` 推动图到结束，再订阅 `stream.subagents`，可能已经收不到委派 handle。配套实验给出了这个反例；Notebook 目前的精确依赖以其 `uv.lock` 为准，不必与正文核对版本完全一致。
 
 父级 `stream` 也提供相同方向的 projection：
 
@@ -313,22 +313,26 @@ researcher · running
 
 如果研究 Agent 还会委派下一层 Agent，投影可以继续向下递归：
 
+示意片段：复用上文的 `agent` 与 `request`，在同一层同时订阅工具和嵌套委派，而不是先耗尽工具流再订阅子 Agent：
+
 ```python
-stream = agent.stream_events(request, version="v3")
+def consume_branch(branch):
+    print(f"subagent {branch.name}: {branch.status}")
+    for kind, item in branch.interleave("tool_calls", "subagents"):
+        if kind == "tool_calls":
+            print(f"{item.tool_name}({item.input})")
+            for delta in item.output_deltas:
+                print(delta, end="", flush=True)
+        else:
+            consume_branch(item)
 
-for subagent in stream.subagents:
-    print(f"subagent {subagent.name}: {subagent.status}")
 
-    for tool_call in subagent.tool_calls:
-        print(f"{tool_call.tool_name}({tool_call.input})")
-        for delta in tool_call.output_deltas:
-            print(delta, end="", flush=True)
-
-    for nested in subagent.subagents:
-        print(f"nested subagent {nested.name}: {nested.status}")
+with agent.stream_events(request, version="v3") as stream:
+    for subagent in stream.subagents:
+        consume_branch(subagent)
 ```
 
-递归时要用 `path` 作为当前运行内的 UI 唯一键。同名 `researcher` 可能来自不同委派分支，单独用 `name` 会把两张卡片的状态写到一起。
+这个同步递归仍只适合逐分支观察：处理一个分支时，其他并发分支会继续运行，其内部 projection 可能来不及订阅。需要完整观察并发树时，应按下一节并发消费每个分支。递归时要用 `path` 作为当前运行内的 UI 唯一键。同名 `researcher` 可能来自不同委派分支，单独用 `name` 会把两张卡片的状态写到一起。
 
 ## 6. 顺序乱了：两种方式修复实时消费
 
@@ -336,29 +340,37 @@ for subagent in stream.subagents:
 
 回到刚才的页面 bug。coordinator 和 researcher 的事件会交错到达，实时 UI 不能把两个 iterator 排队处理。异步服务应同时消费它们：
 
+示意片段：复用上文的 `agent` 和 `request`，需要 Python 3.11+ 的 `TaskGroup`。先注册每层消费者，再启动异步读取；发现新的子 Agent 后立即注册它的投影，不等待前一个子 Agent 完成。
+
 ```python
 import asyncio
 
 
 async def stream_live():
-    stream = await agent.astream_events(request, version="v3")
+    async with await agent.astream_events(request, version="v3") as stream:
+        async with asyncio.TaskGroup() as group:
+            def subscribe(scope, label):
+                messages = aiter(scope.messages)
+                subagents = aiter(scope.subagents)
+                group.create_task(consume_messages(messages, label))
+                group.create_task(consume_subagents(subagents))
 
-    async def consume_coordinator():
-        async for message in stream.messages:
-            print("[coordinator]", await message.text)
+            async def consume_messages(messages, label):
+                async for message in messages:
+                    async for delta in message.text:
+                        print(f"[{label}]", delta, end="", flush=True)
 
-    async def consume_subagents():
-        async for subagent in stream.subagents:
-            async for message in subagent.messages:
-                print(f"[{subagent.name}]", await message.text)
+            async def consume_subagents(subagents):
+                async for subagent in subagents:
+                    subscribe(subagent, f"{subagent.name}:{subagent.path}")
 
-    await asyncio.gather(consume_coordinator(), consume_subagents())
+            subscribe(stream, "coordinator")
 
 
 asyncio.run(stream_live())
 ```
 
-`asyncio.gather` 解决的是阻塞问题：一个投影等待网络时，另一个仍然可以把事件送到页面。它本身不会返回一个已合并、带全局序号的 iterator；如果要审计“哪个 token 先到”，还需要读取 raw protocol event 的 `seq`。
+`TaskGroup` 管理这些并发消费者，并在某个消费者失败时取消其余任务；流的异步上下文负责清理。并发消费解决的是阻塞问题：一个投影等待网络时，另一个仍然可以把事件送到页面。它本身不会返回一个已合并、带全局序号的 iterator；如果要审计“哪个 token 先到”，还需要读取 raw protocol event 的 `seq`。文本在这里按 delta 显示，而不是 `await message.text` 等待整条消息结束。
 
 ### 6.2 同步程序：使用 `interleave`
 
@@ -682,7 +694,7 @@ agentseek dev
 - 只有需要审计时，才读取 raw events 和 namespace；
 - 新应用默认使用 v3，v2 留给底层调试、custom updates 和迁移；
 - `kind/source/phase` 属于模板应用协议，`seq/method/params` 才属于 raw protocol；
-- Streaming 不负责持久化、取消、超时和背压，生产边界要由应用补齐。
+- v3 流提供关闭 / abort 与异步消费者背压机制，但客户端断连策略、端到端超时、传输队列和持久化重放仍需应用配置。
 
 ## 官方参考
 

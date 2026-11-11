@@ -2,7 +2,7 @@
 
 > 工具（Tools）是原子操作——搜索一次、读一个文件、调一次 API。但有些能力需要的不是一次操作，而是**多步骤工作流 + 领域知识 + 模板资源**的组合。比如"按照团队规范做代码审查"、"查阅 LangGraph 最新文档并据此回答"、"生成符合公司格式的技术报告"——这些需要的不是一个工具，而是一整套流程指导。这就是 Skills 要解决的问题。
 
-配套实验：[第 7 章 Notebook：Skill 的说明何时进入模型上下文？](../notebooks/ch07/01-skills-progressive-disclosure.ipynb)（也可直接阅读 [Markdown](../notebooks/ch07/01-skills-progressive-disclosure.md)）。
+配套实验：[第 7 章 Notebook：Skill 的说明何时进入模型上下文？](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch07/01-skills-progressive-disclosure.ipynb)（也可直接阅读 [Markdown](https://github.com/datawhalechina/deepagents-in-action/blob/main/notebooks/ch07/01-skills-progressive-disclosure.md)）。
 
 ## Skills 是什么？
 
@@ -56,12 +56,14 @@ Frontmatter 定义了 Skill 的身份和约束条件。规范定义的字段如�
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
-| `name` | Yes | 小写字母、数字、连字符组成，1-64 字符。必须与父目录名一致。 |
+| `name` | Yes | 小写字母、数字、连字符组成，1-64 字符；不能以连字符开头或结尾，也不能有连续连字符。必须与父目录名一致。 |
 | `description` | Yes | 描述 Skill 的功能和适用场景。最大 1024 字符。 |
 | `license` | No | 许可证名称 |
 | `compatibility` | No | 环境要求（如需要网络访问、需要特定 CLI 工具）。最大 500 字符。 |
-| `metadata` | No | 任意键值对（author、version、entrypoint 等） |
-| `allowed-tools` | No | 空格分隔的预授权工具列表 |
+| `metadata` | No | 字符串键到字符串值的映射（author、version 等；entrypoint 仅是自定义元数据，不会自动执行） |
+| `allowed-tools` | No | 空格分隔的预授权工具列表（实验性字段，各宿主支持不同） |
+
+Deep Agents 0.7.10 会把 `allowed-tools` 展示在技能提示词中，但它不是工具注册或强制授权机制。Skill 引用的 `fetch_url` 等工具仍需应用自行提供，权限必须由工具、Backend 或审批机制执行。
 
 ### Markdown Body
 
@@ -99,7 +101,7 @@ Use the fetch_url tool to read the selected documentation URLs, then answer the 
 
 ### description 是最重要的字段
 
-Agent 选择 Skill 的唯一依据就是 `description` 字段——它不会提前读取正文内容。因此，description 的质量直接决定了 Skill 是否能被正确匹配。
+`description` 是 Agent 选择 Skill 的主要依据之一；启动列表还包含名称和路径，模型也会结合用户请求判断。正文不会自动提前注入。因此，description 的质量直接决定了 Skill 是否能被正确匹配。
 
 **好的 description**——具体、明确触发条件：
 
@@ -145,6 +147,8 @@ Skills 最关键的设计决策是 **Progressive Disclosure（渐进式披露）
 
 - **执行阶段**：Agent 按照正文中的指令工作。如果指令中引用了 `references/` 或 `assets/` 下的文件，Agent 自行决定是否读取——这一步由 LLM 控制，不再由中间件干预。
 
+> **缓存边界**：在 0.7.10 中，如果 state 已存在 `skills_metadata`（包括空列表），`before_agent` 会跳过再次扫描。因此，同一 checkpoint 线程下一轮不一定发现新增 Skill；验证新发现时可使用新线程。规则见 [0.7.10 源码](https://github.com/langchain-ai/deepagents/blob/deepagents%3D%3D0.7.10/libs/deepagents/deepagents/middleware/skills.py#L933-L969)。
+
 ### 匹配流程示例
 
 ![Progressive Disclosure：启动阶段注入元数据，Agent 判断相关后读取 SKILL.md 正文](../public/imgs/21-flowchart-progressive-disclosure.png)
@@ -167,11 +171,11 @@ Agent 思考：
 
 1. **节省 token**：20 个 Skills 启动时只加载 20 条 description（几百 token），而不是 20 份完整指令（可能数万 token）
 2. **精准匹配**：只有当前任务真正需要的 Skill 才会被加载，避免无关指令干扰 LLM 的判断
-3. **无限扩展**：Skill 数量从 5 个增长到 50 个，启动开销只是线性增加几十条 description，不会触及上下文窗口瓶颈
+3. **降低扩展开销**：Skill 数量增加时，启动开销主要随元数据增长，比加载全部正文更小；大量或冗长的 description 仍会占用上下文，需要控制规模
 
 ## 使用方式
 
-Skills 的加载方式取决于你使用的 Backend。Deep Agents 提供三种 Backend，各自对应不同的文件存储策略。下面逐一演示。
+Skills 的加载方式取决于你使用的 Backend。本节介绍三种常用 Backend，各自对应不同的文件存储策略。下面逐一演示。
 
 ![Skills 的三种存储后端](../public/imgs/22-arch-skills-backends.png)
 
@@ -220,7 +224,7 @@ checkpointer = MemorySaver()
 backend = StateBackend()
 
 # 从远程加载 Skill（也可以本地读取）
-skill_url = "https://raw.githubusercontent.com/langchain-ai/deepagents/refs/heads/main/libs/code/examples/skills/langgraph-docs/SKILL.md"
+skill_url = "https://raw.githubusercontent.com/langchain-ai/deepagents/deepagents%3D%3D0.7.10/libs/code/examples/skills/langgraph-docs/SKILL.md"
 with urlopen(skill_url) as response:
     skill_content = response.read().decode('utf-8')
 
@@ -249,11 +253,11 @@ result = agent.invoke(
 - StateBackend 没有磁盘，所有文件存储在 LangGraph agent state 中
 - 虚拟路径必须以 `/` 开头（绝对路径格式）
 - 必须使用 `create_file_data()` 格式化内容——直接传入原始字符串会报错
-- Skill 文件通过 `invoke` 的 `files` 参数注入，每次调用都需要传入
+- Skill 文件通过 `invoke` 输入字典的 `files` 字段注入。上例配置了 Checkpointer，同一 `thread_id` 的后续调用可复用已保存文件，无需重复传入；新线程需重新初始化
 
 ### StoreBackend：跨线程持久化
 
-StoreBackend 使用 LangGraph Store 进行持久化存储。与 StateBackend 的关键区别在于：文件只需写入一次，所有线程都能访问。
+StoreBackend 使用 LangGraph Store 进行持久化存储。与 StateBackend 的关键区别在于：文件只需写入一次，使用同一 Store 和同一 namespace 的线程就能访问。跨进程保留还需要持久化 Store，下面的 `InMemoryStore` 仅在进程内有效。
 
 ```python
 from urllib.request import urlopen
@@ -265,7 +269,7 @@ from langgraph.store.memory import InMemoryStore
 store = InMemoryStore()
 backend = StoreBackend(namespace=lambda _rt: ("filesystem",))
 
-skill_url = "https://raw.githubusercontent.com/langchain-ai/deepagents/refs/heads/main/libs/code/examples/skills/langgraph-docs/SKILL.md"
+skill_url = "https://raw.githubusercontent.com/langchain-ai/deepagents/deepagents%3D%3D0.7.10/libs/code/examples/skills/langgraph-docs/SKILL.md"
 with urlopen(skill_url) as response:
     skill_content = response.read().decode('utf-8')
 
@@ -292,7 +296,7 @@ result = agent.invoke(
 
 - StoreBackend 使用 LangGraph Store 作为底层存储，数据跨线程持久化
 - 文件通过 `store.put()` 写入，而非每次 `invoke` 时传入
-- `namespace` 参数是一个函数，接收 runtime config 并返回命名空间元组
+- `namespace` 参数是一个函数，接收 `Runtime` 并返回命名空间元组
 - 适合生产环境中多用户、多线程共享 Skills 的场景
 
 ### 多源 Skills 与优先级
@@ -350,6 +354,8 @@ def create_agent_for_user(user_role: str):
 - **基于请求上下文**：根据用户输入的意图预先筛选相关 Skills
 - **基于环境变量**：开发环境加载调试 Skills，生产环境加载运维 Skills
 
+这里每条路径仍须指向包含 Skill 子目录的父目录，并由应用的 Backend 提供文件；上述函数只展示选择配置，不会创建或填充文件。
+
 这种模式的好处是：Agent 只加载与当前任务相关的 Skills，既节省 token 又减少误匹配。
 
 ## Skills 与子 Agent
@@ -360,7 +366,7 @@ Deep Agents 支持多 Agent 协作，Skills 在主 Agent 与子 Agent 之间的�
 
 - **通用子 Agent（General-Purpose Subagent）**：自动继承主 Agent 的所有 Skills，无需额外配置。
 - **自定义子 Agent**：不继承主 Agent 的 Skills，必须在定义时通过 `skills` 字段显式指定。
-- **Skill 状态完全隔离**：每个 Agent 拥有独立的 Skill 状态空间，一个 Agent 对 Skill 文件的修改不会影响其他 Agent。
+- **Skill 元数据状态隔离**：各 Agent 分别加载自己的 `skills_metadata`，但这不是文件访问隔离。共用 Backend / Store namespace 时，Skill 文件仍可共享，修改也可能影响其他 Agent 后续读取。
 
 > **示意片段**：`web_search` 代表应用自行实现并注册的搜索工具，`/skills/...` 代表项目中的实际 Skill 目录；代码重点是主 Agent 与自定义子 Agent 的 Skills 继承边界。
 
@@ -382,9 +388,9 @@ agent = create_deep_agent(
 )
 ```
 
-在这个例子中，主 Agent 挂载了 `/skills/main/` 目录。当它派发任务给通用子 Agent 时，该子 Agent 也能访问 `/skills/main/` 下的所有 Skill 文件。而 `researcher` 是自定义子 Agent，它只能使用自己声明的 `/skills/research/` 和 `/skills/web-search/`，无法访问主 Agent 的 `/skills/main/`。
+在这个例子中，主 Agent 挂载了 `/skills/main/` 目录。当它派发任务给通用子 Agent 时，该子 Agent 也能访问 `/skills/main/` 下的所有 Skill 文件。而 `researcher` 是自定义子 Agent，它的技能发现列表只包含自己声明的 `/skills/research/` 和 `/skills/web-search/`。这不会禁止它通过文件工具读取 `/skills/main/`；真正的访问限制需要 Backend 隔离或权限规则。
 
-这种设计的好处是职责清晰：研究型子 Agent 不需要也不应该接触主 Agent 的编排类 Skill；同时状态隔离保证了并发执行时不会出现竞态条件。
+这种设计的好处是职责清晰：研究型子 Agent 不需要也不应该接触主 Agent 的编排类 Skill；但共享文件的并发写入仍可能冲突，需要权限控制、独立路径或串行更新。
 
 ## Skill 权限控制
 
@@ -494,7 +500,7 @@ agent = create_deep_agent(
 )
 ```
 
-当 Agent 尝试对 `/skills/**` 下的文件执行写入时，执行流会暂停（interrupt），将修改内容呈现给人类审批者。审批通过后恢复执行，拒绝则回滚操作。
+当 Agent 尝试对 `/skills/**` 下的文件执行写入时，执行流会暂停（interrupt），将修改内容呈现给人类审批者。审批通过后恢复执行；拒绝会阻止这次尚未执行的写入，不是回滚已经发生的外部操作。
 
 注意事项：
 
@@ -685,7 +691,7 @@ Skills、Memory（`AGENTS.md`）和 Tools 是 Deep Agents 中三种不同的能�
 
 ### 1. Frontmatter 保持精简
 
-Frontmatter 中的 `description` 是 Agent 决定是否使用此 Skill 的唯一依据。写得具体、准确，避免泛泛而谈。
+Frontmatter 中的 `description` 是 Agent 判断是否使用此 Skill 的重要依据。写得具体、准确，避免泛泛而谈。
 
 好的写法：
 
@@ -739,7 +745,7 @@ Agent 擅长执行清晰的步骤化指令。Skill 内容应当包含：
 1. **Skills 结构**：一个目录 + `SKILL.md` + 可选的 scripts/references/assets，遵循开放的 Agent Skills 规范，可跨框架复用
 2. **Progressive Disclosure 三级加载**：元数据（启动时）→ 指令正文（Agent 按需调用 `read_file`）→ 辅助资源（按需）
 3. **三种存储后端**：StateBackend（通过 files 参数注入）、StoreBackend（持久化存储）、FilesystemBackend（直接读磁盘）
-4. **子 Agent 继承规则**：General-purpose 子 Agent 自动继承主 Agent 的 Skills，自定义子 Agent 需显式配置，状态完全隔离
+4. **子 Agent 继承规则**：General-purpose 子 Agent 自动继承主 Agent 的 Skills，自定义子 Agent 需显式配置，元数据状态隔离，但不构成共享文件的访问隔离
 5. **权限控制**：deny 模式完全禁止、interrupt 模式人工审批，适用于生产环境的安全部署
 6. **代码执行**：沙箱脚本在隔离容器中运行外部脚本；解释器中间件（如 QuickJS）则在内存中通过 eval 执行模型生成的循环与数据聚合，复用业务逻辑可结合 PTC 白名单或沙箱运行
 7. **Skills vs Memory vs Tools**：三者各司其职——Skills 是按需加载的领域知识，Memory 是始终生效的全局上下文，Tools 是可执行的原子操作

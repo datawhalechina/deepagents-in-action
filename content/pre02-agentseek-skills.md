@@ -73,11 +73,13 @@ npx skills add ob-labs/agentseek --skill langchain-dev-guide --skill langsmith-t
 
 ## 3. 检查安装位置
 
-列出当前项目和用户目录中的已安装技能：
+列出当前项目中的已安装技能：
 
 ```bash
 npx skills list
 ```
+
+查看用户级安装需另运行 `npx skills list --global`；默认的 `list` 不会合并两个范围。
 
 不同编码助手读取不同目录：
 
@@ -85,7 +87,7 @@ npx skills list
 |----------|------------|----------|
 | Codex | `.agents/skills/` | `~/.agents/skills/` |
 | Claude Code | `.claude/skills/` | `~/.claude/skills/` |
-| Cursor | `.agents/skills/` | `~/.agents/skills/` |
+| Cursor | `.agents/skills/` | `~/.cursor/skills/` |
 
 项目级安装是默认行为。`--global` 会写入用户级目录，不会写入当前项目的 `.agents/skills/`。
 
@@ -253,7 +255,7 @@ langsmith run list --trace-ids <trace-id> --project deepagents-course --run-type
 langsmith run list --trace-ids <trace-id> --project deepagents-course --run-type tool --include-metadata --limit 100
 ```
 
-LangSmith API 当前允许的单次 `run list` 上限是 100。复杂研究 Trace 可能超过这个数量；先用 `--run-type` 过滤，必要时再用 `--name` 缩小范围，避免截断结果或向终端输出大量 IO。工具结果中的 `task` 是子 Agent 包装，不要把它当成实际工具瓶颈。完整层级仍以 `trace get` 为准。
+这里用 `--limit 100` 控制 CLI 返回的结果数量，不应将它当作所有版本的 CLI 总量硬上限。当前 CLI 可分页获取结果；复杂研究 Trace 可能超过所设的 limit，需按当前 `run list --help` 的分页选项继续获取，或用 `--run-type`、`--name` 缩小范围，并确认没有遗漏。工具结果中的 `task` 是子 Agent 包装，不要把它当成实际工具瓶颈。完整层级仍以 `trace get` 为准。
 
 找到候选 `run_id` 后，明确使用 `--include-io` 查看单次调用：
 
@@ -261,7 +263,7 @@ LangSmith API 当前允许的单次 `run list` 上限是 100。复杂研究 Trac
 langsmith run get <run-id> --include-io --include-metadata
 ```
 
-不要用 `run get --full` 代替。部分 CLI 版本中，`--full` 可能返回空的输入输出；显式使用 `--include-io` 更稳定。
+当前 CLI 中，`--full` 是 `--include-metadata --include-io --include-feedback` 的简写，也可以使用。本章显式选择 `--include-io --include-metadata`，只取分析所需字段；如果旧版本曾返回空 IO，应先检查版本和数据脱敏设置，不要把它视为 `--full` 的固定行为。
 
 ### 5.4 检查分析结果
 
@@ -329,3 +331,5 @@ npx skills remove langchain-dev-guide langsmith-trace --yes
 接下来，你可以让编码助手使用这两个技能修改上一章生成的研究应用，或继续学习第 7 章的 DeepAgents 运行时 Skills。
 
 参考来源：[AgentSeek Skills](https://github.com/ob-labs/agentseek/tree/main/skills)、[Skills CLI](https://github.com/vercel-labs/skills)、[langchain-dev-guide](https://github.com/ob-labs/agentseek/tree/main/skills/langchain-dev-guide)、[langsmith-trace](https://github.com/ob-labs/agentseek/tree/main/skills/langsmith-trace)、[LangSmith CLI](https://docs.langchain.com/langsmith/langsmith-cli)、[LangSmith 数据脱敏](https://docs.langchain.com/langsmith/mask-inputs-outputs)。
+
+复核依据：Skills CLI 的[安装目录映射](https://github.com/vercel-labs/skills/blob/e781cb4d07433dfe1d19e924ed45cc61738c55ec/src/agents.ts)与[列表范围](https://github.com/vercel-labs/skills/blob/e781cb4d07433dfe1d19e924ed45cc61738c55ec/src/list.ts)，LangSmith CLI 的[`run` 参数处理](https://github.com/langchain-ai/langsmith-cli/blob/758544c5770e697e18ef3a93acfc030f3e6bde43/internal/cmd/run.go)。这些工具独立发布，版本行为请与上述源码及本机 `--help` 对照。
