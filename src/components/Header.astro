@@ -7,18 +7,7 @@ const base = import.meta.env.BASE_URL;
 <header class="border-b border-gold-pale/60">
   <nav class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
     <a href={`${base}/`} class="flex items-center gap-3 group">
-      <svg class="w-7 h-7" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="64" cy="36" r="8" fill="#b8860b" class="group-hover:fill-[#d4a853] transition-colors"/>
-        <circle cx="36" cy="64" r="6" fill="#b8860b" class="group-hover:fill-[#d4a853] transition-colors"/>
-        <circle cx="92" cy="64" r="6" fill="#b8860b" class="group-hover:fill-[#d4a853] transition-colors"/>
-        <circle cx="50" cy="92" r="5" fill="#b8860b" class="group-hover:fill-[#d4a853] transition-colors"/>
-        <circle cx="78" cy="92" r="5" fill="#b8860b" class="group-hover:fill-[#d4a853] transition-colors"/>
-        <path d="M64 44L36 58" stroke="#b8860b" stroke-width="2.5" stroke-linecap="round" class="group-hover:stroke-[#d4a853] transition-colors"/>
-        <path d="M64 44L92 58" stroke="#b8860b" stroke-width="2.5" stroke-linecap="round" class="group-hover:stroke-[#d4a853] transition-colors"/>
-        <path d="M36 70L50 87" stroke="#b8860b" stroke-width="2" stroke-linecap="round" class="group-hover:stroke-[#d4a853] transition-colors"/>
-        <path d="M92 70L78 87" stroke="#b8860b" stroke-width="2" stroke-linecap="round" class="group-hover:stroke-[#d4a853] transition-colors"/>
-        <path d="M50 92H78" stroke="#b8860b" stroke-width="2" stroke-linecap="round" class="group-hover:stroke-[#d4a853] transition-colors"/>
-      </svg>
+      <img src={`${base}/imgs/course-logo.svg`} alt="" width="32" height="32" class="w-8 h-8 shrink-0" />
       <span class="font-sans font-medium text-sm text-ink-muted tracking-wide group-hover:text-gold transition-colors">Deep Agents 实战</span>
     </a>
     <div class="flex items-center gap-3">
