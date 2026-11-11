@@ -40,9 +40,9 @@
 | 功能 | 版本要求 |
 | --- | --- |
 | `FilesystemPermission` 基础权限 / `interrupt` 模式 | 分别需要 `deepagents>=0.5.2` / `deepagents>=0.6.8` |
-| 第 13 章：`RubricMiddleware`（Beta） | 章节以 `deepagents==0.7.1` 验证 |
+| 第 13 章：`RubricMiddleware`（Beta） | 章节以 `deepagents==0.7.15` 验证 |
 | 第 14 章：Event Streaming v3 | `deepagents>=0.6` |
-| 第 15 章：Interpreters（Beta） | Python 3.11+、`langchain-quickjs>=0.2.0` |
+| 第 15 章：Interpreters（Beta） | Python 3.11+；以 `deepagents==0.7.8`、`langchain-quickjs==0.3.5` 核对 |
 | 第 17 章：Decision Model Harness | Python 3.11+；以 `deepagents==0.7.23`、`langchain-typesafe[experimental]==0.0.1a3` 验证 |
 
 示例默认通过 [硅基流动](https://cloud.siliconflow.cn/i/Fq9zUwPf) 接入支持工具调用的模型，使用 `MODEL_NAME` 环境变量配置模型名。小模型可用于简单试跑；任务规划、上下文总结和多 Agent 编排需要更强的模型能力。
