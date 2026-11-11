@@ -102,6 +102,16 @@
     "published": true,
     "pubDate": "2026-06-10"
   },
+  "pre03-task1-faq": {
+    "title": "叶静的学习笔记",
+    "chapter": 0,
+    "section": "准备篇",
+    "order": 8.5,
+    "description": "叶静（yejing8011）贡献的课程 FAQ：从首次运行到健康验收，查找 WSL、网络代理、模型配置、LangSmith 追踪与成本排查的 20 个常见问题。",
+    "slides": [],
+    "published": true,
+    "pubDate": "2026-11-11"
+  },
   "ch07-skills": {
     "title": "Skills — 可复用的 Agent 能力包",
     "chapter": 7,

@@ -1,0 +1,242 @@
+---
+interface Props {
+  publishedCount: number;
+  starCount: number | null;
+}
+
+const { publishedCount, starCount } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const learningSteps = [
+  { id: 'pre01-agentseek-create', title: '准备开发环境', detail: '用 AgentSeek 启动模板，完成检查与配置。', chapter: '准备篇' },
+  { id: 'ch01-agent-harness', title: '理解 Agent Harness', detail: '先认识 Deep Agents，再理解它为什么这样设计。', chapter: '第 1 章' },
+  { id: 'ch02-quickstart', title: '运行第一个 Agent', detail: '从安装到运行，亲手连接模型与工具。', chapter: '第 2 章' },
+];
+---
+
+<section class="course-hero" aria-labelledby="course-title">
+  <div class="course-hero__main">
+    <div class="course-hero__intro">
+      <div class="course-hero__community">
+        <img src={`${base}/imgs/langchain-community.svg`} alt="LangChain Community" width="158" height="18" />
+        <span>开源中文课程</span>
+      </div>
+      <h1 id="course-title"><span translate="no">Deep Agents</span> 实战</h1>
+      <p class="course-hero__description">基于 LangChain / LangGraph 生态<br />系统构建生产级 AI Agent 的完整指南</p>
+      <p class="course-hero__version"><span aria-hidden="true"></span>0.5 起步 · 当前基线 0.7</p>
+      <div class="course-hero__actions">
+        <a href={`${base}/chapters/ch01-agent-harness/`} class="course-hero__primary">
+          开始阅读
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 12h16m-6-6 6 6-6 6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </a>
+        <a href="#course-chapters" class="course-hero__secondary">浏览课程目录</a>
+      </div>
+      <p class="course-hero__formats">图文讲解、视频课程、PDF 课件与动手实验</p>
+    </div>
+
+    <aside class="learning-route" aria-labelledby="learning-route-title">
+      <div class="learning-route__heading">
+        <h2 id="learning-route-title">第一次学，从这里开始</h2>
+        <p>先跑通，再理解，逐步深入。</p>
+      </div>
+      <ol class="learning-route__steps">
+        {learningSteps.map((step, index) => (
+          <li>
+            <a href={`${base}/chapters/${step.id}/`}>
+              <span class="learning-route__number" aria-hidden="true">{index + 1}</span>
+              <span class="learning-route__content">
+                <span class="learning-route__label"><strong>{step.title}</strong><span>{step.chapter}</span></span>
+                <span class="learning-route__detail">{step.detail}</span>
+              </span>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 5 7 7-7 7" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </a>
+          </li>
+        ))}
+      </ol>
+      <p class="learning-route__note">安装、配置或运行卡住了？<a href={`${base}/chapters/pre03-task1-faq/`}>查看叶静的学习笔记</a></p>
+    </aside>
+  </div>
+
+  <div class="course-hero__footer">
+    <div class="course-hero__author">
+      <a href="https://space.bilibili.com/28357052" target="_blank" rel="noopener">沧海九粟</a>
+      <span>LangChain 官方大使</span>
+      <span class="course-hero__published">已发布 {publishedCount} 章</span>
+    </div>
+    <nav class="course-hero__resources" aria-label="课程资源">
+      <a href="https://space.bilibili.com/28357052/lists/7757577?type=season" target="_blank" rel="noopener">B 站合集 <span aria-hidden="true">↗</span></a>
+      <a href="https://www.xiaohongshu.com/collection/item/69c4fd2a0072000000000001?xhsshare=&appuid=65032a0300000000120065e8&apptime=1778152909&share_id=2abb593f301a4e60a6e71fbbee3c8967" target="_blank" rel="noopener">小红书合集 <span aria-hidden="true">↗</span></a>
+      <a href="https://github.com/datawhalechina/deepagents-in-action" target="_blank" rel="noopener" aria-label="给本课程在 GitHub 点 Star">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z" stroke-width="1.5" stroke-linejoin="round" /></svg>
+        GitHub Star
+        <span id="gh-star-count" class:list={['course-hero__stars', starCount === null && 'hidden']}>{starCount ?? ''}</span>
+      </a>
+    </nav>
+  </div>
+  <a href="https://cloud.siliconflow.cn/i/Fq9zUwPf" target="_blank" rel="noopener" class="course-hero__support">
+    <span>模型算力支持</span>
+    <img src={`${base}/imgs/siliconflow-mark.svg`} alt="" width="24" height="14" />
+    <span>硅基流动 SiliconFlow</span>
+  </a>
+</section>
+
+<style>
+  .course-hero {
+    padding: clamp(2.5rem, 6vw, 5rem) 0 2.75rem;
+    font-family: var(--font-sans);
+  }
+  .course-hero__main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(2rem, 5vw, 4.5rem);
+  }
+  .course-hero__intro { min-width: 0; }
+  .course-hero__community {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-bottom: 1.6rem;
+    color: var(--color-ink-muted);
+    font-size: 0.75rem;
+  }
+  .course-hero__community img { width: 158px; height: 18px; }
+  .course-hero__community > span {
+    border-left: 1px solid color-mix(in srgb, var(--color-ink-muted) 25%, transparent);
+    padding-left: 0.8rem;
+  }
+  h1 {
+    margin: 0 0 1.25rem;
+    color: var(--color-ink);
+    font-size: clamp(2.25rem, 4.7vw, 3.45rem);
+    font-weight: 900;
+    letter-spacing: -0.055em;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+  h1 span { white-space: nowrap; }
+  .course-hero__description {
+    margin: 0;
+    color: var(--color-ink-muted);
+    font-size: clamp(1rem, 1.65vw, 1.25rem);
+    line-height: 1.85;
+  }
+  .course-hero__version {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1rem 0 1.8rem;
+    color: var(--color-ink-muted);
+    font-size: 0.75rem;
+  }
+  .course-hero__version > span { width: 6px; height: 6px; border-radius: 50%; background: var(--color-gold); }
+  .course-hero__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.8rem 1.5rem; }
+  .course-hero__primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    min-height: 48px;
+    padding: 0.75rem 1.5rem;
+    border: 1px solid var(--color-ink);
+    border-radius: 8px;
+    background: var(--color-ink);
+    color: var(--color-paper);
+    font-size: 0.875rem;
+    font-weight: 700;
+    transition: background-color 160ms, border-color 160ms;
+  }
+  .course-hero__primary:hover { background: var(--color-ink-light); border-color: var(--color-ink-light); }
+  .course-hero__primary svg { width: 18px; height: 18px; }
+  .course-hero__secondary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--color-ink-muted);
+    font-size: 0.875rem;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--color-ink-muted) 35%, transparent);
+    text-underline-offset: 5px;
+  }
+  .course-hero__secondary:hover { color: var(--color-ink); text-decoration-color: currentColor; }
+  .course-hero__formats { margin: 1rem 0 0; color: var(--color-ink-muted); font-size: 0.75rem; line-height: 1.7; }
+
+  .learning-route {
+    min-width: 0;
+    padding: 1.6rem 1.5rem 1.3rem;
+    border: 1px solid color-mix(in srgb, var(--color-gold) 28%, transparent);
+    border-top: 3px solid var(--color-gold);
+    border-radius: 3px 3px 12px 12px;
+    background: var(--color-paper-warm);
+  }
+  .learning-route__heading h2 { margin: 0; color: var(--color-ink); font-size: 1.1rem; font-weight: 700; line-height: 1.5; text-wrap: balance; }
+  .learning-route__heading p { margin: 0.3rem 0 1rem; color: var(--color-ink-muted); font-size: 0.8125rem; line-height: 1.6; }
+  .learning-route__steps { margin: 0; padding: 0; list-style: none; }
+  .learning-route__steps li + li { border-top: 1px solid color-mix(in srgb, var(--color-gold) 16%, transparent); }
+  .learning-route__steps a {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) 1rem;
+    align-items: start;
+    gap: 0.75rem;
+    padding: 1rem 0;
+    border-radius: 4px;
+    color: var(--color-ink);
+  }
+  .learning-route__number {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid color-mix(in srgb, var(--color-gold) 35%, transparent);
+    border-radius: 50%;
+    color: var(--color-ink-muted);
+    font: 500 0.75rem/1 var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .learning-route__label { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.25rem 0.6rem; line-height: 1.7; }
+  .learning-route__label strong { font-size: 0.875rem; font-weight: 700; }
+  .learning-route__label > span { color: var(--color-ink-muted); font-size: 0.6875rem; }
+  .learning-route__detail { display: block; margin-top: 0.2rem; color: var(--color-ink-muted); font-size: 0.75rem; line-height: 1.75; }
+  .learning-route__steps svg { width: 1rem; height: 1rem; margin-top: 0.35rem; color: var(--color-ink-muted); }
+  .learning-route__steps a:hover strong { text-decoration: underline; text-underline-offset: 4px; }
+  .learning-route__steps a:hover .learning-route__number { border-color: var(--color-gold); background: var(--color-gold-pale); color: var(--color-ink); }
+  .learning-route__note a { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+  .learning-route__note a:hover { text-decoration-thickness: 2px; }
+  .learning-route__note { margin: 0.2rem 0 0; color: var(--color-ink-muted); font-size: 0.75rem; line-height: 1.7; }
+
+  .course-hero__footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    column-gap: 1.5rem;
+    row-gap: 0.4rem;
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-gold) 23%, transparent);
+  }
+  .course-hero__author { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; color: var(--color-ink-muted); font-size: 0.75rem; line-height: 1.8; }
+  .course-hero__author a { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-ink); font-size: 0.8125rem; font-weight: 700; }
+  .course-hero__published { border-left: 1px solid color-mix(in srgb, var(--color-ink-muted) 25%, transparent); padding-left: 0.75rem; }
+  .course-hero__resources { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.2rem; }
+  .course-hero__resources a { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 44px; color: var(--color-ink-muted); font-size: 0.75rem; }
+  .course-hero__resources svg { width: 16px; height: 16px; }
+  .course-hero__resources a:hover, .course-hero__author a:hover { color: var(--color-ink); text-decoration: underline; text-underline-offset: 4px; }
+  .course-hero__stars { padding: 0.2rem 0.4rem; border-radius: 4px; background: var(--color-gold-pale); color: var(--color-ink); font-size: 0.6875rem; font-variant-numeric: tabular-nums; }
+  .course-hero__support { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; min-height: 44px; color: var(--color-ink-muted); font-size: 0.6875rem; }
+  .course-hero__support img { width: 24px; height: 14px; object-fit: contain; }
+  .course-hero__support:hover { color: var(--color-ink); }
+  :global([data-theme='dark']) .course-hero__community img { filter: invert(0.85); }
+  @media (max-width: 767px) {
+    .course-hero { padding-top: 2.5rem; padding-bottom: 2rem; }
+    .course-hero__main { grid-template-columns: minmax(0, 1fr); gap: 2rem; }
+    .course-hero__community { margin-bottom: 1.3rem; }
+    h1 { font-size: clamp(2rem, 6.9vw, 3.25rem); }
+    .course-hero__version { margin-bottom: 1.4rem; }
+    .learning-route { padding: 1.25rem; }
+    .course-hero__footer { margin-top: 1.6rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .course-hero__primary { transition: none; }
+  }
+</style>

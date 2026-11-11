@@ -77,6 +77,7 @@ npx skills add ob-labs/agentseek --skill langsmith-trace
 
 - [AgentSeek 生命周期工作流](https://datawhalechina.github.io/deepagents-in-action/chapters/pre01-agentseek-create/)：创建 DeepAgents 模板，检查环境并启动前后端
 - [`npx skills` 安装开发技能](https://datawhalechina.github.io/deepagents-in-action/chapters/pre02-agentseek-skills/)：为 AI 编码助手加载 LangChain 工程经验
+- [叶静的学习笔记](https://datawhalechina.github.io/deepagents-in-action/chapters/pre03-task1-faq/)：由叶静（yejing8011）贡献，覆盖首次运行、WSL 与代理、模型配置、Trace 和成本排查
 
 ### 版本更新 — 理解变化，再决定如何升级
 
@@ -230,6 +231,8 @@ agentseek dev
 ---
 
 ## ❤️ 特别感谢
+
+- 感谢 **叶静（yejing8011）** 贡献课程 FAQ 的全部内容。
 
 - 感谢 [@Sm1les](https://github.com/Sm1les) 对本项目的帮助与支持。
 - 感谢每一位为本项目提交代码、修正文档、提出建议的开发者，所有贡献都让这门课程变得更好。❤️
