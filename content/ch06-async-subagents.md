@@ -1,6 +1,6 @@
 # 第 6 章：异步子 Agent — 让主 Agent 同时驱动多个子任务
 
-> 上一章我们学习了同步子 Agent，主 Agent 通过 `task` 工具委派、然后**等待**子 Agent 跑完。但是，当子任务要花上几分钟、甚至几十分钟时，主 Agent 在用户面前就成了“死机状态”——既无法继续聊，也无法插话调整方向。本章学习 Deep Agents 0.5.0 的预览特性：**Async Subagent（异步子 Agent）**——主 Agent 立即拿到任务 ID 就返回，子 Agent 在后台继续跑；用户可以随时问进度、追加要求，甚至中途取消。
+> 上一章我们学习了同步子 Agent，主 Agent 通过 `task` 工具委派、然后**等待**子 Agent 跑完。但是，当子任务要花上几分钟、甚至几十分钟时，主 Agent 在用户面前就成了“死机状态”——既无法继续聊，也无法插话调整方向。本章学习 Deep Agents 0.5.0 的预览特性：**Async Subagent（异步子 Agent）**——主 Agent 在子任务启动成功后拿到任务 ID，不等待子任务完成，子 Agent 在后台继续跑；用户可以随时问进度、追加要求，甚至中途取消。
 
 > ⚠️ **前置环境与运行模型变化**
 >
@@ -34,20 +34,20 @@
 
 更糟的是——同步子 Agent 在被主 Agent `task()` 调用期间，**主 Agent 自己也被阻塞**。这意味着：在子 Agent 完成之前，用户无法和主 Agent 继续聊别的话题。
 
-异步子 Agent 解决的就是这两件事：**不阻塞主线对话**，**支持中途控制**。
+异步子 Agent 解决的就是这两件事：**主线对话不必等待子任务完成**，**支持中途控制**。
 
 ## 同步 vs 异步：六个维度的对比
 
 | 维度 | 同步子 Agent | 异步子 Agent |
 |---|---|---|
-| **执行模型** | 阻塞——主 Agent 等到完成才能继续 | 非阻塞——立即返回任务 ID |
-| **并发性** | 可并行触发，但主 Agent 仍被整批阻塞 | 完全并行，主 Agent 全程不阻塞 |
+| **执行模型** | 阻塞——主 Agent 等到完成才能继续 | 启动成功后返回任务 ID，不等待子任务完成 |
+| **并发性** | 可并行触发，但主 Agent 仍被整批阻塞 | 子任务在后台运行；主 Agent 仍需等待启动等工具请求完成 |
 | **中途追加指令** | `task` 没有专用更新工具 | ✅ `update_async_task` 注入新指令 |
 | **取消** | `task` 没有专用取消工具；宿主仍可取消整次运行 | ✅ `cancel_async_task` 请求取消任务 |
 | **状态性** | 无状态——每次调用相互独立 | 有状态——子 Agent 拥有自己的会话（thread），会话历史持续累积 |
 | **典型场景** | 一问一答、毫秒级到秒级的快速委派 | 几分钟以上的研究、编码、迁移等长程任务，需要在对话中互动管理 |
 
-![同步 vs 异步子 Agent：左侧主 Agent 委派后被阻塞、用户只能等待；右侧主 Agent 拿到任务 ID 立即返回，用户可继续对话、查看进度、追加指令或取消任务](../public/imgs/15-comparison-sync-vs-async.png)
+![同步 vs 异步子 Agent：左侧主 Agent 委派后被阻塞、用户只能等待；右侧主 Agent 在启动成功后拿到任务 ID，无需等待子任务完成，用户可继续对话、查看进度、追加指令或取消任务](../public/imgs/15-comparison-sync-vs-async.png)
 
 简单的判定法则：**子任务能在 5 秒内完成**，用同步；**子任务可能跑数分钟以上、且过程需要可交互**，上异步。
 
@@ -66,7 +66,7 @@
 
 主 Agent 负责决定任务怎么拆、交给谁、如何整合结果；Agent Server 负责承接和执行任务。开启 LangSmith 追踪会记录执行过程，但不会自动把本地 Agent 变成可接收任务的服务。本章使用 `langgraph dev` 启动本地 Agent Server，无需先部署到 LangSmith 云端。
 
-服务端的 **thread 表示保存消息和状态的会话，不是操作系统线程**；**run 表示该会话上的一次执行**。主 Agent 调用 `start_async_task` 后，中间件通过 SDK 创建子任务的 thread 和 run，返回任务 ID，服务端继续执行子 Agent。后续查询、追加指令和取消也通过服务接口完成。
+服务端的 **thread 表示保存消息和状态的会话，不是操作系统线程**；**run 表示该会话上的一次执行**。主 Agent 调用 `start_async_task` 后，中间件通过 SDK 创建子任务的 thread 和 run，等待这两个创建请求成功后返回任务 ID，服务端继续执行子 Agent。后续查询、追加指令和取消也通过服务接口完成。
 
 ### 声明要调用的子 Agent
 
@@ -116,7 +116,7 @@ agent = create_deep_agent(
 
 | 工具 | 作用 | 返回 |
 |---|---|---|
-| `start_async_task` | 启动一个新的后台任务 | 任务 ID（立即返回） |
+| `start_async_task` | 启动一个新的后台任务 | 任务 ID（启动成功后返回，不等待子任务完成） |
 | `check_async_task` | 查询任务当前状态与结果 | 状态 + 结果（若完成） |
 | `update_async_task` | 给运行中的任务追加新指令 | 确认 + 更新后状态 |
 | `cancel_async_task` | 终止运行中的任务 | 确认信息 |
@@ -152,7 +152,7 @@ agent = create_deep_agent(
            ← cancelled
 ```
 
-![异步子 Agent 生命周期：launch 立即返回任务 ID；用户继续对话；check 查询进度；update 中途追加指令；cancel 取消任务；list 列出所有任务。主 Agent 全程不阻塞](../public/imgs/16-flowchart-async-lifecycle.png)
+![异步子 Agent 生命周期：launch 启动成功后返回任务 ID；用户继续对话；check 查询进度；update 中途追加指令；cancel 取消任务；list 列出所有任务。主 Agent 无需等待子任务完成](../public/imgs/16-flowchart-async-lifecycle.png)
 
 如果把视角换成三泳道的时序图，可以更清晰地看到三方之间的消息流——用户、主 Agent 与 Agent Protocol 服务之间，请求与返回（实线 / 虚线）一来一回，中间是用户继续聊天的"非阻塞区"：
 
@@ -203,7 +203,7 @@ ASGI 传输：SDK → 进程内 ASGI 适配器 → Agent Server 应用
 
 ASGI 优势：
 
-- **零网络延迟**：调用即函数调用
+- **省去 SDK 到 Server 的网络往返**：通过进程内 ASGI 适配器调用；应用处理、调度和状态存储仍有开销，并非零延迟
 - **零额外鉴权配置**：本地进程互信
 - **子 Agent 仍有独立的会话（thread）**，各自保存消息和状态
 
@@ -211,7 +211,7 @@ ASGI 优势：
 
 ### 本地最小验证方案（单部署 + ASGI，可直接复制运行）
 
-如果你只是想先确认异步子 Agent 真的能派活后立刻返回，**不需要先上远程部署**。下面这套最小示例按 `deepagents==0.7.10` 核对，可以复制到一个空目录里运行；0.5.0 是特性引入版本，不表示后续所有预览 API 完全一致：
+如果你只是想先确认异步子 Agent 能在启动成功后返回、无需等待子任务完成，**不需要先上远程部署**。下面这套最小示例按 `deepagents==0.7.10` 核对，可以复制到一个空目录里运行；0.5.0 是特性引入版本，不表示后续所有预览 API 完全一致：
 
 ```text
 async-subagent-demo/
@@ -290,9 +290,9 @@ MODEL_NAME=zai-org/GLM-5.2
 
 ### 第 4 步：编写一个故意运行很慢的 Subagent
 
-为了让异步效果稳定可见，我们不让 `researcher` 去调搜索 API，而是直接写一个 **固定 sleep 8 秒** 的 LangGraph。这样你每次都能观察到：
+为了让异步效果稳定可见，我们不让 `researcher` 去调搜索 API，而是直接写一个 **固定 sleep 8 秒** 的 LangGraph。这便于观察以下过程（不保证首次回复时子任务仍在运行）：
 
-- supervisor 先立刻返回 `task_id`
+- supervisor 在启动成功后返回 `task_id`，不等待子任务完成
 - researcher 在后台继续跑
 - 之后 `check_async_task` 能看到从 `running` 变成 `success`
 
@@ -537,7 +537,7 @@ LangGraph 部署的鉴权由 SDK 自动处理：从环境变量读取 `LANGSMITH
 
 | 拓扑 | 形态 | 推荐场景 |
 |---|---|---|
-| **单部署（Single）** | 所有 Agent 同部署，全部用 ASGI | **绝大多数项目的起点**：一台服务好运维、零网络延迟 |
+| **单部署（Single）** | 所有 Agent 同部署，全部用 ASGI | **绝大多数项目的起点**：一台服务好运维、省去 SDK 到 Server 的网络往返 |
 | **拆分部署（Split）** | 主 Agent 一台，子 Agent 一台，全用 HTTP | 子 Agent 资源画像或扩缩容策略与主 Agent 显著不同 |
 | **混合（Hybrid）** | 一部分子 Agent 走 ASGI（同部署），另一部分走 HTTP（远程） | 大多数子 Agent 同部署省事，少数特殊子 Agent 单独扩 |
 
@@ -650,16 +650,16 @@ agent = create_deep_agent(
 
 ## 参考实现
 
-LangChain 官方提供了一个完整可跑的示例仓库：[async-deep-agents](https://github.com/langchain-ai/async-deep-agents)，Python 与 TypeScript 双版本，演示了一个主 Agent + researcher + coder 子 Agent 的部署形态，配套部署到 LangSmith Deployments。读完本章后，强烈建议把这个仓库 clone 下来跑一遍，亲眼看看主 Agent "派活之后立刻能继续聊"的实际效果。
+LangChain 官方提供了一个完整可跑的示例仓库：[async-deep-agents](https://github.com/langchain-ai/async-deep-agents)，Python 与 TypeScript 双版本，演示了一个主 Agent + researcher + coder 子 Agent 的部署形态，配套部署到 LangSmith Deployments。读完本章后，强烈建议把这个仓库 clone 下来跑一遍，亲眼看看主 Agent "启动成功后无需等待子任务完成就能继续聊"的实际效果。
 
 ## 小结
 
 本章我们解锁了 Deep Agents 0.5.0 的预览特性 Async Subagent：
 
-1. **核心动机**：突破同步子 Agent 的两个瓶颈——**主 Agent 不再被阻塞**，**任务可以中途追加指令或取消**。
+1. **核心动机**：突破同步子 Agent 的两个瓶颈——**主 Agent 不必等待子任务完成**，**任务可以中途追加指令或取消**。
 2. **5 把遥控器**：`start` / `check` / `update` / `cancel` / `list`，主 Agent 像调普通工具一样用它们操控后台子任务。
 3. **状态独立通道**：任务元数据存在 `async_tasks` channel 中，与消息历史解耦——消息压缩不会删除任务元数据；跨调用和重启恢复仍依赖主线程的持久化。
-4. **两种传输**：默认 ASGI（同部署、零延迟），按需切换 HTTP（远程、可独立扩缩容）。
+4. **两种传输**：默认 ASGI（同部署、省去 SDK 到 Server 的网络往返），按需切换 HTTP（远程、可独立扩缩容）。
 5. **三种拓扑**：单部署 / 拆分部署 / 混合，**起手用单部署**，按工程需要再拆。
 6. **避坑要点**：worker pool 要足够、描述要具体、永远基于实时 `check` 而非对话历史报告状态。
 
