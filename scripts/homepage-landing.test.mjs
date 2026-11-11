@@ -90,3 +90,32 @@ test('standalone SVG and favicon share a self-contained accessible vector mark',
   assert.doesNotMatch(logo, /<(?:image|script|foreignObject)\b|(?:href|src)="https?:/);
   assert.ok(Buffer.byteLength(logo) < 3000, 'the mark stays lightweight');
 });
+
+test('every published page uses the same course mark in the header, footer and browser tab', () => {
+  const paths = ['index.html', ...Object.entries(manifest)
+    .filter(([, chapter]) => chapter.published)
+    .map(([id]) => `chapters/${id}/index.html`)];
+  for (const path of paths) {
+    const page = readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf8');
+    for (const element of ['header', 'footer']) {
+      const region = page.match(new RegExp(`<${element}\\b[^>]*>[\\s\\S]*?</${element}>`))?.[0];
+      assert.ok(region, `${path} has a ${element}`);
+      const logo = region.match(/<img[^>]*src="\/deepagents-in-action\/imgs\/course-logo\.svg"[^>]*>/)?.[0];
+      assert.ok(logo, `${path} ${element} uses the current course mark`);
+      assert.match(logo, /alt=""/);
+      assert.match(logo, /width="\d+"/);
+      assert.match(logo, /height="\d+"/);
+      assert.doesNotMatch(region, /viewBox="0 0 128 128"/, 'the old node mark is no longer rendered');
+    }
+    assert.match(page, /<link[^>]*rel="icon"[^>]*href="\/deepagents-in-action\/favicon\.svg"/);
+  }
+});
+
+test('reading pages default to sans-serif without loading a handwriting webfont', () => {
+  for (const path of ['index.html', 'chapters/ch01-agent-harness/index.html', 'chapters/pre03-task1-faq/index.html']) {
+    const page = readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf8');
+    const body = page.match(/<body\b[^>]*>/)?.[0];
+    assert.match(body, /\bfont-sans\b/, `${path} defaults to the readable sans-serif family`);
+    assert.doesNotMatch(page, /lxgw-wenkai|Noto\+Serif\+SC|font-serif/i, `${path} does not load or select a handwriting/serif reading font`);
+  }
+});
