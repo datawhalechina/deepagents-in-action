@@ -4,7 +4,7 @@
 
 <p>
   <a href="https://datawhalechina.github.io/deepagents-in-action/">
-    <img src="public/imgs/hero.png" alt="Deep Agents 实战 — 基于 LangChain / LangGraph 的中文开源课程，感谢 2,000+ GitHub Stars" width="800" />
+    <img src="public/imgs/hero.png" alt="Deep Agents 实战 — 基于 LangChain / LangGraph 的中文开源课程，庆祝 GitHub 3,000 Stars，感谢每一位学习者与贡献者" width="800" />
   </a>
 </p>
 
