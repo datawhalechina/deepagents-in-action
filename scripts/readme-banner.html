@@ -42,6 +42,7 @@
     h1 span { color: #b8860b; }
     .subtitle { margin: 0; color: #4a4a5a; font-size: 18px; line-height: 28px; }
     .milestone {
+      position: relative;
       display: inline-flex;
       align-items: center;
       gap: 10px;
@@ -54,6 +55,19 @@
       font-size: 15px;
       line-height: 26px;
     }
+    .milestone::before, .milestone::after {
+      position: absolute;
+      top: 50%;
+      width: 14px;
+      height: 14px;
+      transform: translateY(-50%);
+      background: #b8860b;
+      clip-path: polygon(50% 0, 60% 39%, 100% 50%, 60% 61%, 50% 100%, 40% 61%, 0 50%, 40% 39%);
+      content: "";
+      opacity: .72;
+    }
+    .milestone::before { left: -31px; }
+    .milestone::after { right: -31px; }
     .milestone svg { width: 20px; height: 20px; fill: #b8860b; }
     .milestone strong { font-size: 25px; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
     .thanks { margin: 10px 0 0; color: #62616a; font-size: 13px; line-height: 20px; }
@@ -83,7 +97,7 @@
     <p class="subtitle">基于 LangChain / LangGraph，构建生产级 AI Agent</p>
     <div class="milestone">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
-      <strong>2,000+</strong>
+      <strong>3,000</strong>
       <span>GitHub Stars</span>
     </div>
     <p class="thanks">感谢每一位学习者与贡献者</p>
